@@ -22,16 +22,16 @@
 #' \item catch mean weight-at-age (\code{catch.wt})
 #' \item landings mean weight-at-age (\code{landings.wt})
 #' \item discards mean weight-at-age (\code{discards.wt})}
-#'  
+#'
 #' Catch numbers and fishing mortality-at-age are summed across commercial fleets,
 #' whereas catch, landings and discards mean weight-at-age are averages weighted
 #' by the catch number proportions by commercial fleets. Landings and discards
 #' numbers-at-age are calculated using the catch proportion weighted mean
 #' landings fraction.
-#'  
+#'
 #' The function also updates the Fbar range for the stock from the fitted
 #' SAM object.
-#' 
+#'
 #' Returned \code{FLFleet} objects contain data for:
 #' \itemize{
 #' \item partial fishing mortality-at-age (\code{harvest})
@@ -51,8 +51,40 @@
 #' @return A list containing an \code{FLStock} and \code{FLFleets} objects
 #'
 #' @section  Warning:
-#' This function requires \code{FLCore} to operate.
+#' This function requires \code{FLCore} and either \code{FLFishery} or
+#' \code{FLFleet} to operate.
 #'
 #' @export
 
-multiSAM2FLR
+
+setGeneric("multiSAM2FLR", function(SAMfit,
+                                    stkname = NULL,
+                                    useSAMcatch = TRUE,
+                                    add = FALSE) {
+
+  standardGeneric("multiSAM2FLR")
+}
+
+## If SAMfit == "SAM"
+#' @rdname multiSAM2FLR
+setMethod(f = "multiSAM2FLR",
+          signature = signature(SAMfit = "sam"),
+          definition = function(SAMfit,
+                                stkname = NULL,
+                                useSAMcatch = TRUE,
+                                add = FALSE) {
+
+            stk <- multiSAM2FLStock(Samfit,
+                                    stkname = stkname,
+                                    useSAMcatch = useSAMcatch,
+                                    add = add)
+
+            flt <- multiSAM2FLFishery(Samfit,
+                                      stkname = stkname,
+                                      useSAMcatch = useSAMcatch,
+                                      add = add)
+
+            return(list(stk,flt))
+
+
+          })

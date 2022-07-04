@@ -1,25 +1,36 @@
 # ---
-# title: 'Functions to help condition Operating Models'
+# title: 'Conditioning: multiSAM2FLFishery'
 # author: 'Matthew Pace'
 # date: 'July 2022'
 # ---
 #
-#' Convert a SAM fitted object into an \code{FLFishery} object
+#' Convert a SAM fitted object into an \code{FLFisheries} object
 #'
 #' This function takes a SAM fitted stock assessment object as input and
-#' returns a \code{FLFishery} object.
+#' returns a \code{FLFisheries} object.
 #'
-#' Returned \code{FLFishery} object contains data for:
+#' Returned \code{FLFisheries} object contains data for one or more
+#' \code{FLFishery} objects. Each \code{FLFishery} object contains the following
+#' slots:
 #' \itemize{
-#' \item partial fishing mortality-at-age (\code{catch.q})
-#' \item landings numbers-at-age (\code{landings.n})
+#' \item capacity (\code{catch.q})
+#' \item effort (\code{landings.n})
 #' \item landings mean weight-at-age (\code{landings.wt})
 #' \item proportion catch retained-at-age (\code{landings.sel})
 #' \item discards numbers-at-age (\code{discards.n})
 #' \item discards mean weight-at-age (\code{discards.wt})}
 #'
-#' Fbar range is ignored because it does not provide meaningful information
-#' at the partial fishing mortality level.
+#' Additionally, each \code{FLFishery} object contains one or more \code{FLCatch}
+#' object with the following slots:
+#'
+#' \itemize{
+#' \item landings numbers-at-age (\code{landings.n})
+#' \item landings mean weight-at-age (\code{landings.wt})
+#' \item discards numbers-at-age (\code{discards.n})
+#' \item discards mean weight-at-age (\code{discards.wt})
+#' \item proportional selectivity-at-age (\code{catch.sel})
+#' \item mean price-per-unit-weight-at-age (\code{price})}
+#'
 #'
 #' NOTE: The partial fishing mortality-at-age for each stock is inserted in
 #'       the respective catchability-at-age slot. Further processing into
@@ -41,19 +52,21 @@
 #'
 #' @export
 
-multiSAM2FLFleet <- function(SAMfit,
-                             stkname = NULL,
-                             useSAMcatch = TRUE,
-                             add = FALSE,
-                             fleets = NULL) {
+multiSAM2FLFishery <- function(SAMfit,
+                               stkname = NULL,
+                               useSAMcatch = TRUE,
+                               add = FALSE,
+                               fleets = NULL) {
 
   # ==================================#
   # Check that inputs are correct
   # ==================================#
 
   ## Stock name must be provided
+  if(is.null(stkname))
+    stop("Stock name (stkname) must be provided")
 
-  ## If add == TRUE, then FLFleets object must be provided
+  ## If add == TRUE, then FLFishery object must be provided
   if(is.null(fleets) & add == TRUE)
     stop("If add == TRUE, fleets must be provided as FLFleets object")
 
@@ -76,79 +89,469 @@ multiSAM2FLFleet <- function(SAMfit,
                                              age  = ages,
                                              iter = 1))
 
-  ## How many commercial fleets?
-  fleet_idx  <- which(SAMfit$data$fleetTypes %in% c(0,1,7))
+  ## How many commercial fleets? - do not process aggregated fleet
+  fleet_idx  <- which(SAMfit$data$fleetTypes %in% c(0,1))
   fleet_n    <- length(fleet_idx)
   fleetnames <- attr(SAMfit$data, "fleetNames")[fleet_idx]
 
   # =====================================#
-  # SECTION 2: Create or Append FLFleets
+  # SECTION 2: Create or Append FLFisheries
   # =====================================#
 
   ## Generate new structure if add == FALSE
   if(add == FALSE) {
 
     ## loop over each fleet
-    fleets <- FLFleets(lapply(1:fleet_n, function(x){
+    fleets <- FLFisheries(lapply(1:fleet_n, function(x){
 
-      ## min and max ages harvested by each fleet
-      # SAMfit$data$maxAgePerFleet
-      # SAMfit$data$minAgePerFleet
+      ## Generate new FLCatch
+      fleetstk_x <- FLFishery::FLCatch(qnt)
+
+      # =====================================#
+      # SECTION 2.1:   New FLFisheries
+      # =====================================#
+      # SECTION 2.1.1: catch selection-at-age
+      # -------------------------------------#
+
+      ## Extract landings fraction for xth fleet
+      lf <- SAMfit$data$landFrac
+      if(length(dim(lf) > 2)) {
+
+        lf <- t(lf[,,fleetnames[x]])
+        lf_qnt <- qnt
+        lf_age <- rownames(lf)
+        lf_yrs <- colnames(lf)
+        lf_qnt[FLCore::ac(lf_age), FLCore::ac(lf_yrs)] <- lf
+
+        # FLFishery::catch.sel(fleetstk_x) <- lf_qnt
+
+      } else {
+
+        stop("Landing fraction (landFrac) is not a 3D array")
+
+      }
+
+      # -------------------------------------#
+      # SECTION 2.1.2: Landings numbers-at-age
+      #                Discards numbers-at-age
+      # -------------------------------------#
+
+      ## Use fitted catches
+      if(isTRUE(useSAMcatch)) {
+
+        ## combine catch and year, fleet and age indices
+        catchn <- cbind(SAMfit$data$aux,
+                        catch = exp(SAMfit$rep$predObs))
+
+      ## Use observed catches
+      } else {
+
+        ## combine catch and year, fleet and age indices
+        catchn <- cbind(SAMfit$data$aux,
+                        catch = exp(SAMfit$data$logobs))
+
+      }
+
+      ## select commercial fleets
+      catchn <- catchn[SAMfit$data$aux[,"fleet"] %in% fleet_idx[x],]
+
+      ## Convert year vector to actual years
+      if(!(min(catchn[,"year"]) %in% years)) {
+
+        ## update year index to actual year
+        catchn[,"year"] <- catchn[,"year"] + min(years) - 1
+
+      }
+
+      # Next re-organise the year index and create an empty matrix to cater for cases
+      # where there are missing data
+
+      ## Generate blank matrix which has full age and year dimensions
+      Cmatrix <- matrix(nrow = length(ages),
+                        ncol = length(years),
+                        dimnames = list(age = ages,
+                                        year = years))
+
+      ## insert catches into blank matrix
+      Cmatrix[cbind(ac(catchn[,"age"]), ac(catchn[,"year"]))] <- catchn[,"catch"]
+      Cmatrix[is.na(Cmatrix)] <- 0
+
+      ## insert catch matrix into FLQuant
+      catch_qnt <- qnt
+      catch_qnt[ac(ages),ac(years)] <- Cmatrix
+
+
+      ## Calculate fisheries landings & discards
+      FLFishery::landings.n(fleetstk_x)[ac(ages),ac(years)] <- catch_qnt * lf_qnt[ac(ages),ac(years)]
+      FLFishery::discards.n(fleetstk_x)[ac(ages),ac(years)] <- catch_qnt * (1 - lf_qnt[ac(ages),ac(years)])
+
+      # -----------------------------------------#
+      # SECTION 2.1.3: Landings mean weight-at-age
+      #                Discards mean weight-at-age
+      # -----------------------------------------#
+
+      landwt <- SAMfit$data$landMeanWeight
+      if(length(dim(landwt) > 2)) {
+
+        landwt <- t(landwt[,,fleetnames[x]])
+        landwt_qnt <- qnt
+        landwt_age <- rownames(landwt)
+        landwt_yrs <- colnames(landwt)
+        landwt_qnt[FLCore::ac(landwt_age), FLCore::ac(landwt_yrs)] <- landwt
+
+        FLFishery::landings.wt(fleetstk_x) <- landwt_qnt
+
+      } else {
+
+        stop("Landings mean weight-at-age (landMeanWeight) is not a 3D array")
+
+      }
+
+      discwt <- SAMfit$data$disMeanWeight
+      if(length(dim(discwt) > 2)) {
+
+        discwt <- t(discwt[,,fleetnames[x]])
+        discwt_qnt <- qnt
+        discwt_age <- rownames(discwt)
+        discwt_yrs <- colnames(discwt)
+        discwt_qnt[FLCore::ac(discwt_age), FLCore::ac(discwt_yrs)] <- discwt
+
+        FLFishery::discards.wt(fleetstk_x) <- discwt_qnt
+
+      } else {
+
+        stop("discards mean weight-at-age (disMeanWeight) is not a 3D array")
+
+      }
+
+      # -----------------------------------------#
+      # SECTION 2.1.4: Insert into FLFishery
+      # -----------------------------------------#
 
       ## Create a blank FLFleet structure containing FLMetier and FLCatches
-      fleet <- FLFleet::FLFleet(FLMetier(name = "mtr", catches = FLCatches(FLCatch(qnt))))
+      fleet <- FLFishery::FLFishery(FLFishery::FLCatches(list(fleetstk_x)))
 
       ## Define FLCatch stock name
-      fleet@metiers$met@catches@names <- stkname
+      names(fleet) <- stkname
 
       ## Return fleets
       return(fleet)
 
     }))
 
-    fleets@names <- fleetnames
+    ## Define fleet names
+    names(fleets) <- fleetnames
 
+  ## Append to existing structure if add == TRUE
   } else if(add == TRUE){
 
-    ##
-    fleets
+    # ============================================#
+    # SECTION 2.2:   Append FLFisheries (existing)
+    # ============================================#
 
-    ##
+    # Some fleets may already exist, others might need
+    # to be generated. First identify relevant fleets that
+    # exist within FLFisheries object, then generate any
+    # additional FLFisheries objects as required!
 
+    existingfleets <- which(names(fleets) %in% fleetnames)
+    newfleets      <- which(!(fleetnames %in% names(fleets)))
+
+    if(length(existingfleets) > 0) {
+      for(x in existingfleets) {
+
+        ## how many stocks currently caught by fishery?
+        nstkfishery <- length(fleets[[x]])
+
+        ## Generate new FLCatch
+        fleetstk_x <- FLFishery::FLCatch(qnt)
+
+        # --------------------------------------------#
+        # SECTION 2.2.1: catch selection-at-age
+        # --------------------------------------------#
+
+        ## Extract landings fraction for xth fleet
+        lf <- SAMfit$data$landFrac
+        if(length(dim(lf) > 2)) {
+
+          lf <- t(lf[,,fleetnames %in% names(fleets)[x]])
+          lf_qnt <- qnt
+          lf_age <- rownames(lf)
+          lf_yrs <- colnames(lf)
+          lf_qnt[FLCore::ac(lf_age), FLCore::ac(lf_yrs)] <- lf
+
+          FLFishery::catch.sel(fleetstk_x) <- lf_qnt
+
+        } else {
+
+          stop("Landing fraction (landFrac) is not a 3D array")
+
+        }
+
+        # -------------------------------------#
+        # SECTION 2.2.2: Landings numbers-at-age
+        #                Discards numbers-at-age
+        # -------------------------------------#
+
+        ## Use fitted catches
+        if(isTRUE(useSAMcatch)) {
+
+          ## combine catch and year, fleet and age indices
+          catchn <- cbind(SAMfit$data$aux,
+                          catch = exp(SAMfit$rep$predObs))
+
+          ## Use observed catches
+        } else {
+
+          ## combine catch and year, fleet and age indices
+          catchn <- cbind(SAMfit$data$aux,
+                          catch = exp(SAMfit$data$logobs))
+
+        }
+
+        ## select commercial fleets
+        catchn <- catchn[SAMfit$data$aux[,"fleet"] %in% which(fleetnames %in% names(fleets))[x],]
+
+        ## Convert year vector to actual years
+        if(!(min(catchn[,"year"]) %in% years)) {
+
+          ## update year index to actual year
+          catchn[,"year"] <- catchn[,"year"] + min(years) - 1
+
+        }
+
+        # Next re-organise the year index and create an empty matrix to cater for cases
+        # where there are missing data
+
+        ## Generate blank matrix which has full age and year dimensions
+        Cmatrix <- matrix(nrow = length(ages),
+                          ncol = length(years),
+                          dimnames = list(age = ages,
+                                          year = years))
+
+        ## insert catches into blank matrix
+        Cmatrix[cbind(ac(catchn[,"age"]), ac(catchn[,"year"]))] <- catchn[,"catch"]
+        Cmatrix[is.na(Cmatrix)] <- 0
+
+        ## insert catch matrix into FLQuant
+        catch_qnt <- qnt
+        catch_qnt[ac(ages),ac(years)] <- Cmatrix
+
+
+        ## Calculate fisheries landings & discards
+        FLFishery::landings.n(fleetstk_x)[ac(ages),ac(years)] <- catch_qnt * FLFishery::catch.sel(fleetstk_x)[ac(ages),ac(years)]
+        FLFishery::discards.n(fleetstk_x)[ac(ages),ac(years)] <- catch_qnt * (1 - FLFishery::catch.sel(fleetstk_x)[ac(ages),ac(years)])
+
+        # -----------------------------------------#
+        # SECTION 2.2.3: Landings mean weight-at-age
+        #                Discards mean weight-at-age
+        # -----------------------------------------#
+
+        landwt <- SAMfit$data$landMeanWeight
+        if(length(dim(landwt) > 2)) {
+
+          landwt <- t(landwt[,,fleetnames %in% names(fleets)[x]])
+          landwt_qnt <- qnt
+          landwt_age <- rownames(landwt)
+          landwt_yrs <- colnames(landwt)
+          landwt_qnt[FLCore::ac(landwt_age), FLCore::ac(landwt_yrs)] <- landwt
+
+          FLFishery::landings.wt(fleetstk_x) <- landwt_qnt
+
+        } else {
+
+          stop("Landings mean weight-at-age (landMeanWeight) is not a 3D array")
+
+        }
+
+        discwt <- SAMfit$data$disMeanWeight
+        if(length(dim(discwt) > 2)) {
+
+          discwt <- t(discwt[,,fleetnames %in% names(fleets)[x]])
+          discwt_qnt <- qnt
+          discwt_age <- rownames(discwt)
+          discwt_yrs <- colnames(discwt)
+          discwt_qnt[FLCore::ac(discwt_age), FLCore::ac(discwt_yrs)] <- discwt
+
+          FLFishery::discards.wt(fleetstk_x) <- discwt_qnt
+
+        } else {
+
+          stop("discards mean weight-at-age (disMeanWeight) is not a 3D array")
+
+        }
+
+        # -----------------------------------------#
+        # SECTION 2.2.4: Insert into FLFishery
+        # -----------------------------------------#
+
+        ## THIS NEEDS TO BE BETTER!! We probably need to get the dimensions right
+        ## from the start!! Difficult to change FLFisheries
+        dim_minyear <- min(as.integer(dimnames(fleets[[x]][[nstkfishery]])$year),
+                           as.integer(dimnames(fleetstk_x)$year))
+
+        dim_maxyear <- max(as.integer(dimnames(fleets[[x]][[nstkfishery]])$year),
+                           as.integer(dimnames(fleetstk_x)$year))
+
+        ## Extend year dimension
+        fleetstk_x <- expand(fleetstk_x, year = dim_minyear:dim_maxyear)
+
+        ## Add FLCatch and define stock name
+        fleets[[x]][[nstkfishery + 1]] <- fleetstk_x
+        names(fleets[[x]])[nstkfishery + 1] <- stkname
+
+      } # end loop over existing fleets
+    }
+
+    # ============================================#
+    # SECTION 2.3:   Append FLFisheries (new)
+    # ============================================#
+
+    ## Add new fleets to FLFisheries if necessary
+    if(length(newfleets) > 0) {
+      for(x in newfleets){
+
+        ## Generate new FLCatch
+        fleetstk_x <- FLFishery::FLCatch(qnt)
+
+        # --------------------------------------------#
+        # SECTION 2.2.1: catch selection-at-age
+        # --------------------------------------------#
+
+        ## Extract landings fraction for xth fleet
+        lf <- SAMfit$data$landFrac
+        if(length(dim(lf) > 2)) {
+
+          lf <- t(lf[,,fleetnames[x]])
+          lf_qnt <- qnt
+          lf_age <- rownames(lf)
+          lf_yrs <- colnames(lf)
+          lf_qnt[FLCore::ac(lf_age), FLCore::ac(lf_yrs)] <- lf
+
+          FLFishery::catch.sel(fleetstk_x) <- lf_qnt
+
+        } else {
+
+          stop("Landing fraction (landFrac) is not a 3D array")
+
+        }
+
+        # -------------------------------------#
+        # SECTION 2.2.2: Landings numbers-at-age
+        #                Discards numbers-at-age
+        # -------------------------------------#
+
+        ## Use fitted catches
+        if(isTRUE(useSAMcatch)) {
+
+          ## combine catch and year, fleet and age indices
+          catchn <- cbind(SAMfit$data$aux,
+                          catch = exp(SAMfit$rep$predObs))
+
+          ## Use observed catches
+        } else {
+
+          ## combine catch and year, fleet and age indices
+          catchn <- cbind(SAMfit$data$aux,
+                          catch = exp(SAMfit$data$logobs))
+
+        }
+
+        ## select commercial fleets
+        catchn <- catchn[SAMfit$data$aux[,"fleet"] %in% x,]
+
+        ## Convert year vector to actual years
+        if(!(min(catchn[,"year"]) %in% years)) {
+
+          ## update year index to actual year
+          catchn[,"year"] <- catchn[,"year"] + min(years) - 1
+
+        }
+
+        # Next re-organise the year index and create an empty matrix to cater for cases
+        # where there are missing data
+
+        ## Generate blank matrix which has full age and year dimensions
+        Cmatrix <- matrix(nrow = length(ages),
+                          ncol = length(years),
+                          dimnames = list(age = ages,
+                                          year = years))
+
+        ## insert catches into blank matrix
+        Cmatrix[cbind(ac(catchn[,"age"]), ac(catchn[,"year"]))] <- catchn[,"catch"]
+        Cmatrix[is.na(Cmatrix)] <- 0
+
+        ## insert catch matrix into FLQuant
+        catch_qnt <- qnt
+        catch_qnt[ac(ages),ac(years)] <- Cmatrix
+
+
+        ## Calculate fisheries landings & discards
+        FLFishery::landings.n(fleetstk_x)[ac(ages),ac(years)] <- catch_qnt * FLFishery::catch.sel(fleetstk_x)[ac(ages),ac(years)]
+        FLFishery::discards.n(fleetstk_x)[ac(ages),ac(years)] <- catch_qnt * (1 - FLFishery::catch.sel(fleetstk_x)[ac(ages),ac(years)])
+
+        # -----------------------------------------#
+        # SECTION 2.2.3: Landings mean weight-at-age
+        #                Discards mean weight-at-age
+        # -----------------------------------------#
+
+        landwt <- SAMfit$data$landMeanWeight
+        if(length(dim(landwt) > 2)) {
+
+          landwt <- t(landwt[,,fleetnames[x]])
+          landwt_qnt <- qnt
+          landwt_age <- rownames(landwt)
+          landwt_yrs <- colnames(landwt)
+          landwt_qnt[FLCore::ac(landwt_age), FLCore::ac(landwt_yrs)] <- landwt
+
+          FLFishery::landings.wt(fleetstk_x) <- landwt_qnt
+
+        } else {
+
+          stop("Landings mean weight-at-age (landMeanWeight) is not a 3D array")
+
+        }
+
+        discwt <- SAMfit$data$disMeanWeight
+        if(length(dim(discwt) > 2)) {
+
+          discwt <- t(discwt[,,fleetnames[x]])
+          discwt_qnt <- qnt
+          discwt_age <- rownames(discwt)
+          discwt_yrs <- colnames(discwt)
+          discwt_qnt[FLCore::ac(discwt_age), FLCore::ac(discwt_yrs)] <- discwt
+
+          FLFishery::discards.wt(fleetstk_x) <- discwt_qnt
+
+        } else {
+
+          stop("discards mean weight-at-age (disMeanWeight) is not a 3D array")
+
+        }
+
+        # -----------------------------------------#
+        # SECTION 2.2.4: Insert into FLFishery
+        # -----------------------------------------#
+
+        ## How many fleets currently exist?
+        nfishery <- length(fleets)
+
+        ## Add new fishery
+        fleets[[nfishery + 1]] <- FLFishery::FLFishery(FLFishery::FLCatches(list(fleetstk_x)))
+
+        ## Define FLCatch stock name
+        names(fleets[[nfishery + 1]]) <- stkname
+
+        ## Define new FLFishery name
+        names(fleets)[nfishery + 1] <- fleetnames[x]
+
+      } # end loop over new fleets
+    }
   } else {
 
     stop("'add' must be TRUE or FALSE")
 
   }
-
-  # =====================================#
-  # SECTION 3:   Fill FLCatch slots
-  # =====================================#
-  # SECTION 3.1: Landings fraction-at-age
-  # -------------------------------------#
-
-
-
-  # -------------------------------------#
-  # SECTION 3.2: Landings numbers-at-age
-  #              Discards numbers-at-age
-  # -------------------------------------#
-
-
-
-  # -----------------------------------------#
-  # SECTION 3.3: Landings mean weight-at-age
-  #              Discards mean weight-at-age
-  # -----------------------------------------#
-
-
-
-  # -----------------------------------------------#
-  # SECTION 3.4: Update landings and discards slot
-  # -----------------------------------------------#
-
-  computeLandings()
-  computeDiscards()
 
   return(fleets)
 }
