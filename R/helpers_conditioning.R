@@ -1,21 +1,21 @@
-#' ---
-#' title: 'Functions to help condition Operating Models'
-#' author: 'Matthew Pace'
-#' date: 'June 2022'
-#' ---
-#'
-#' Summary
-#' =======
-#'
-#' This script contains several function to help condition multi-stock operating
-#' models.
-#'
-#' The functions include:
-#'
-#'  - multiSAM2FLR
-#'
-#' Functions
-#' =========
+# ---
+# title: 'Functions to help condition Operating Models'
+# author: 'Matthew Pace'
+# date: 'June 2022'
+# ---
+#
+# Summary
+# =======
+#
+# This script contains several function to help condition multi-stock operating
+# models.
+#
+# The functions include:
+#
+#  - multiSAM2FLR
+#
+# Functions
+# =========
 
 ## Define a function to calculate fleet F-at-age
 ffaytable <- function(fit) {

@@ -36,6 +36,10 @@
 #' @param useSAMcatch Optional argument. If \code{TRUE}, the fitted catches estimated
 #'                    by SAM are used. Otherwise, the observed catches are used.
 #'                    Defaults to \code{TRUE}.
+#' @param yearRange   Optional argument to extend the FLStock year dimension to
+#'                    a user-supplied range. Consists of an integer vector
+#'                    of two elements. First element is the minimum year. Second
+#'                    element is the maximum year.
 #'
 #' @return An \code{FLStock} object
 #'
@@ -45,7 +49,8 @@
 #' @export
 
 multiSAM2FLStock <- function(SAMfit,
-                         useSAMcatch = TRUE) {
+                             useSAMcatch = TRUE,
+                             yearRange = NULL) {
 
   ## Check that inputs are correct
   ## I MIGHT NEED TO DO SOME MORE SOPHISTICATED CHECKS
@@ -416,6 +421,14 @@ multiSAM2FLStock <- function(SAMfit,
   catch(stk)    <- FLCore::computeCatch(stk)
   landings(stk) <- FLCore::computeLandings(stk)
   discards(stk) <- FLCore::computeDiscards(stk)
+
+  # ==================================================================#
+  # SECTION 6:   (Optional) extend stock year dimension to new range
+  # ==================================================================#
+
+  if (!is.null(yearRange)) {
+    stk <- expand(stk, year = yearRange[1]:yearRange[2])
+  }
 
   return(stk)
 }

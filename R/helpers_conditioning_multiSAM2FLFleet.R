@@ -33,6 +33,12 @@
 #' @param add Optional argument. Defaults to \code{FALSE}. If \code{TRUE},
 #'            \code{FLCatch} information is appended onto an existing \code{FLFleet}
 #'            and \code{FLMetier} structure
+#' @param fleets Optional argument. An object of class \code{FLFleets} to which
+#'               fitted SAM object data are extracted and appended.
+#' @param yearRange   Optional argument to extend the FLStock year dimension to
+#'                    a user-supplied range. Consists of an integer vector
+#'                    of two elements. First element is the minimum year. Second
+#'                    element is the maximum year.
 #'
 #' @return An \code{FLFleets} object
 #'
@@ -45,7 +51,8 @@ multiSAM2FLFleet <- function(SAMfit,
                              stkname = NULL,
                              useSAMcatch = TRUE,
                              add = FALSE,
-                             fleets = NULL) {
+                             fleets = NULL,
+                             yearRange = NULL) {
 
   # ==================================#
   # Check that inputs are correct
@@ -99,8 +106,8 @@ multiSAM2FLFleet <- function(SAMfit,
       # =====================================#
       # SECTION 2.1:   New FLFleets
       # =====================================#
-      # SECTION 2.1.1: catch selection-at-age
-      # -------------------------------------#
+      # SECTION 2.1.1: Proportion catch retained-at-age
+      # ------------------------------------------------#
 
       ## Extract landings fraction for xth fleet
       lf <- SAMfit$data$landFrac
@@ -112,7 +119,8 @@ multiSAM2FLFleet <- function(SAMfit,
         lf_yrs <- colnames(lf)
         lf_qnt[FLCore::ac(lf_age), FLCore::ac(lf_yrs)] <- lf
 
-        FLCore::landings.sel(fleetstk_x) <- lf_qnt
+        landings.sel(fleetstk_x) <- lf_qnt
+        discards.sel(fleetstk_x) <- (1 - lf_qnt)
 
       } else {
 
@@ -221,8 +229,47 @@ multiSAM2FLFleet <- function(SAMfit,
       FLCore::landings(fleetstk_x) <- computeLandings(fleetstk_x)
       FLCore::discards(fleetstk_x) <- computeDiscards(fleetstk_x)
 
+      # -----------------------------------------------#
+      # SECTION 2.1.5: Partial fishing mortality-at-age
+      # -----------------------------------------------#
+
+      Fidx <- (SAMfit$conf$keyLogFsta + 1)[fleet_idx[x],] # index for fleet x
+      F_matrix <- exp(SAMfit$pl$logF)[Fidx,]
+      F_qnt <- qnt
+      F_qnt[FLCore::ac(ages),FLCore::ac(years)] <- F_matrix
+
+      ## Calculate selectivity-at-age as a proportion of
+      ## summed partial fishing mortality-at-age
+      catchSel <- sweep(F_qnt, c(2:6), apply(F_qnt, c(2:6), sum), "/")
+
+      # For some inscrutable reason catchSel is considered an array
+      # whe the package is built (note that this does not happen
+      # when the function is manually sourced...)
+      #
+      # We must therefore coerce it into an FLQuant
+      Sel_qnt <- qnt
+      Sel_qnt[] <- catchSel
+
+      ## Scale retained catch proportions by catch selectivity
+      landingsSel <- landings.sel(fleetstk_x) * Sel_qnt
+      discardsSel <- discards.sel(fleetstk_x) * Sel_qnt
+
+      landings.sel(fleetstk_x)[FLCore::ac(ages),FLCore::ac(years)] <- landingsSel[FLCore::ac(ages),FLCore::ac(years)]
+      discards.sel(fleetstk_x)[FLCore::ac(ages),FLCore::ac(years)] <- discardsSel[FLCore::ac(ages),FLCore::ac(years)]
+
+      ## Store as an ad hoc attribute
+      attr(fleetstk_x, "partF") <- F_qnt
+
+      # --------------------------------------------#
+      # SECTION 2.1.6: (Optional) expand year range
+      # --------------------------------------------#
+
+      if (!is.null(yearRange)) {
+        fleetstk_x <- expand(fleetstk_x, year = yearRange[1]:yearRange[2])
+      }
+
       # -----------------------------------------#
-      # SECTION 2.1.5: Insert into FLFleet
+      # SECTION 2.1.7: Insert into FLFleet
       # -----------------------------------------#
 
       ## Create a blank FLFleet structure containing FLMetier and FLCatches
@@ -256,7 +303,7 @@ multiSAM2FLFleet <- function(SAMfit,
       for(x in existingfleets) {
 
         ## how many stocks currently caught by fishery?
-        nstkfleet <- length(fleets[[x]])
+        nstkfleet <- length(fleets[[x]]@metiers$met@catches)
 
         ## Generate new FLCatch
         fleetstk_x <- FLFleet::FLCatch(qnt)
@@ -275,7 +322,8 @@ multiSAM2FLFleet <- function(SAMfit,
           lf_yrs <- colnames(lf)
           lf_qnt[FLCore::ac(lf_age), FLCore::ac(lf_yrs)] <- lf
 
-          FLCore::landings.sel(fleetstk_x) <- lf_qnt
+          landings.sel(fleetstk_x) <- lf_qnt
+          discards.sel(fleetstk_x) <- (1 - lf_qnt)
 
         } else {
 
@@ -384,20 +432,42 @@ multiSAM2FLFleet <- function(SAMfit,
         FLCore::landings(fleetstk_x) <- computeLandings(fleetstk_x)
         FLCore::discards(fleetstk_x) <- computeDiscards(fleetstk_x)
 
+        # -----------------------------------------------#
+        # SECTION 2.2.5: Partial fishing mortality-at-age
+        # -----------------------------------------------#
+
+        Fidx <- (SAMfit$conf$keyLogFsta + 1)[fleet_idx[fleetnames %in% names(fleets)[x]],] # index for fleet x
+        F_matrix <- exp(SAMfit$pl$logF)[Fidx,]
+        F_qnt <- qnt
+        F_qnt[FLCore::ac(ages),FLCore::ac(years)] <- F_matrix
+
+        ## Calculate selectivity-at-age as a proportion of
+        ## summed partial fishing mortality-at-age
+        catchSel <- sweep(F_qnt, c(2:6), apply(F_qnt, c(2:6), sum), "/")
+        Sel_qnt <- qnt
+        Sel_qnt[] <- catchSel
+
+        ## Scale retained catch proportions by catch selectivity
+        landingsSel <- landings.sel(fleetstk_x) * Sel_qnt
+        discardsSel <- discards.sel(fleetstk_x) * Sel_qnt
+
+        landings.sel(fleetstk_x) <- landingsSel
+        discards.sel(fleetstk_x) <- discardsSel
+
+        ## Store as an ad hoc attribute
+        attr(fleetstk_x, "partF") <- F_qnt
+
+        # --------------------------------------------#
+        # SECTION 2.2.6: (Optional) expand year range
+        # --------------------------------------------#
+
+        if (!is.null(yearRange)) {
+          fleetstk_x <- expand(fleetstk_x, year = yearRange[1]:yearRange[2])
+        }
+
         # -----------------------------------------#
-        # SECTION 2.2.5: Insert into FLFleet
+        # SECTION 2.2.7: Insert into FLFleet
         # -----------------------------------------#
-
-        ## THIS NEEDS TO BE BETTER!! We probably need to get the dimensions right
-        ## from the start!! Difficult to change FLFisheries
-        dim_minyear <- min(as.integer(dimnames(fleets[[x]][[nstkfleet]])$year),
-                           as.integer(dimnames(fleetstk_x)$year))
-
-        dim_maxyear <- max(as.integer(dimnames(fleets[[x]][[nstkfleet]])$year),
-                           as.integer(dimnames(fleetstk_x)$year))
-
-        ## Extend year dimension
-        fleetstk_x <- expand(fleetstk_x, year = dim_minyear:dim_maxyear)
 
         ## Add FLCatch and define stock name
         fleets[[x]]@metiers[[1]]@catches[[nstkfleet + 1]] <- fleetstk_x
@@ -407,10 +477,10 @@ multiSAM2FLFleet <- function(SAMfit,
     }
 
     # ============================================#
-    # SECTION 2.3:   Append FLFisheries (new)
+    # SECTION 2.3:   Append FLFleets (new)
     # ============================================#
 
-    ## Add new fleets to FLFisheries if necessary
+    ## Add new fleets to FLFleets if necessary
     if(length(newfleets) > 0) {
       for(x in newfleets){
 
@@ -418,7 +488,7 @@ multiSAM2FLFleet <- function(SAMfit,
         fleetstk_x <- FLFleet::FLCatch(qnt)
 
         # --------------------------------------------#
-        # SECTION 2.2.1: catch selection-at-age
+        # SECTION 2.3.1: catch selection-at-age
         # --------------------------------------------#
 
         ## Extract landings fraction for xth fleet
@@ -431,7 +501,8 @@ multiSAM2FLFleet <- function(SAMfit,
           lf_yrs <- colnames(lf)
           lf_qnt[FLCore::ac(lf_age), FLCore::ac(lf_yrs)] <- lf
 
-          FLCore::landings.sel(fleetstk_x) <- lf_qnt
+          landings.sel(fleetstk_x) <- lf_qnt
+          discards.sel(fleetstk_x) <- (1 - lf_qnt)
 
         } else {
 
@@ -440,7 +511,7 @@ multiSAM2FLFleet <- function(SAMfit,
         }
 
         # -------------------------------------#
-        # SECTION 2.2.2: Landings numbers-at-age
+        # SECTION 2.3.2: Landings numbers-at-age
         #                Discards numbers-at-age
         # -------------------------------------#
 
@@ -494,7 +565,7 @@ multiSAM2FLFleet <- function(SAMfit,
         FLCore::discards.n(fleetstk_x)[ac(ages),ac(years)] <- catch_qnt * (1 - lf_qnt[ac(ages),ac(years)])
 
         # -----------------------------------------#
-        # SECTION 2.2.3: Landings mean weight-at-age
+        # SECTION 2.3.3: Landings mean weight-at-age
         #                Discards mean weight-at-age
         # -----------------------------------------#
 
@@ -533,15 +604,48 @@ multiSAM2FLFleet <- function(SAMfit,
         }
 
         # -----------------------------------------#
-        # SECTION 2.2.4: Landings biomass
+        # SECTION 2.3.4: Landings biomass
         #                Discards biomass
         # -----------------------------------------#
 
         FLCore::landings(fleetstk_x) <- computeLandings(fleetstk_x)
         FLCore::discards(fleetstk_x) <- computeDiscards(fleetstk_x)
 
+        # -----------------------------------------------#
+        # SECTION 2.3.5: Partial fishing mortality-at-age
+        # -----------------------------------------------#
+
+        Fidx <- (SAMfit$conf$keyLogFsta + 1)[fleet_idx[fleetnames %in% fleetnames[x]],] # index for fleet x
+        F_matrix <- exp(SAMfit$pl$logF)[Fidx,]
+        F_qnt <- qnt
+        F_qnt[FLCore::ac(ages),FLCore::ac(years)] <- F_matrix
+
+        ## Calculate selectivity-at-age as a proportion of
+        ## summed partial fishing mortality-at-age
+        catchSel <- sweep(F_qnt, c(2:6), apply(F_qnt, c(2:6), sum), "/")
+        Sel_qnt <- qnt
+        Sel_qnt[] <- catchSel
+
+        ## Scale retained catch proportions by catch selectivity
+        landingsSel <- landings.sel(fleetstk_x) * Sel_qnt
+        discardsSel <- discards.sel(fleetstk_x) * Sel_qnt
+
+        landings.sel(fleetstk_x) <- landingsSel
+        discards.sel(fleetstk_x) <- discardsSel
+
+        ## Store as an ad hoc attribute
+        attr(fleetstk_x, "partF") <- F_qnt
+
+        # --------------------------------------------#
+        # SECTION 2.3.6: (Optional) expand year range
+        # --------------------------------------------#
+
+        if (!is.null(yearRange)) {
+          fleetstk_x <- expand(fleetstk_x, year = yearRange[1]:yearRange[2])
+        }
+
         # -----------------------------------------#
-        # SECTION 2.2.5: Insert into FLFleets
+        # SECTION 2.3.7: Insert into FLFleets
         # -----------------------------------------#
 
         ## How many fleets currently exist?
@@ -553,7 +657,7 @@ multiSAM2FLFleet <- function(SAMfit,
         ## Define FLCatch stock name
         names(fleets[[nfishery + 1]]) <- stkname
 
-        ## Define new FLFishery name
+        ## Define new FLFleet name
         names(fleets)[nfishery + 1] <- fleetnames[x]
 
       } # end loop over new fleets
