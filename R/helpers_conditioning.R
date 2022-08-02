@@ -8,11 +8,7 @@
 # =======
 #
 # This script contains several function to help condition multi-stock operating
-# models.
-#
-# The functions include:
-#
-#  - multiSAM2FLR
+# models. ...
 #
 # Functions
 # =========

@@ -1,2 +1,3 @@
-^MIME\.Rproj$
-^\.Rproj\.user$
+^R/helpers_conditioning_FLFleet2FLFishery.R
+^R/OM_effortdyn_FLbiol.R
+^R/OM_effortdyn_FLStock.R

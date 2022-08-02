@@ -16,7 +16,7 @@ multiSAM2FLFishery(
 \arguments{
 \item{SAMfit}{SAM fitted stock assessment model object of class \code{sam}}
 
-\item{stkname}{Character. stock name associated with SAM object.}
+\item{stkname}{Character. Stock name associated with SAM object.}
 
 \item{useSAMcatch}{Optional argument. If \code{TRUE}, the fitted catches estimated
 by SAM are used. Otherwise, the observed catches are used.

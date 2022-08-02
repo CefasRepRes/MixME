@@ -37,7 +37,7 @@
 #'       catchability-at-age is needed.
 #'
 #' @param SAMfit SAM fitted stock assessment model object of class \code{sam}
-#' @param stkname Character. stock name associated with SAM object.
+#' @param stkname Character. Stock name associated with SAM object.
 #' @param useSAMcatch Optional argument. If \code{TRUE}, the fitted catches estimated
 #'                    by SAM are used. Otherwise, the observed catches are used.
 #'                    Defaults to \code{TRUE}.
@@ -266,7 +266,7 @@ multiSAM2FLFishery <- function(SAMfit,
       # SECTION 2.1.6: Insert into FLFishery
       # -----------------------------------------#
 
-      ## Create a blank FLFleet structure containing FLMetier and FLCatches
+      ## Create an FLFishery container to store FLCatches
       fleet <- FLFishery::FLFishery(FLFishery::FLCatches(list(fleetstk_x)))
 
       ## Define FLCatch stock name
