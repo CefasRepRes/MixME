@@ -4,7 +4,7 @@
 \alias{FLBiols2List}
 \title{Convert object into simple nested list structure}
 \usage{
-FLBiols2List(om, year, advice)
+FLBiols2List(om, year, advice, useCpp = TRUE)
 }
 \arguments{
 \item{om}{Operating model}
@@ -15,7 +15,8 @@ FLBiols2List(om, year, advice)
 quota-limits apply to landed weight. If 'catch', quota-limits
 apply to overall catch weight (comprising both landings and discards).
 
-NOTE! CURRENTLY ASSUMES THAT CATCH.Q IS FLPAR... MIGHT WANT TO CHANGE THIS...}
+NOTE! CURRENTLY ASSUMES THAT CATCH.Q IS FLPAR... MIGHT WANT TO CHANGE THIS...
+NOTE! R version CURRENTLY ASSUMES THAT ALL FLEETS CATCH ALL STOCKS ... FIX THIS!}
 }
 \description{
 This function converts the linked \code{FLBiols} and \code{FLFisheries}

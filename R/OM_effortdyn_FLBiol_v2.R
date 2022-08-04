@@ -1,5 +1,7 @@
 # ---
 # title: 'Fleet effort dynamics methods'
+# author: 'Matthew Pace'
+# date: 'August 2022'
 # ---
 #
 # Summary
@@ -8,7 +10,10 @@
 #' Convert object into simple nested list structure
 #'
 #' This function converts the linked \code{FLBiols} and \code{FLFisheries}
-#' objects into a set of nested lists with the following structure:
+#' objects into a set of nested lists containing the data required by
+#' \code{effortBaranov} to optimise fleet efforts to fully catch their first quota.
+#'
+#' Outputs take the following structure:
 #'
 #' \itemize{
 #'   \item \code{iterations}: a named list
@@ -43,17 +48,24 @@
 #'   }
 #' }
 #'
-#' @param om Operating model
+#' @param om A list of \code{FLBiols} and \code{FLFisheries} containing the relevant
+#'           stock and fleet information in the Operating Model.
 #' @param year Integer. Year in which advice is implemented.
-#' @param adviceType Character. Takes either 'landings' or 'catch'. If 'landings',
-#'                   quota-limits apply to landed weight. If 'catch', quota-limits
-#'                   apply to overall catch weight (comprising both landings and discards).
-#'
-#' NOTE! CURRENTLY ASSUMES THAT CATCH.Q IS FLPAR... MIGHT WANT TO CHANGE THIS...
+#' @param advice A list of the total allowable catch or landings advice for each
+#'               stock.
+#' @param useCpp (Optional) Logical. Should data be processed using faster C++ code?
+#'               Defaults to \code{TRUE}.
 #'
 #' @export
 
-FLBiols2List <- function(om, year, advice) {
+FLBiols2List <- function(om, year, advice, useCpp = TRUE) {
+
+  # NOTE! CURRENTLY ASSUMES THAT CATCH.Q IS FLPAR... MIGHT WANT TO CHANGE THIS...
+  # NOTE! R version CURRENTLY ASSUMES THAT ALL FLEETS CATCH ALL STOCKS ... FIX THIS!
+
+  # ---------------------------------#
+  # Extract some summary information
+  # ---------------------------------#
 
   ## How many stocks and fleets?
   nstk <- length(om$stks)
@@ -63,101 +75,138 @@ FLBiols2List <- function(om, year, advice) {
   ## (use the first stock for this -- all dimensions should be identical across stocks and fleets)
   ni <- dimnames(om$stks[[1]])$iter
 
-  ## loop over each iteration
-  omList <- lapply(1:ni, function(x){
+  # -------------------#
+  # Run checks on data
+  # -------------------#
 
-    ## extract numbers-at-age for each stock
-    ## (I'm guessing that FLasher considers numbers in year x to be numbers at beginning of year x+1)
-    n_age <- lapply(1:nstk, function(y){
-      n(iter(om$stks[[y]],x))[,ac(year), drop = TRUE]
-    })
-    names(n_age) <- names(om$stks)
+  ## Is year a numeric element?
+  if(!is.numeric(year) | length(year) > 1) stop("'year' must be a single numeric value")
 
-    ## extract natural mortality-at-age
-    m_age <- lapply(1:nstk, function(y){
-      m(iter(om$stks[[y]], x))[,ac(year), drop = TRUE]
-    })
-    names(m_age) <- names(om$stks)
+  ## Is advice a list with elements for each stock?
+  if(!is.list(advice) | length(advice) != nstk) stop("'advice' must be a list with a TAC for each stock")
 
-    ## extract landings individual mean weight-at-age
-    landwt_age <- lapply(1:nstk, function(y){
-      wt_y <- sapply(1:nflt, function(z){
-        landings.wt(iter(om$flts[[z]][[y]], x))[,ac(year), drop = TRUE]
+  ## Do stocks and fisheries have the same number of iterations?
+  if(dimnames(om$flts[[1]])$iter != ni) stop("FLBiols and FLFisheries must have the same number of iterations")
+
+  ## Is there area, season, unit information? (these are not yet supported)
+  if(length(dimnames(om$stks[[1]])$unit) > 1 |
+     length(dimnames(om$stks[[1]])$season) > 1|
+     length(dimnames(om$stks[[1]])$area) >1) stop("Multiple unit, season and area divisions not yet supported")
+
+  # ---------------------------#
+  # Run Calculations using C++
+  # ---------------------------#
+  #
+  # Using C++ should be substantially faster at extracting and processing data with
+  # large numbers of iterations
+
+  if(useCpp == TRUE) {
+
+    ## Call c++ function
+    omList <- flr_to_list(om = om, advice = advice, year = year,
+                          nstock = nstk, nfleet = nflt, niter = as.integer(ni))
+
+  }
+
+  # ---------------------------#
+  # Run Calculations using R
+  # ---------------------------#
+  #
+  # Using R is useful to debug issues in the inputs or potential bugs in code.
+  # Much slower than C++.
+
+  if(useCpp == FALSE){
+
+    ## loop over each iteration
+    omList <- lapply(1:ni, function(x){
+
+      ## extract numbers-at-age for each stock
+      ## (I'm guessing that FLasher considers numbers in year x to be numbers at beginning of year x+1)
+      n_age <- lapply(1:nstk, function(y){
+        n(iter(om$stks[[y]],x))[,ac(year), drop = TRUE]
       })
-      colnames(wt_y) <- names(om$flts)
-      return(wt_y)
-    })
-    names(landwt_age) <- names(om$stks)
+      names(n_age) <- names(om$stks)
 
-    ## extract discards individual mean weight-at-age
-    discwt_age <- lapply(1:nstk, function(y){
-      wt_y <- sapply(1:nflt, function(z){
-        discards.wt(iter(om$flts[[z]][[y]], x))[,ac(year), drop = TRUE]
+      ## extract natural mortality-at-age
+      m_age <- lapply(1:nstk, function(y){
+        m(iter(om$stks[[y]], x))[,ac(year), drop = TRUE]
       })
-      colnames(wt_y) <- names(om$flts)
-      return(wt_y)
-    })
-    names(discwt_age) <- names(om$stks)
+      names(m_age) <- names(om$stks)
 
-    ## extract proportion catch retained-at-age
-    landfrac_age <- lapply(1:nstk, function(y){
-      lf_y <- sapply(1:nflt, function(z){
-        ## This assumes that the proportions are correct and don't need
-        ## normalising
-        landings.n(iter(om$flts[[z]][[y]], x))[,ac(year), drop = TRUE]
+      ## extract landings individual mean weight-at-age
+      landwt_age <- lapply(1:nstk, function(y){
+        wt_y <- sapply(1:nflt, function(z){
+          landings.wt(iter(om$flts[[z]][[y]], x))[,ac(year), drop = TRUE]
+        })
+        colnames(wt_y) <- names(om$flts)
+        return(wt_y)
       })
-      colnames(lf_y) <- names(om$flts)
-      return(lf_y)
-    })
-    names(landfrac_age) <- names(om$stks)
+      names(landwt_age) <- names(om$stks)
 
-    ## extract selection-at-age
-    sel_age <- lapply(1:nstk, function(y){
-      sel_y <- sapply(1:nflt, function(z){
-        catch.sel(iter(om$flts[[z]][[y]], x))[,ac(year), drop = TRUE]
+      ## extract discards individual mean weight-at-age
+      discwt_age <- lapply(1:nstk, function(y){
+        wt_y <- sapply(1:nflt, function(z){
+          discards.wt(iter(om$flts[[z]][[y]], x))[,ac(year), drop = TRUE]
+        })
+        colnames(wt_y) <- names(om$flts)
+        return(wt_y)
       })
-      colnames(sel_y) <- names(om$flts)
-      return(sel_y)
-    })
-    names(sel_age) <- names(om$stks)
+      names(discwt_age) <- names(om$stks)
 
-    ## Catchability by fleet (matrix stock x fleet)
-    q_age <- sapply(1:nstk, function(y){
-      q_y <- sapply(1:nflt, function(z){
-        catch.q(iter(om$flts[[z]][[y]], x))["alpha", drop = TRUE]
+      ## extract proportion catch retained-at-age
+      landfrac_age <- lapply(1:nstk, function(y){
+        lf_y <- sapply(1:nflt, function(z){
+          ## This assumes that the proportions are correct and don't need
+          ## normalising
+          landings.n(iter(om$flts[[z]][[y]], x))[,ac(year), drop = TRUE]
+        })
+        colnames(lf_y) <- names(om$flts)
+        return(lf_y)
       })
-      names(q_y) <- names(om$flts)
-      return(q_y)
-    })
-    colnames(q_age) <- names(om$stks)
+      names(landfrac_age) <- names(om$stks)
 
-    #-------------------------------------------------#
-    # I WILL WANT TO CALCULATE FLEET-STOCK QUOTA HERE #
-    #-------------------------------------------------#
-
-    ## Quota-share by fleet (matrix stock x fleet)
-    quota_f <- sapply(1:nstk, function(y){
-      quota_y <- sapply(1:nflt, function(z){
-        iter(attr(om$flts[[z]][[y]],"quotashare"), x)[,ac(year), drop = TRUE] * advice[[y]]
+      ## extract selection-at-age
+      sel_age <- lapply(1:nstk, function(y){
+        sel_y <- sapply(1:nflt, function(z){
+          catch.sel(iter(om$flts[[z]][[y]], x))[,ac(year), drop = TRUE]
+        })
+        colnames(sel_y) <- names(om$flts)
+        return(sel_y)
       })
-      names(quota_y) <- names(om$flts)
-      return(quota_y)
+      names(sel_age) <- names(om$stks)
+
+      ## Catchability by fleet (matrix stock x fleet)
+      q_age <- sapply(1:nstk, function(y){
+        q_y <- sapply(1:nflt, function(z){
+          catch.q(iter(om$flts[[z]][[y]], x))["alpha", drop = TRUE]
+        })
+        names(q_y) <- names(om$flts)
+        return(q_y)
+      })
+      colnames(q_age) <- names(om$stks)
+
+      ## Quota-share by fleet (matrix stock x fleet)
+      quota_f <- sapply(1:nstk, function(y){
+        quota_y <- sapply(1:nflt, function(z){
+          iter(attr(om$flts[[z]][[y]],"quotashare"), x)[,ac(year), drop = TRUE] * advice[[y]]
+        })
+        names(quota_y) <- names(om$flts)
+        return(quota_y)
+      })
+      colnames(quota_f) <- names(om$stks)
+
+      ## return list of objects
+      list(n          = n_age,
+           m          = m_age,
+           landwt     = landwt_age,
+           discwt     = discwt_age,
+           landfrac   = landfrac_age,
+           catchsel   = sel_age,
+           catchq     = t(q_age),
+           quota = t(quota_f))
     })
-    colnames(quota_f) <- names(om$stks)
 
-    ## return list of objects
-    list(n          = n_age,
-         m          = m_age,
-         landwt     = landwt_age,
-         discwt     = discwt_age,
-         landfrac   = landfrac_age,
-         catchsel   = sel_age,
-         catchq     = t(q_age),
-         quota = t(quota_f))
-  })
-
-  ## Call c++ function
-  # flr_to_list()
+  }
 
   return(omList)
 }
@@ -168,6 +217,8 @@ FLBiols2List <- function(om, year, advice) {
 #' for each fleet given the inputted effort.
 #' The function requires input data to be structured following the
 #' format given by \code{FLBiols2List}.
+#'
+#' Input data should contain the following variables listed within each iteration:
 #'
 #'   \itemize{
 #'     \item \code{n}: a named list
@@ -293,7 +344,9 @@ catchBaranov <- function(par, dat, adviceType, islog = FALSE) {
 #' Calculation of fleet efforts given mixed fisheries technical interactions
 #'
 #' This function calculates the effort for each fleet required to catch their
-#' first quota. Outputs are a list of the form:
+#' first quota.
+#'
+#' Outputs are a list of the form:
 #'
 #' \itemize{
 #'   \item A list of iterations
