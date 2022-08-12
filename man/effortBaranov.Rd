@@ -42,9 +42,11 @@ A list containing outputs for the final optimisation.
 }
 \description{
 This function calculates the effort for each fleet required to catch their
-first quota. Outputs are a list of the form:
+first quota.
 }
 \details{
+Outputs are a list of the form:
+
 \itemize{
 \item A list of iterations
 \itemize{

@@ -32,6 +32,10 @@
 #' The function also updates the Fbar range for the stock from the fitted
 #' SAM object.
 #'
+#' If \code{uncertainty} is \code{TRUE}, the first replicate of the iteration
+#' dimension contains the best-fit SAM estimates for stock numbers, harvest rate
+#' and catch, whereas the
+#'
 #' @param SAMfit A SAM fitted stock assessment model object
 #' @param useSAMcatch Optional argument. If \code{TRUE}, the fitted catches estimated
 #'                    by SAM are used. Otherwise, the observed catches are used.
@@ -40,6 +44,14 @@
 #'                    a user-supplied range. Consists of an integer vector
 #'                    of two elements. First element is the minimum year. Second
 #'                    element is the maximum year.
+#' @param uncertainty Optional argument. If \code{TRUE}, the iteration dimension
+#'                    of the returned objects contains replicates (uncertainty)
+#'                    sampled from the variance-covariance matrix of the fitted
+#'                    SAM object. Defaults to \code{FALSE}
+#' @param niter Optional integer. The number of replicates sampled if
+#'              \code{uncertainty} is \code{TRUE}. Default is 1000 replicates.
+#' @param seed Optional integer. This is a random number seed to generate
+#'             reproducible outputs. Defaults to \code{NULL}.
 #'
 #' @return An \code{FLStock} object
 #'
@@ -50,10 +62,54 @@
 
 multiSAM2FLStock <- function(SAMfit,
                              useSAMcatch = TRUE,
-                             yearRange = NULL) {
+                             yearRange = NULL,
+                             uncertainty = FALSE,
+                             niter = 1000,
+                             samVariates = NULL,
+                             seed = NULL) {
 
   ## Check that inputs are correct
   ## I MIGHT NEED TO DO SOME MORE SOPHISTICATED CHECKS
+
+  ## NOTE - FUNCTION DOES NOT CURRENTLY HANDLE CATCH MULTIPLIERS!!!
+
+  # ----------------------------------#
+  # 1.  Define stock dimensions
+  #
+  # 2.  Stock properties
+  # 2.1 ... Stock numbers-at-age
+  # 2.2 ... Stock mean weight-at-age
+  # 2.3 ... Natural mortality-at-age
+  # 2.4 ... Proportion mature-at-age
+  #
+  # 3.  Catch summaries and weights
+  # 3.1 ... Catch numbers-at-age
+  # 3.2 ... Catch mean weight-at-age
+  # 3.3 ... Landings numbers-at-age
+  # 3.4 ... Landings mean weight-at-age
+  # 3.5 ... Discards numbers-at-age
+  # 3.6 ... Discards mean weight-at-age
+  # 3.7 ... Fishing mortality-at-age
+  #
+  # 4.  Proportions of mortality before spawning
+  # 5.  Update stock, catch, landings, discards Biomass slots
+  # 6.  (Optional) extend stock year dimension to new range
+  #
+  # 7.  (Optional) extend stock iteration dimension and add uncertainty
+  # 7.1 ... Sample replicates from MVN distribution
+  # 7.2 ... Insert sampled stock numbers
+  # 7.3 ... Insert sampled fishing mortality-at-age
+  # 7.4 ... Insert sampled catch numbers
+  #
+  # ----------------------------------#
+
+  ## stop if number of iterations are not provided
+  if(uncertainty == TRUE & is.null(niter))
+    stop("If 'uncertainty' is TRUE, the number of replicates 'niter' must be provided")
+
+  ## stop if observed catch and uncertainty is requested
+  if(uncertainty == TRUE & useSAMcatch == FALSE)
+    stop("If 'uncertainty' is TRUE, predicted catches must be used")
 
   # ==================================#
   # SECTION 1: Define stock dimensions
@@ -62,7 +118,6 @@ multiSAM2FLStock <- function(SAMfit,
   ## Extract dimensions
   ages       <- SAMfit$conf$minAge:SAMfit$conf$maxAge
   years      <- SAMfit$data$years
-  fbar_range <- SAMfit$conf$fbarRange
 
   ## Generate empty FLQuant object
   qnt <- FLCore::FLQuant(NA, dimnames = list(year = years,
@@ -188,7 +243,7 @@ multiSAM2FLStock <- function(SAMfit,
   catch.n(stk)[FLCore::ac(ages), FLCore::ac(years)] <- Cmatrix
 
   # --------------------------------------#
-  # SECTION 3.4: Catch mean weight-at-age
+  # SECTION 3.2: Catch mean weight-at-age
   # --------------------------------------#
 
   if(fleet_n > 1) {
@@ -225,7 +280,7 @@ multiSAM2FLStock <- function(SAMfit,
   FLCore::catch.wt(stk)[FLCore::ac(ages), FLCore::ac(years)] <- catchwt
 
   # ------------------------------------#
-  # SECTION 3.2: Landings numbers-at-age
+  # SECTION 3.3: Landings numbers-at-age
   # ------------------------------------#
 
   ## Extract landings fraction
@@ -264,7 +319,7 @@ multiSAM2FLStock <- function(SAMfit,
   landings.n(stk) <- lf_qnt * catch.n(stk)
 
   # -----------------------------------------#
-  # SECTION 3.5: Landings mean weight-at-age
+  # SECTION 3.4: Landings mean weight-at-age
   # -----------------------------------------#
 
   ## Extract landings mean weight
@@ -299,7 +354,7 @@ multiSAM2FLStock <- function(SAMfit,
   FLCore::landings.wt(stk)[FLCore::ac(ages), FLCore::ac(years)] <- landwt
 
   # ------------------------------------#
-  # SECTION 2.3: Discards numbers-at-age
+  # SECTION 3.5: Discards numbers-at-age
   # ------------------------------------#
 
   ## use landings fraction to calculate discards from total catch
@@ -341,7 +396,7 @@ multiSAM2FLStock <- function(SAMfit,
   FLCore::discards.wt(stk)[FLCore::ac(ages), FLCore::ac(years)] <- discwt
 
   # ------------------------------------#
-  # SECTION 2.5: Fishing mortality-at-age
+  # SECTION 3.7: Fishing mortality-at-age
   # ------------------------------------#
 
   ## Define harvest rate units
@@ -428,6 +483,187 @@ multiSAM2FLStock <- function(SAMfit,
 
   if (!is.null(yearRange)) {
     stk <- expand(stk, year = yearRange[1]:yearRange[2])
+  }
+
+  # ==================================================================#
+  # SECTION 7:   (Optional) extend stock iteration dimension and
+  #              add uncertainty
+  # ==================================================================#
+  #
+  # NOTE: methods taken from S. Fischer - FLfse package
+
+  if(uncertainty == TRUE & niter > 1){
+
+    ## Extend stock object along the iteration dimension
+    stk <- FLCore::propagate(stk, iter = niter)
+
+    # -----------------------------------------------------#
+    # SECTION 7.1: Sample replicates from MVN distribution
+    # -----------------------------------------------------#
+
+    ## Only sample if sampled variates are not provided
+    if(!is.null(samVariates)){
+
+      variates <- samVariates[[1]]
+
+    } else {
+
+      ## Set random number seed if provided
+      if(!is.null(seed)) set.seed(seed)
+
+      ## Calculate standard deviation of model parameters
+      . <- capture.output(sds <- TMB::sdreport(obj = SAMfit$obj,
+                                               par.fixed = SAMfit$opt$par,
+                                               getJointPrecision = TRUE))
+
+      ## Best-fit values for parameters
+      est <- c(sds$par.fixed, sds$par.random)
+
+      ## Variance-Covariance matrix of all model parameters
+      cov <- solve(sds$jointPrecision)
+
+      ## generate a number of random variates by sampling from a multivariate
+      ## normal distribution
+      variates <- stockassessment::rmvnorm((niter-1), est, cov) # col = parameters, row = replicates
+      colnames(variates) <- names(est)
+    }
+
+    # -----------------------------------------------------#
+    # SECTION 7.2: Insert sampled stock numbers
+    # -----------------------------------------------------#
+
+    ## Exponentiate and insert stock numbers into iterations 2-n
+    stock.n(stk)[,ac(years),,,,-1] <- exp(t(variates[, colnames(variates) == "logN"]))
+
+    # -----------------------------------------------------#
+    # SECTION 7.3: Insert sampled fishing mortality-at-age
+    # -----------------------------------------------------#
+
+    ## Extract fishing mortality variates to a separate object
+    Fvariates <- variates[, colnames(variates) == "logF"]
+
+    ## I need to handle single fleet and multifleet SAM fits differently
+    if(fleet_n > 1) {
+
+      # Loop over each fleet that is identified and extract the corresponding
+      # partial fishing mortality-at-age matrices
+
+      Farray <- sapply(which(SAMfit$data$fleetTypes == 0), function(x){
+
+        idx <- (SAMfit$conf$keyLogFsta + 1)[x,] # index for fleet x
+
+        # because I am subsetting sampled logF for a multifleet model, logF columns
+        # are associated with both age and year.
+
+        ## generate an index to handle ages and years
+        idxy <- c(sapply(1:length(years), function(y) idx + max(SAMfit$conf$keyLogFsta + 1)*(y-1)))
+
+        ## generate an array to hold age, year, iteration data
+        F_matrix <- array(NA, dim = c(length(idx), length(years), niter-1))
+        F_matrix[] <- c(exp(t(Fvariates[,idxy])))
+        # F_matrix[] <- c(exp(Fvariates[,idxy]))
+
+        return(F_matrix)
+
+      },simplify = "array")
+
+      ## Sum the partial fishing mortalities into a total mortality
+      Ftotal <- apply(Farray, c(1,2,3), sum)
+
+    } else {
+
+      ## Extract fishing mortality-at-age
+      idx <- (SAMfit$conf$keyLogFsta + 1)[1,]
+      Ftotal <- exp(t(Fvariates[,idx]))
+
+    }
+
+    ## Fill fishing mortality-at-age
+    FLCore::harvest(stk)[FLCore::ac(ages), FLCore::ac(years),,,,-1] <- Ftotal
+
+    # -----------------------------------------------------#
+    # SECTION 7.4: Insert sampled catch numbers
+    # -----------------------------------------------------#
+
+    if(!is.null(samVariates)){
+
+      ## If available, extract catch number uncertainty and associate year vector
+      res_n <- samVariates[[2]]
+      catch_years <- dimnames(res_n)$year
+
+      ## sum across fleets
+      res_n <- apply(res_n, c(1,2,4), sum)
+
+    } else {
+
+      ### catch fleet index/indices
+      catch_fleets <- which(SAMfit$data$fleetTypes == 0)
+      catch_desc <- SAMfit$data$aux
+
+      ## convert year from index to actual year - only do this if the max index
+      ## year vector matches actual year vector length
+      if(!(min(catch_desc[,"year"]) %in% years) & (max(catch_desc[,"year"]) == length(years))) {
+
+        ## update year index to actual year
+        catch_desc[,"year"] <- catch_desc[,"year"] + min(years) - 1
+
+      }
+
+      ## Calculate years for which we have catch data
+      catch_years <- unique(catch_desc[catch_desc[,"fleet"] %in% catch_fleets,"year"])
+
+      . <- capture.output(res_n <- sapply(1:(niter-1), function(iter_i){ # 408.25 seconds for 1000 iterations
+
+        ## run the observation function for the using sampled fixed parameters
+        SAMfit$obj$fn(variates[iter_i, 1:length(sds$par.fixed)])
+
+        ## extract predicted observation estimates
+        tmp <- cbind(catch_desc, est = SAMfit$obj$report()$predObs)
+
+        ## Subset for commercial fleets
+        tmp <- tmp[tmp[, "fleet"] %in% catch_fleets, ]
+
+        ## Exponentiate so that we can sum real catches
+        tmp[,"est"] <- exp(tmp[,"est"])
+
+        ## Sum catches across fleets
+        tmp <- stats::aggregate(est ~ age + year, tmp,
+                                FUN = sum)
+
+        ## Generate blank array which has full age and year dimensions
+        Cmatrix <- array(NA,
+                         dim = c(length(unique(tmp[,"age"])), length(unique(tmp[,"year"]))),
+                         dimnames = list(age = sort(unique(tmp[,"age"])),
+                                         year = sort(unique(tmp[,"year"]))))
+
+        ## insert catches into blank matrix
+        Cmatrix[] <- tmp[,"est"]
+
+        return(Cmatrix)
+
+      }, simplify = "array"))
+
+    }
+
+    ## insert into catch.n slot
+    catch.n(stk)[FLCore::ac(ages), FLCore::ac(catch_years),1,1,1,-1] <- res_n
+
+    # -----------------------------------------------------#
+    # SECTION 7.5: Update additional slots
+    # -----------------------------------------------------#
+
+    ## expand iteration dimension for landings fraction FLQuant
+    lf_qnt_iter <- propagate(lf_qnt, iter = niter)
+
+    ## Calculate corresponding landings and discards uncertainty
+    landings.n(stk)[ac(ages), ac(catch_years)] <- lf_qnt_iter[ac(ages), ac(catch_years)] * catch.n(stk)[ac(ages), ac(catch_years)]
+    discards.n(stk)[ac(ages), ac(catch_years)] <- (1 - lf_qnt_iter[ac(ages), ac(catch_years)]) * catch.n(stk)[ac(ages), ac(catch_years)]
+
+    ## compute total stock, catch, landings and discards weights
+    stock(stk)    <- FLCore::computeStock(stk)
+    catch(stk)    <- FLCore::computeCatch(stk)
+    landings(stk) <- FLCore::computeLandings(stk)
+    discards(stk) <- FLCore::computeDiscards(stk)
   }
 
   return(stk)

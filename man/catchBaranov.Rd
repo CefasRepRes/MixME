@@ -32,6 +32,8 @@ The function requires input data to be structured following the
 format given by \code{FLBiols2List}.
 }
 \details{
+Input data should contain the following variables listed within each iteration:
+
 \itemize{
 \item \code{n}: a named list
 \itemize{

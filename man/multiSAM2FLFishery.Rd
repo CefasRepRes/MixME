@@ -10,7 +10,11 @@ multiSAM2FLFishery(
   useSAMcatch = TRUE,
   add = FALSE,
   fleets = NULL,
-  yearRange = NULL
+  yearRange = NULL,
+  uncertainty = FALSE,
+  niter = 1000,
+  samVariates = NULL,
+  seed = NULL
 )
 }
 \arguments{
@@ -33,6 +37,17 @@ fitted SAM object data are extracted and appended.}
 a user-supplied range. Consists of an integer vector
 of two elements. First element is the minimum year. Second
 element is the maximum year.}
+
+\item{uncertainty}{Optional argument. If \code{TRUE}, the iteration dimension
+of the returned objects contains replicates (uncertainty)
+sampled from the variance-covariance matrix of the fitted
+SAM object. Defaults to \code{FALSE}}
+
+\item{niter}{Optional integer. The number of replicates sampled if
+\code{uncertainty} is \code{TRUE}. Default is 1000 replicates.}
+
+\item{seed}{Optional integer. This is a random number seed to generate
+reproducible outputs. Defaults to \code{NULL}.}
 }
 \value{
 An \code{FLFishery} object

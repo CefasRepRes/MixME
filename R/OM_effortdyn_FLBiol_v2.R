@@ -73,7 +73,7 @@ FLBiols2List <- function(om, year, advice, useCpp = TRUE) {
 
   ## How many iterations?
   ## (use the first stock for this -- all dimensions should be identical across stocks and fleets)
-  ni <- dimnames(om$stks[[1]])$iter
+  ni <- dims(om$stks[[1]])$iter
 
   # -------------------#
   # Run checks on data
@@ -86,7 +86,7 @@ FLBiols2List <- function(om, year, advice, useCpp = TRUE) {
   if(!is.list(advice) | length(advice) != nstk) stop("'advice' must be a list with a TAC for each stock")
 
   ## Do stocks and fisheries have the same number of iterations?
-  if(dimnames(om$flts[[1]])$iter != ni) stop("FLBiols and FLFisheries must have the same number of iterations")
+  if(dims(om$flts[[1]])$iter != ni) stop("FLBiols and FLFisheries must have the same number of iterations")
 
   ## Is there area, season, unit information? (these are not yet supported)
   if(length(dimnames(om$stks[[1]])$unit) > 1 |
@@ -104,7 +104,7 @@ FLBiols2List <- function(om, year, advice, useCpp = TRUE) {
 
     ## Call c++ function
     omList <- flr_to_list(om = om, advice = advice, year = year,
-                          nstock = nstk, nfleet = nflt, niter = as.integer(ni))
+                          nstock = nstk, nfleet = nflt, niter = ni)
 
   }
 

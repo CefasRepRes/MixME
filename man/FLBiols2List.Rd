@@ -7,22 +7,25 @@
 FLBiols2List(om, year, advice, useCpp = TRUE)
 }
 \arguments{
-\item{om}{Operating model}
+\item{om}{A list of \code{FLBiols} and \code{FLFisheries} containing the relevant
+stock and fleet information in the Operating Model.}
 
 \item{year}{Integer. Year in which advice is implemented.}
 
-\item{adviceType}{Character. Takes either 'landings' or 'catch'. If 'landings',
-quota-limits apply to landed weight. If 'catch', quota-limits
-apply to overall catch weight (comprising both landings and discards).
+\item{advice}{A list of the total allowable catch or landings advice for each
+stock.}
 
-NOTE! CURRENTLY ASSUMES THAT CATCH.Q IS FLPAR... MIGHT WANT TO CHANGE THIS...
-NOTE! R version CURRENTLY ASSUMES THAT ALL FLEETS CATCH ALL STOCKS ... FIX THIS!}
+\item{useCpp}{(Optional) Logical. Should data be processed using faster C++ code?
+Defaults to \code{TRUE}.}
 }
 \description{
 This function converts the linked \code{FLBiols} and \code{FLFisheries}
-objects into a set of nested lists with the following structure:
+objects into a set of nested lists containing the data required by
+\code{effortBaranov} to optimise fleet efforts to fully catch their first quota.
 }
 \details{
+Outputs take the following structure:
+
 \itemize{
 \item \code{iterations}: a named list
 \itemize{

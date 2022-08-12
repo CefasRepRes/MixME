@@ -9,25 +9,30 @@
 \usage{
 multiSAM2FLR(
   SAMfit,
-  fltClass = "FLFishery",
   stkname = NULL,
   useSAMcatch = TRUE,
+  uncertainty = FALSE,
+  niter = 1000,
+  seed = NULL,
   ...
 )
 
 \S4method{multiSAM2FLR}{sam}(
   SAMfit,
-  fltClass = "FLFishery",
   stkname = NULL,
   useSAMcatch = TRUE,
-  add = FALSE
+  uncertainty = FALSE,
+  niter = 1000,
+  seed = NULL
 )
 
 \S4method{multiSAM2FLR}{sam_list}(
   SAMfit,
-  fltClass = "FLFishery",
   stkname = NULL,
   useSAMcatch = TRUE,
+  uncertainty = FALSE,
+  niter = 1000,
+  seed = NULL,
   ...
 )
 }
@@ -35,15 +40,26 @@ multiSAM2FLR(
 \item{SAMfit}{A SAM fitted stock assessment model object or
 a named list of SAM fitted stock assessment model objects}
 
-\item{fltClass}{Class structure to be used for fleets, defaults to
-\code{FLFishery}. Either \code{FLFishery} or \code{FLFleet}}
-
 \item{stkname}{Stock name to be used in  \code{FLFishery} or \code{FLFleet}
 object. Ignored if object of class \code{sam_list} is supplied.}
 
 \item{useSAMcatch}{Optional argument. If \code{TRUE}, the fitted catches estimated
 by SAM are used. Otherwise, the observed catches are used.
 Defaults to \code{TRUE}.}
+
+\item{uncertainty}{Optional argument. If \code{TRUE}, the iteration dimension
+of the returned objects contains replicates (uncertainty)
+sampled from the variance-covariance matrix of the fitted
+SAM object. Defaults to \code{FALSE}}
+
+\item{niter}{Optional integer. The number of replicates sampled if
+\code{uncertainty} is \code{TRUE}. Default is 1000 replicates.}
+
+\item{seed}{Optional integer. This is a random number seed to generate
+reproducible outputs. Defaults to \code{NULL}.}
+
+\item{fltClass}{Class structure to be used for fleets, defaults to
+\code{FLFishery}. Either \code{FLFishery} or \code{FLFleet}}
 }
 \value{
 A list containing an \code{FLStock} and \code{FLFleets} objects
@@ -66,7 +82,8 @@ Returned \code{FLStock} objects contain data for:
 \item stock mean weight-at-age (\code{stock.wt})
 \item catch mean weight-at-age (\code{catch.wt})
 \item landings mean weight-at-age (\code{landings.wt})
-\item discards mean weight-at-age (\code{discards.wt})}
+\item discards mean weight-at-age (\code{discards.wt})
+}
 
 Catch numbers and fishing mortality-at-age are summed across commercial fleets,
 whereas catch, landings and discards mean weight-at-age are averages weighted
@@ -85,7 +102,8 @@ Returned \code{FLFleet} objects contain data for:
 \item discards numbers-at-age (\code{discards.n})
 \item catch mean weight-at-age (\code{catch.wt})
 \item landings mean weight-at-age (\code{landings.wt})
-\item discards mean weight-at-age (\code{discards.wt})}
+\item discards mean weight-at-age (\code{discards.wt})
+}
 }
 \section{Warning}{
 

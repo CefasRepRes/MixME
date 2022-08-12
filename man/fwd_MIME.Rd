@@ -5,26 +5,35 @@
 \title{Forward projection of stocks - including process error}
 \usage{
 fwd_MIME(
-  stks,
-  flts,
+  om,
   ctrl,
-  sr,
-  sr.residuals,
-  sr.residuals.mult = TRUE,
-  maxF = 2,
+  sr_residuals_mult = TRUE,
+  effort_max = 100,
   proc_res = NULL,
   ...
 )
 }
 \arguments{
-\item{stks}{Object of class \code{FLBiols}}
-
-\item{flts}{Object of class \code{FLFisheries}}
+\item{om}{A list of \code{FLBiols} and \code{FLFisheries} containing the relevant
+stock and fleet information in the Operating Model.}
 
 \item{ctrl}{Control object.}
+
+\item{sr_residuals_mult}{(Optional) Logical. Are stock recruitment residuals
+multiplicative? Defaults to \code{TRUE}.}
+
+\item{effort_max}{(Optional) Numeric value indicating the maximum allowed
+fishing effort for any fleet. Defaults to 100 and
+cannot be \code{NULL}.}
+
+\item{proc_res}{(Optional) Character. Where is process error noise stored?
+If \code{NULL}, no process error is applied to stock numbers.
+Defaults to \code{NULL}.}
 }
 \value{
-A list containing
+A list containing the \code{FLBiols} and \code{FLFisheries} objects
+with projected stock numbers, fleet efforts, and fleet-stock landings
+and discards numbers.
 }
 \description{
 This function takes the output of the implementation error model and
