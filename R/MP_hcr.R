@@ -51,57 +51,78 @@ phcrMIME <- function(args) {
 #'
 #' @export
 
-hcrMIME <- function(stk, args, hcrpars) {
+hcrMIME <- function(stk, args, hcrpars = NULL, hcrmethod = NULL, ctrg = NULL, tracking, ... ) {
 
   ## TO DO - How to apply a multistock harvest control rule? Cannot loop over
   ##         each stock in that case... How to handle a mix of single stock and
   ##         multistock harvest control rules?
 
-  ## Extract the methods to be used for each stock
-  hcrmethod <- args$hcrmethod
+  ## TO DO - How to handle stocks that are not assessed but are simply by-catch?
 
-  lapply(1:length(stk), function(x){
+  ## Extract the methods to be used for each stock
+  #hcrmethod <- args$hcrmethod
+
+  ctrlList <- lapply(1:length(stk), function(x){
 
     ## Run user-supplied method (if provided)
     if(is.function(hcrmethod[[x]])){
 
-      do.call(hcrmethod[[x]],
-              list(stk     = stk[[x]],
-                   args    = args,
-                   hcrpars = hcrpars[[x]]))
+      out <- do.call(hcrmethod[[x]],
+                     list(stk      = stk[[x]],
+                          args     = args,
+                          hcrpars  = hcrpars[[x]],
+                          tracking = tracking[[x]]))
 
       ## Run ICES Harvest control Rule
-    } else if (hcrmethod == "hcrICES"){
+    } else if (hcrmethod[[x]] == "hcrICES"){
 
-      ctrl <- hcrICES(stk     = stk[[x]],
-                      args    = args,
-                      hcrpars = hcrpars[[x]])
+      out <- hcrICES(stk     = stk[[x]],
+                     args    = args,
+                     hcrpars = hcrpars[[x]])
 
       ## Run Fixed F advice
-    } else if (hcrmethod == "hcrFixedF"){
+    } else if (hcrmethod[[x]] == "hcrFixedF"){
 
-      ctrl <- mse::fixedF.hcr(stk      = stk[[x]],
-                              ftrg     = ftrg[[x]],
-                              args     = args,
-                              tracking = NULL)
+      out <- mse::fixedF.hcr(stk      = stk[[x]],
+                             ftrg     = ftrg[[x]],
+                             args     = args,
+                             tracking = tracking[[x]])
 
       ## Run Fixed Catch advice
-    } else if (hcrmethod == "hcrFixedC"){
+    } else if (hcrmethod[[x]] == "hcrFixedC"){
 
-      ctrl <- hcrFixedC(stk  = stk[[x]],
-                        Ctrg = Ctrg[[x]],
-                        args = args)
+      out <- mse::fixedC.hcr(stk  = stk[[x]],
+                             ctrg = ctrg[[x]],
+                             args = args,
+                             tracking = tracking[[x]])
+
+      ## Update tracking
+      out$tracking$advice[1,ac(args$ay),] <- out$ctrl@iters[,,]["value"]
+
+      # ctrl <- hcrFixedC(stk  = stk[[x]],
+      #                   Ctrg = Ctrg[[x]],
+      #                   args = args)
 
     } else {
       stop("Only user-supplied functions, 'hcrICES', 'hcrFixedC' and 'hcrFixedF' are currently supported")
     }
 
     ## return control object
-    return(ctrl)
+    return(out)
   })
 
+  ## A bit of a shoddy way of re-organising our returned list
+  ctrl <- vector(mode = "list", length = length(stk))
+  for(x in 1:length(stk)) {
+
+    ctrl[[x]]     <- ctrlList[[x]]$ctrl
+    tracking[[x]] <- ctrlList[[x]]$tracking
+
+  }
+  names(ctrl) <- names(stk)
+
   ## return control
-  return(list(ctrl = ctrl))
+  return(list(ctrl = ctrl, tracking = tracking))
 }
 
 #' ICES Harvest Control Rule implementation
@@ -122,7 +143,7 @@ hcrMIME <- function(stk, args, hcrpars) {
 #'
 #' @export
 
-hcrICES <- function(stk, args, hcrpars) {
+hcrICES <- function(stk, args, hcrpars, tracking) {
 
   ## Extract current (assessment) year
   ay <- args$ay
@@ -167,7 +188,7 @@ hcrICES <- function(stk, args, hcrpars) {
   ## create ctrl object
   ctrl <- mse::getCtrl(values = Ftrgt, quantity = "f", years = ay + 1, it = ni) # perhaps should be ay + args$management_lag?
 
-  return(ctrl)
+  return(list(ctrl = ctrl, tracking = tracking))
 }
 
 #' Fixed Catch advice implementation

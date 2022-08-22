@@ -107,6 +107,10 @@ setMethod(f = "multiSAM2FLR",
               ## Set random number seed if provided
               if(!is.null(seed)) set.seed(seed)
 
+              # TO DO - build a tryCatch here to handle error outputs.
+              # sdreport will throw an error if applying a newer version of TMB
+              # to an object fitted using older version.
+
               ## Calculate standard deviation of model parameters
               . <- capture.output(sds <- TMB::sdreport(obj = SAMfit$obj,
                                                        par.fixed = SAMfit$opt$par,
@@ -164,7 +168,9 @@ setMethod(f = "multiSAM2FLR",
 
                 ## Generate blank array which has full age and year dimensions
                 Cmatrix <- array(NA,
-                                 dim = c(length(unique(tmp[,"age"])), length(unique(tmp[,"year"])), length(catch_fleets)),
+                                 dim = c(length(unique(tmp[,"age"])),
+                                         length(unique(tmp[,"year"])),
+                                         length(catch_fleets)),
                                  dimnames = list(age = sort(unique(tmp[,"age"])),
                                                  year = sort(unique(tmp[,"year"]))))
 
