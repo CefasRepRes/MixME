@@ -18,19 +18,24 @@
 #'
 #' @export
 
-phcrMIME <- function(args) {
+phcrMIME <- function(stk, args, hcrpars, tracking) {
+
+  ## Check to ensure hcrpars are provided
+  if(!exists("hcrpars")){
+    stop("phcr 'args' list must contain a list object named 'hcrpars'")
+  }
 
   ## Checks to ensure that stocks and parameters are named
-  if(is.null(names(args)))
-    stop("'args' must contain contain named list of parameters nested by stock")
+  if(is.null(names(hcrpars)))
+    stop("'hcrpars' must contain contain named list of parameters nested by stock")
 
   ## Coerce parameters into FLPar
-  hcrpars <- lapply(1:length(args), function(x) {
-    do.call(FLPar, args[[x]])})
-  names(hcrpars) <- names(args)
+  hcrpars0 <- lapply(1:length(hcrpars), function(x) {
+    do.call(FLPar, list(hcrpars[[x]]))})
+  names(hcrpars0) <- names(hcrpars)
 
   ## return as list
-  return(list(hcrpars = hcrpars))
+  return(list(hcrpars = hcrpars0))
 }
 
 #' Advice rule implementation for stocks
@@ -41,17 +46,26 @@ phcrMIME <- function(args) {
 #' fixed catch advice or fixed fishing mortality advice.
 #'
 #' @param stk list of stocks
-#' @param hcrpars Harvest Control Rule parameters for each stock. A named
+#' @param hcrpars (optional) Harvest Control Rule parameters for each stock. A named
 #'                nested list. Each named list element corresponds to a stock
 #'                and should contain a list of parameters for that stock.
+#'                Defaults to \code{NULL}.
 #' @param hcrmethod named list of advice rule methods for each stock.
 #'                  List elements may be the name of an in-built advice rule
 #'                  method or a user-supplied function that is applied to the
 #'                  stock. Defaults to 'hcrICES'.
+#' @param ctrg (optional) named list of target catch for each stock.
+#' @param ftrg (optional) named list of target fishing mortality for each stock
+#' @param tracking a named list of tracking objects to monitor emergent dynamic
+#'                 properties.
 #'
 #' @export
 
-hcrMIME <- function(stk, args, hcrpars = NULL, hcrmethod = NULL, ctrg = NULL, tracking, ... ) {
+hcrMIME <- function(stk, args, hcrpars = NULL, hcrmethod = NULL, ctrg = NULL, ftrg = NULL, tracking, ... ) {
+
+  ## extract timings
+  ay   <- args$ay             # current (assessment) year
+  mlag <- args$management_lag # lag between assessment year and advice year
 
   ## TO DO - How to apply a multistock harvest control rule? Cannot loop over
   ##         each stock in that case... How to handle a mix of single stock and
@@ -62,13 +76,19 @@ hcrMIME <- function(stk, args, hcrpars = NULL, hcrmethod = NULL, ctrg = NULL, tr
   ## Extract the methods to be used for each stock
   #hcrmethod <- args$hcrmethod
 
-  ctrlList <- lapply(1:length(stk), function(x){
+  ctrlList <- lapply(names(stk), function(x){
+
+    ## IF NOT DONE PREVIOUSLY - NEED TO CLIP THE STOCK TO
+    ## THE ADVICE YEAR - MIGHT BECOME REDUNDANT ONCE
+    ## I HAVE A PERFECT OR IMPERFECT OBSERVATION MODEL
+
+    stk0 <- window(stk[[x]], end = ay+mlag)
 
     ## Run user-supplied method (if provided)
     if(is.function(hcrmethod[[x]])){
 
       out <- do.call(hcrmethod[[x]],
-                     list(stk      = stk[[x]],
+                     list(stk      = stk0,
                           args     = args,
                           hcrpars  = hcrpars[[x]],
                           tracking = tracking[[x]]))
@@ -76,14 +96,15 @@ hcrMIME <- function(stk, args, hcrpars = NULL, hcrmethod = NULL, ctrg = NULL, tr
       ## Run ICES Harvest control Rule
     } else if (hcrmethod[[x]] == "hcrICES"){
 
-      out <- hcrICES(stk     = stk[[x]],
-                     args    = args,
-                     hcrpars = hcrpars[[x]])
+      out <- hcrICES(stk      = stk0,
+                     args     = args,
+                     hcrpars  = hcrpars[[x]],
+                     tracking = tracking[[x]])
 
       ## Run Fixed F advice
     } else if (hcrmethod[[x]] == "hcrFixedF"){
 
-      out <- mse::fixedF.hcr(stk      = stk[[x]],
+      out <- mse::fixedF.hcr(stk      = stk0,
                              ftrg     = ftrg[[x]],
                              args     = args,
                              tracking = tracking[[x]])
@@ -91,13 +112,10 @@ hcrMIME <- function(stk, args, hcrpars = NULL, hcrmethod = NULL, ctrg = NULL, tr
       ## Run Fixed Catch advice
     } else if (hcrmethod[[x]] == "hcrFixedC"){
 
-      out <- mse::fixedC.hcr(stk  = stk[[x]],
+      out <- mse::fixedC.hcr(stk  = stk0,
                              ctrg = ctrg[[x]],
                              args = args,
                              tracking = tracking[[x]])
-
-      ## Update tracking
-      out$tracking$advice[1,ac(args$ay),] <- out$ctrl@iters[,,]["value"]
 
       # ctrl <- hcrFixedC(stk  = stk[[x]],
       #                   Ctrg = Ctrg[[x]],
@@ -105,6 +123,17 @@ hcrMIME <- function(stk, args, hcrpars = NULL, hcrmethod = NULL, ctrg = NULL, tr
 
     } else {
       stop("Only user-supplied functions, 'hcrICES', 'hcrFixedC' and 'hcrFixedF' are currently supported")
+    }
+
+    # A bit of a hacky fix to flexibly handle control object structures.
+    # 'value' is either a row or col name.
+
+    ## Update tracking
+    if("value" %in% rownames(out$ctrl@iters[,,])) { # ctrl structure from hcrICES
+      out$tracking$advice[1,ac(args$ay),] <- out$ctrl@iters[,,]["value",]
+    }
+    if("value" %in% colnames(out$ctrl@iters[,,])) { # ctrl structure from fixedF
+      out$tracking$advice[1,ac(args$ay),] <- out$ctrl@iters[,,][,"value"][1]
     }
 
     ## return control object
@@ -136,6 +165,8 @@ hcrMIME <- function(stk, args, hcrpars = NULL, hcrmethod = NULL, ctrg = NULL, tr
 #' @param stk Observed stocks. An object of class \code{FLStock}.
 #' @param args Additional arguments.
 #' @param hcrpars Harvest Control Rule reference points. An object of class \code{FLPar}.
+#' @param tracking A named list of tracking objects to monitor emergent dynamic
+#'                 properties
 #'
 #' @author Adapted from WKNSMSE (2019) code by S. H. Fischer.
 #'
@@ -148,8 +179,11 @@ hcrICES <- function(stk, args, hcrpars, tracking) {
   ## Extract current (assessment) year
   ay <- args$ay
 
+  ## Extract lag between assessment year and advice year
+  mlag <- args$management_lag
+
   ## Extract stock dimensions
-  ni <- dim(stk)[6]
+  ni <- dims(stk)[["iter"]]
 
   ## Extract reference points with the correct iteration dimension
   Ftrgt    <- propagate(FLPar(hcrpars["Ftrgt"]), ni)
@@ -186,7 +220,8 @@ hcrICES <- function(stk, args, hcrpars, tracking) {
   Ftrgt <- Ftrgt * Fmult
 
   ## create ctrl object
-  ctrl <- mse::getCtrl(values = Ftrgt, quantity = "f", years = ay + 1, it = ni) # perhaps should be ay + args$management_lag?
+  # ctrl <- mse::getCtrl(values = Ftrgt, quantity = "f", years = ay + mlag, it = ni)
+  ctrl <- fwdControl(list(year = ay + mlag, quant = "fbar", value = Ftrgt))
 
   return(list(ctrl = ctrl, tracking = tracking))
 }
