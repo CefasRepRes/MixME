@@ -52,6 +52,7 @@
 #' @export
 
 isysMIME <- function(stk,
+                     sr = NULL,
                      ctrl,
                      args,
                      isysmethod = NULL,
@@ -89,6 +90,10 @@ isysMIME <- function(stk,
   ## For each stock, implement advice
   ctrlList <- lapply(stk@names, function(x){
 
+    # ------------------------------------------------------------#
+    # (Option 1) Apply user-supplied advice implementation method
+    # ------------------------------------------------------------#
+
     # This should be the method that is applied 99% of the time.
     # For each stock
 
@@ -118,6 +123,10 @@ isysMIME <- function(stk,
 
     } else {
 
+      # ------------------------------------------------------------#
+      # (Option 2) Short-term forecast to output TAC advice
+      # ------------------------------------------------------------#
+
       # If no implementation system method is provided by the user,
       # then assume that implemented advice must be in the form of TAC.
       # Hence, if advice is currently f-based, run a short-term forecast
@@ -137,6 +146,7 @@ isysMIME <- function(stk,
 
         ## This carries out a single-stock forecast
         out <- isysForecast(stk      = stk[[x]],
+                            sr       = sr[[x]],
                             ctrl     = ctrl[[x]],
                             tracking = tracking[[x]],
                             args     = args)
@@ -207,6 +217,7 @@ isysMIME <- function(stk,
 #' @export
 
 isysForecast <- function(stk,
+                         sr,
                          ctrl,
                          args,
                          tracking,
@@ -229,6 +240,11 @@ isysForecast <- function(stk,
   if(is.FLStock(stk)) {
 
     stk0 <- stk
+    sr0  <- sr
+
+    ## truncate to min data year
+    minyr <- dims(stk0@stock[!is.na(stk0@stock)])$minyear # min year where data exists
+    stk0  <- window(stk0, start = minyr)
 
   } else if(class(stk) == "FLBiol") {
 

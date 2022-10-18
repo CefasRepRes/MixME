@@ -57,43 +57,105 @@
 
 estMIME <- function(stk,
                     idx,
-                    ctrl,
+                    ctrl = NULL, ## DO I REALLY NEED THIS OR CAN I GENERATE IN FUNCTION?
+                    om   = NULL,
                     args,
-                    estMethod = NULL,
+                    estmethod = NULL,
                     tracking,
                     fitList = NULL,
                     fwdList = NULL) {
+
+  # ===================================#
+  # SECTION 1: Extract global arguments
+  # ===================================#
 
   ## extract timings
   ay   <- args$ay             # current (assessment) year
 
   ## If no methods supplied, then assume perfect observation
-  if(is.null(estMethod)) {
+  if(is.null(estmethod)) {
 
-    estMethod <- sapply(stk@names, function(x) "perfectObs",
+    estmethod <- sapply(stk@names, function(x) "perfectObs",
            USE.NAMES = TRUE, simplify = FALSE)
   }
+
+  # ======================================#
+  # SECTION 2: Iterative stock estimation
+  # ======================================#
 
   ## If a list of stocks is given, loop over each stock
   if(is.list(stk)) {
 
-    fwd_list <- lapply(stk@names, function(x){
+    est_list <- lapply(stk@names, function(x){
+
+      # ---------------------------------------------------------#
+      # (Option 1) Apply user-supplied stock estimation method
+      # ---------------------------------------------------------#
 
       ## If available, apply user-supplied estimation method
-      if(is.function(estMethod[[x]])) {
+      if(is.function(estmethod[[x]])) {
 
-        stk_fwd <- do.call(estMethod[[x]],
+        stk_est <- do.call(estmethod[[x]],
                            list(stk = stk[[x]],
-                                idx = stk[[x]],
-                                ))
+                                idx = idx[[x]]))
+
+        ## DO I WANT TO EXTRACT SOME GENERIC RECRUITMENT MODEL???
       }
 
-      ## Alternatively, simply coerce OEM FLBiols information into FLStock
-      if(estMethod[[x]] == "perfectObs") {
+      # ---------------------------------------------------------#
+      # (Option 2) Apply perfect stock observation
+      # ---------------------------------------------------------#
+
+      ## Alternatively, simply populate OEM stock numbers and recruitment from OM
+      if(estmethod[[x]] == "perfectObs") {
+
+        ## If FLBiols
+        if(class(stk[[x]]) == "FLBiol") {
+
+          stop("Stock estimation using FLBiol class no yet supported!")
+
+          ## Copy observed stock object
+          stk0 <- stk[[x]]
+
+          ## insert stock numbers
+          n(stk0[[x]]) <- n(om$stks[[x]])
+
+          ## insert stock recruitment information
+          sr0 <- NULL
+
+
+          ## Combine outputs into list
+          stk_est <- list(stk = stk0,
+                          sr  = sr0)
+        }
+
+        ## If FLStock
+        if(class(stk[[x]]) == "FLStock") {
+
+          ## Copy observed stock object
+          stk0 <- stk[[x]]
+
+          ## insert stock numbers
+          stock.n(stk0) <- n(om$stks[[x]])
+
+          ## extract stock recruitment information
+          sr0        <- as.FLSR(stk0, model = om$stks[[x]]@rec@model)
+          sr0@rec    <- rec(stk0)
+          sr0@ssb    <- ssb(stk0)
+          sr0@params <- om$stks[[x]]@rec@params
+
+          ## Combine outputs into list
+          stk_est <- list(stk = stk0,
+                          sr  = sr0)
+        }
 
 
       }
+
+      return(stk_est)
     })
+
+    names(est_list) <- stk@names
 
     # if()
     #
@@ -104,7 +166,7 @@ estMIME <- function(stk,
     #     if()
   }
 
-  return(list(ctrl     = ctrl,
+  return(list(stkList  = est_list,
               tracking = tracking))
 }
 
