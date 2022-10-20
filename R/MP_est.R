@@ -70,7 +70,9 @@ estMIME <- function(stk,
   # ===================================#
 
   ## extract timings
+  iy   <- args$iy             # initial projection year
   ay   <- args$ay             # current (assessment) year
+  mlag <- args$management_lag # managment lag
 
   ## If no methods supplied, then assume perfect observation
   if(is.null(estmethod)) {
@@ -109,64 +111,111 @@ estMIME <- function(stk,
       ## Alternatively, simply populate OEM stock numbers and recruitment from OM
       if(estmethod[[x]] == "perfectObs") {
 
+        ## Copy observed stock object
+        stk0 <- stk[[x]]
+
+        ## Extract data year vector
+        yrs_oem <- (range(stk0)["minyear"]):(range(stk0)["maxyear"])
+
         ## If FLBiols
         if(class(stk[[x]]) == "FLBiol") {
 
           stop("Stock estimation using FLBiol class no yet supported!")
 
-          ## Copy observed stock object
-          stk0 <- stk[[x]]
-
           ## insert stock numbers
-          n(stk0[[x]]) <- n(om$stks[[x]])
+          n(stk0)[,ac(yrs_oem)] <- n(om$stks[[x]])[,ac(yrs_oem)]
 
           ## insert stock recruitment information
           sr0 <- NULL
 
-
-          ## Combine outputs into list
-          stk_est <- list(stk = stk0,
-                          sr  = sr0)
         }
 
         ## If FLStock
         if(class(stk[[x]]) == "FLStock") {
 
-          ## Copy observed stock object
-          stk0 <- stk[[x]]
+          ## insert stock numbers and calculate stock biomass
+          stock.n(stk0)[,ac(yrs_oem)] <- n(om$stks[[x]])[,ac(yrs_oem)]
+          stock(stk0)                 <- computeStock(stk0)
 
-          ## insert stock numbers
-          stock.n(stk0) <- n(om$stks[[x]])
+          ## insert fishing mortality
+          fltFage <- sapply(om$flts@names,
+                            function(y){
+                              Fage <- attr(om$flts[[y]][[x]],"catchq")[,ac(yrs_oem)] %*%
+                                om$flts[[y]]@effort[,ac(yrs_oem)] %*%
+                                om$flts[[y]][[x]]@catch.sel[,ac(yrs_oem)]
+
+                              Fage#[drop = TRUE]
+                            }, simplify = "array")
+
+          harvest(stk0)[,ac(yrs_oem)] <- apply(fltFage, c(1:6), sum)
+
+          # Under perfect stock observations and zero management lag, the final
+          # year is also the advice year and no fishing has occurred yet. The
+          # harvest data in the stock object for this year is the selectivity
+          # understood by the OM, but this is a different calculation from
+          # selectivity used in forecasts.
+
+          # Therefore, we need to update selectivity based on the most most recent
+          # available data.
+
+          # This is not needed if we intend to extent the stock for a short-term
+          # forecast.
+
+          ## Update intermediate year harvest selectivity
+          if (mlag == 0) {
+            harvest(stk0)[,ac(ay)] <-
+              sweep(harvest(stk0)[,ac(ay-1)], c(2:6), fbar(stk0)[,ac(ay-1)], "/")
+          }
 
           ## extract stock recruitment information
           sr0        <- as.FLSR(stk0, model = om$stks[[x]]@rec@model)
           sr0@rec    <- rec(stk0)
           sr0@ssb    <- ssb(stk0)
-          sr0@params <- om$stks[[x]]@rec@params
+          sr0@params <- om$stks[[x]]@rec@params#
 
-          ## Combine outputs into list
-          stk_est <- list(stk = stk0,
-                          sr  = sr0)
+          # Update tracking object
+          # -------------------------#
+          tracking[[x]]$stk["F.est", ac(iy:ay)]  <- fbar(stk0)[,ac(iy:ay)]
+          tracking[[x]]$stk["B.est", ac(iy:ay)]  <- stock(stk0)[,ac(iy:ay)]
+          tracking[[x]]$stk["SB.est", ac(iy:ay)] <- ssb(stk0)[,ac(iy:ay)]
+
+          tracking[[x]]$stk["C.est", ac(iy:ay)] <- catch(stk0)[,ac(iy:ay)]
+          tracking[[x]]$stk["L.est", ac(iy:ay)] <- landings(stk0)[,ac(iy:ay)]
+          tracking[[x]]$stk["D.est", ac(iy:ay)] <- discards(stk0)[,ac(iy:ay)]
+
         }
 
+        # ---------------------------------------------------------------------#
+        # (Option 2.1) Apply short term forecast on perfect stock observation
+        # ---------------------------------------------------------------------#
+
+        # if(mlag > 0 & Forecast == FALSE)
+        #   warning("Management lag > 0 but no short-term forecast defines. Errors may occur.")
+
+        ## Combine outputs into list
+        stk_est <- list(stk = stk0,
+                        sr  = sr0,
+                        tracking = tracking[[x]]$stk)
 
       }
 
       return(stk_est)
     })
 
+    ## Add names to list of estimated stocks
     names(est_list) <- stk@names
 
-    # if()
-    #
-    #   } else if() {
-    #
-    #     stk_fwd <- estMethod(stk, ctrl, args)
-    #
-    #     if()
+    ## Update tracking object
+    for(x in stk@names) {
+      tracking[[x]]$stk <- est_list[[x]]$tracking
+    }
+
+    stk0 <- FLStocks(lapply(est_list, "[[", "stk"))
+    sr0  <- lapply(est_list, "[[", "sr")
   }
 
-  return(list(stkList  = est_list,
+  return(list(stk      = stk0,
+              sr       = sr0,
               tracking = tracking))
 }
 

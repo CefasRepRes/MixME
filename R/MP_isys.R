@@ -90,6 +90,8 @@ isysMIME <- function(stk,
   ## For each stock, implement advice
   ctrlList <- lapply(stk@names, function(x){
 
+    ## CHECK THAT ADVICE IS NOT NA!!
+
     # ------------------------------------------------------------#
     # (Option 1) Apply user-supplied advice implementation method
     # ------------------------------------------------------------#
@@ -243,48 +245,50 @@ isysForecast <- function(stk,
     sr0  <- sr
 
     ## truncate to min data year
-    minyr <- dims(stk0@stock[!is.na(stk0@stock)])$minyear # min year where data exists
+    minyr <- dims(stk0@stock[!is.na(stk0@stock.n)])$minyear # min year where data exists
     stk0  <- window(stk0, start = minyr)
 
   } else if(class(stk) == "FLBiol") {
 
-    # NOTE: THERE MIGHT BE A MORE EFFICIENT AND ROBUST WAY OF DOING THIS...
-    # PERHAPS COERCING TO FLSTOCK SHOULD HAPPEN A LOT EARLIER IN THE PROCESS...
+    # NOTE: WE NEED TO BE ABLE TO HANDLE FORECASTS USING FLBIOLS AND FLFISHERIES
+    #       RATHER THAN COERCING INTO AN FLSTOCK
 
-    ## coerce to FLStock
-    stk0 <- as(stk,"FLStock")
+    stop("Forecasts using FLBiols and FLFisheries not yet supported!")
 
-    ## populate missing slots with data from stock object in tracking
-    units(stk0) <- units(tracking[["stk"]])
-
-    ## Fill missing slots
-    stk0@landings.n  <- tracking[["stk"]]@landings.n
-    stk0@landings.wt <- tracking[["stk"]]@landings.wt
-    stk0@discards.n  <- tracking[["stk"]]@discards.n
-    stk0@discards.wt <- tracking[["stk"]]@discards.wt
-    stk0@catch.n  <- tracking[["stk"]]@catch.n
-    stk0@catch.wt <- tracking[["stk"]]@catch.wt
-    stk0@harvest  <- tracking[["stk"]]@harvest
-
-    ## update Fbar range
-    range(stk0)["minfbar"] <- range(tracking[["stk"]])["minfbar"]
-    range(stk0)["maxfbar"] <- range(tracking[["stk"]])["maxfbar"]
-
-    ## compute properties
-    stock(stk0)    <- computeStock(stk0)
-    landings(stk0) <- computeLandings(stk0)
-    discards(stk0) <- computeDiscards(stk0)
-    catch(stk0)    <- computeCatch(stk0)
-
-    ## truncate to min data year
-    minyr <- dims(stk0@stock[!is.na(stk0@stock)])$minyear # min year where data exists
-    stk0  <- window(stk0, start = minyr)
-
-    ## Generate SR of correct dimensions
-    sr0        <- as.FLSR(stk0, model = stk@rec@model)
-    sr0@rec    <- rec(stk0)
-    sr0@ssb    <- ssb(stk0)
-    sr0@params <- stk@rec@params
+    # ## coerce to FLStock
+    # stk0 <- as(stk,"FLStock")
+    #
+    # ## populate missing slots with data from stock object in tracking
+    # units(stk0) <- units(tracking[["stk"]])
+    #
+    # ## Fill missing slots
+    # stk0@landings.n  <- tracking[["stk"]]@landings.n
+    # stk0@landings.wt <- tracking[["stk"]]@landings.wt
+    # stk0@discards.n  <- tracking[["stk"]]@discards.n
+    # stk0@discards.wt <- tracking[["stk"]]@discards.wt
+    # stk0@catch.n  <- tracking[["stk"]]@catch.n
+    # stk0@catch.wt <- tracking[["stk"]]@catch.wt
+    # stk0@harvest  <- tracking[["stk"]]@harvest
+    #
+    # ## update Fbar range
+    # range(stk0)["minfbar"] <- range(tracking[["stk"]])["minfbar"]
+    # range(stk0)["maxfbar"] <- range(tracking[["stk"]])["maxfbar"]
+    #
+    # ## compute properties
+    # stock(stk0)    <- computeStock(stk0)
+    # landings(stk0) <- computeLandings(stk0)
+    # discards(stk0) <- computeDiscards(stk0)
+    # catch(stk0)    <- computeCatch(stk0)
+    #
+    # ## truncate to min data year
+    # minyr <- dims(stk0@stock[!is.na(stk0@stock)])$minyear # min year where data exists
+    # stk0  <- window(stk0, start = minyr)
+    #
+    # ## Generate SR of correct dimensions
+    # sr0        <- as.FLSR(stk0, model = stk@rec@model)
+    # sr0@rec    <- rec(stk0)
+    # sr0@ssb    <- ssb(stk0)
+    # sr0@params <- stk@rec@params
 
   } else {
 

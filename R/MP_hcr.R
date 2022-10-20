@@ -61,7 +61,14 @@ phcrMIME <- function(stk, args, hcrpars, tracking) {
 #'
 #' @export
 
-hcrMIME <- function(stk, args, hcrpars = NULL, hcrmethod = NULL, ctrg = NULL, ftrg = NULL, tracking, ... ) {
+hcrMIME <- function(stk,
+                    args,
+                    hcrpars = NULL,
+                    hcrmethod = NULL,
+                    ctrg = NULL,
+                    ftrg = NULL,
+                    tracking,
+                    ... ) {
 
   ## extract timings
   ay   <- args$ay             # current (assessment) year

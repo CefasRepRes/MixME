@@ -24,6 +24,8 @@ oemMIME <- function(om,
                     observations,
                     args,
                     tracking,
+                    catch_timing = NULL, # catch timing relative to ay
+                    idx_timing   = NULL, # index timing relative to ay
                     use_stk_oem         = FALSE,
                     use_catch_residuals = FALSE,
                     use_idx_residuals   = FALSE) {
@@ -54,7 +56,9 @@ oemMIME <- function(om,
   # ===================================#
 
   ## extract timings
+  iy   <- args$iy             # initial projection year
   ay   <- args$ay             # current (assessment) year
+  mlag <- args$management_lag # management lag
 
   ## Process logical arguments if required
   if(length(use_stk_oem) == 1 & is.logical(use_stk_oem)) {
@@ -70,6 +74,17 @@ oemMIME <- function(om,
                                 USE.NAMES = TRUE)
   }
 
+  ## Process catch and index timings
+  if(is.null(catch_timing)) {
+    catch_timing <- sapply(observations$stk@names, function(x) 0,
+           USE.NAMES = TRUE, simplify = FALSE)
+  }
+
+  if(is.null(idx_timing)) {
+    idx_timing <- sapply(observations$stk@names, function(x) 0,
+           USE.NAMES = TRUE, simplify = FALSE)
+  }
+
   # =======================================#
   # SECTION 2: Iterative stock observation
   # =======================================#
@@ -81,9 +96,9 @@ oemMIME <- function(om,
     # SECTION 2.2: Observed stock catches #
     # ------------------------------------#
 
-    # ----------------------------------------#
-    # Use oem observation structure (FLStock) #
-    # ----------------------------------------#
+    # ---------------------------------------------------#
+    # (OPTION I) Use oem observation structure (FLStock) #
+    # ---------------------------------------------------#
     # This allows for different biological parameters
     # (weights, maturity, mortality)
 
@@ -156,11 +171,22 @@ oemMIME <- function(om,
       discards(stk0)  <- computeDiscards(stk0)
       catch(stk0)     <- computeCatch(stk0)
 
+      # Update overall mean weights based on catch-numbers-weighted mean
+      # ----------------------------------------------------------------#
+      # catch.wt(stk0)
+      # landings.wt(stk0)
+      # discards.wt(stk0)
+
+      # Update tracking object
+      # -------------------------#
+      tracking[[x]]$stk["C.obs", ac(iy:ay)] <- catch(stk0)[,ac(iy:ay)]
+      tracking[[x]]$stk["L.obs", ac(iy:ay)] <- landings(stk0)[,ac(iy:ay)]
+      tracking[[x]]$stk["D.obs", ac(iy:ay)] <- discards(stk0)[,ac(iy:ay)]
     }
 
-    # ---------------------------------------------------#
-    # Use oem observation structure (FLBiol & FLFishery) #
-    # ---------------------------------------------------#
+    # ---------------------------------------------------------------#
+    # (OPTION II) Use oem observation structure (FLBiol & FLFishery) #
+    # ---------------------------------------------------------------#
 
     if(use_stk_oem[x] == TRUE & !is.null(observations$flt)) {
 
@@ -172,9 +198,9 @@ oemMIME <- function(om,
 
     }
 
-    # ---------------------------#
-    # Use OM structure (FLStock) #
-    # ---------------------------#
+    # ----------------------------------------#
+    # (OPTION III) Use OM structure (FLStock) #
+    # ----------------------------------------#
 
     # For simplicity, if an observation error model structure is not supplied,
     # then I will return an FLStock for each stock supplied - this should be
@@ -189,6 +215,9 @@ oemMIME <- function(om,
         flt0 <- om$flts
 
       } else if(class(om$stks[[x]]) == "FLBiol") {
+
+        # I DON'T WANT TO COERCE TO FLSTOCK... I SHOULD USE FLBIOLS AND FLFISHERIES
+        # INSTEAD
 
         ## coerce to FLStock
         stk0 <- as(om$stks[[x]],"FLStock")
@@ -227,6 +256,35 @@ oemMIME <- function(om,
       }
     }
 
+    # --------------------#
+    # Trim to data period #
+    # --------------------#
+
+    ## If survey data is more recent than catch data, then trim to survey year
+    if(max(idx_timing[[x]]) > max(catch_timing[[x]])) {
+
+      ## Trim stock object
+      stk0 <- window(stk0, end = ay + max(idx_timing[[x]]))
+
+      ## Remove data in years where no catch data is available
+      yrs_remove <- (ay + catch_timing[[x]] + 1):ay
+
+      catch(stk0)[, ac(yrs_remove)]       <- NA
+      catch.n(stk0)[, ac(yrs_remove)]     <- NA
+      catch.wt(stk0)[, ac(yrs_remove)]    <- NA
+      landings(stk0)[, ac(yrs_remove)]    <- NA
+      landings.n(stk0)[, ac(yrs_remove)]  <- NA
+      landings.wt(stk0)[, ac(yrs_remove)] <- NA
+      discards(stk0)[, ac(yrs_remove)]    <- NA
+      discards.n(stk0)[, ac(yrs_remove)]  <- NA
+      discards.wt(stk0)[, ac(yrs_remove)] <- NA
+
+    } else {
+
+      stk0 <- window(stk0, end = ay + max(catch_timing[[x]]))
+
+    }
+
     # ------------------------#
     # Observed survey indices #
     # ------------------------#
@@ -245,14 +303,24 @@ oemMIME <- function(om,
     }
 
     return(list(stk = stk0,
-                idx = idx0))
+                idx = idx0,
+                tracking = tracking[[x]]$stk))
   })
 
   ## Add names to list
   names(oemList) <- observations$stk@names
 
+  ## Extract list elements
+  for(x in observations$stk@names) {
+    tracking[[x]]$stk <- oemList[[x]]$tracking
+  }
+  stk <- FLStocks(lapply(oemList, "[[", "stk"))
+  idx <- lapply(oemList, "[[", "idx")
+
+
   ### return observations
-  return(list(oem          = oemList,
+  return(list(stk          = stk,
+              idx          = idx,
               observations = observations,
               tracking     = tracking))
 }
