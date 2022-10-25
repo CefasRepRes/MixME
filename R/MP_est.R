@@ -150,28 +150,37 @@ estMIME <- function(stk,
           harvest(stk0)[,ac(yrs_oem)] <- apply(fltFage, c(1:6), sum)
 
           # Under perfect stock observations and zero management lag, the final
-          # year is also the advice year and no fishing has occurred yet. The
-          # harvest data in the stock object for this year is the selectivity
-          # understood by the OM, but this is a different calculation from
-          # selectivity used in forecasts.
+          # (current) year is also the advice year and no fishing has occurred yet. The
+          # harvest data in the stock object for this year is the basis for selectivity
+          # understood by the OM.
 
-          # Therefore, we need to update selectivity based on the most most recent
-          # available data.
+          # If projected values are means of the historical period, there will be
+          # slight differences in the resulting values compared to the FLStock
+          # generated when conditioning the OM. This is because we are calculated
+          # using projected values at the fleet level, whereas the FLStock is simply
+          # a mean of historic F.
 
-          # This is not needed if we intend to extent the stock for a short-term
-          # forecast.
+          # This whole process is not needed if we intend to extend the stock
+          # for a short-term forecast.
 
           ## Update intermediate year harvest selectivity
           if (mlag == 0) {
-            harvest(stk0)[,ac(ay)] <-
-              sweep(harvest(stk0)[,ac(ay-1)], c(2:6), fbar(stk0)[,ac(ay-1)], "/")
+            if(ay == iy) {
+              harvest(stk0)[,ac(ay)] <- yearMeans(harvest(stk0)[,ac((ay-3):(ay-1))])
+            }
+            if(ay > iy) {
+
+              harvest(stk0)[,ac(ay)] <- harvest(stk0)[,ac(ay-1)]
+              # harvest(stk0)[,ac(ay)] <- sweep(harvest(stk0)[,ac(ay-1)], c(2:6), fbar(stk0)[,ac(ay-1)], "/")
+
+            }
           }
 
           ## extract stock recruitment information
           sr0        <- as.FLSR(stk0, model = om$stks[[x]]@rec@model)
           sr0@rec    <- rec(stk0)
           sr0@ssb    <- ssb(stk0)
-          sr0@params <- om$stks[[x]]@rec@params#
+          sr0@params <- om$stks[[x]]@rec@params
 
           # Update tracking object
           # -------------------------#
@@ -182,6 +191,8 @@ estMIME <- function(stk,
           tracking[[x]]$stk["C.est", ac(iy:ay)] <- catch(stk0)[,ac(iy:ay)]
           tracking[[x]]$stk["L.est", ac(iy:ay)] <- landings(stk0)[,ac(iy:ay)]
           tracking[[x]]$stk["D.est", ac(iy:ay)] <- discards(stk0)[,ac(iy:ay)]
+
+          tracking[[x]]$sel_est[,ac(ay)] <- sweep(harvest(stk0)[,ac(ay)], c(2:6), fbar(stk0)[,ac(ay)], "/")
 
         }
 
@@ -195,7 +206,7 @@ estMIME <- function(stk,
         ## Combine outputs into list
         stk_est <- list(stk = stk0,
                         sr  = sr0,
-                        tracking = tracking[[x]]$stk)
+                        tracking = tracking[[x]])
 
       }
 
@@ -207,7 +218,7 @@ estMIME <- function(stk,
 
     ## Update tracking object
     for(x in stk@names) {
-      tracking[[x]]$stk <- est_list[[x]]$tracking
+      tracking[[x]] <- est_list[[x]]$tracking
     }
 
     stk0 <- FLStocks(lapply(est_list, "[[", "stk"))

@@ -59,8 +59,14 @@ makeTracking <- function(om,
       season="unique",
       iter=1:ni))
 
-    return(list(advice = track_advice_stk,
-                stk    = track_stk))
+    track_sel_stk <- FLQuant(NA, dimnames = list(age    = dimnames(om$stks[[x]])$age,
+                                                 year   = projyrs,
+                                                 iter   = 1:ni))
+
+    return(list(advice  = track_advice_stk,
+                sel_om  = track_sel_stk,
+                sel_est = track_sel_stk,
+                stk     = track_stk))
 
   })
   names(tracking) <- om$stks@names
