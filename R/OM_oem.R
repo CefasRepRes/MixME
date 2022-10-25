@@ -19,7 +19,7 @@
 #'
 #' @export
 
-oemMIME <- function(om,
+oemMixME <- function(om,
                     deviances,
                     observations,
                     args,

@@ -4,7 +4,7 @@
 # date: 'August 2022'
 # ---
 
-runMIME <- function(om, mp, ...) {
+runMixME <- function(om, mp, ...) {
 
   ## Run check on inputs
 

@@ -28,7 +28,7 @@
 #'
 #' @export
 
-fwd_MIME <- function(om,                       # FLBiols/FLFisheries
+fwd_MixME <- function(om,                       # FLBiols/FLFisheries
                      ctrl,                     # Control object
                      sr_residuals_mult = TRUE, # are stock recruitment residuals multiplicative?
                      effort_max = 100,        # maximum allowed fishing effort

@@ -2,6 +2,6 @@
 # Generator token: 10BE3573-1514-4C36-9D1C-5A225CD40393
 
 flr_to_list <- function(om, advice, year, nstock, nfleet, niter) {
-    .Call('_MIME_flr_to_list', PACKAGE = 'MIME', om, advice, year, nstock, nfleet, niter)
+    .Call('_MixME_flr_to_list', PACKAGE = 'MixME', om, advice, year, nstock, nfleet, niter)
 }
 

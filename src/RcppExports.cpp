@@ -12,7 +12,7 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 
 // flr_to_list
 List flr_to_list(List om, List advice, int year, int nstock, int nfleet, int niter);
-RcppExport SEXP _MIME_flr_to_list(SEXP omSEXP, SEXP adviceSEXP, SEXP yearSEXP, SEXP nstockSEXP, SEXP nfleetSEXP, SEXP niterSEXP) {
+RcppExport SEXP _MixME_flr_to_list(SEXP omSEXP, SEXP adviceSEXP, SEXP yearSEXP, SEXP nstockSEXP, SEXP nfleetSEXP, SEXP niterSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -28,11 +28,11 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_MIME_flr_to_list", (DL_FUNC) &_MIME_flr_to_list, 6},
+    {"_MixME_flr_to_list", (DL_FUNC) &_MixME_flr_to_list, 6},
     {NULL, NULL, 0}
 };
 
-RcppExport void R_init_MIME(DllInfo *dll) {
+RcppExport void R_init_MixME(DllInfo *dll) {
     R_registerRoutines(dll, NULL, CallEntries, NULL, NULL);
     R_useDynamicSymbols(dll, FALSE);
 }

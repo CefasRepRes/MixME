@@ -18,7 +18,7 @@
 #'
 #' @export
 
-phcrMIME <- function(stk, args, hcrpars, tracking) {
+phcrMixME <- function(stk, args, hcrpars, tracking) {
 
   ## Check to ensure hcrpars are provided
   if(!exists("hcrpars")){
@@ -61,7 +61,7 @@ phcrMIME <- function(stk, args, hcrpars, tracking) {
 #'
 #' @export
 
-hcrMIME <- function(stk,
+hcrMixME <- function(stk,
                     args,
                     hcrpars = NULL,
                     hcrmethod = NULL,

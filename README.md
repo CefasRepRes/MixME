@@ -1,2 +1,2 @@
-# MIME
-R package for Mixed-fishery Integrated Multi-stock Evaluation
+# MixME
+R package for Mixed-fishery Multi-stock Evaluation

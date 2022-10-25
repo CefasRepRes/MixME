@@ -55,7 +55,7 @@
 #'
 #' @export
 
-estMIME <- function(stk,
+estMixME <- function(stk,
                     idx,
                     ctrl = NULL, ## DO I REALLY NEED THIS OR CAN I GENERATE IN FUNCTION?
                     om   = NULL,

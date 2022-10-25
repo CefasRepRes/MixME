@@ -51,7 +51,7 @@
 #'
 #' @export
 
-isysMIME <- function(stk,
+isysMixME <- function(stk,
                      sr = NULL,
                      ctrl,
                      args,
