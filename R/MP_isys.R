@@ -214,7 +214,8 @@ isysMixME <- function(stk,
 #'                          fraction data in the most recent year.
 #' @param fwd_splitLD Separate landings and discards numbers in forecast outputs.
 #'
-#' @return
+#' @return A named list containing a list of forward control objects and the
+#'         tracking object.
 #'
 #' @export
 

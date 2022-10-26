@@ -51,7 +51,8 @@
 #'                forecast for the stock. See 'Details' for required list elements.
 #'                Defaults to \code{NULL}.
 #'
-#' @return
+#' @return Nested named list containing a list of estimated stock objects,
+#'         a list of stock-recruitment relationships and the tracking object.
 #'
 #' @export
 

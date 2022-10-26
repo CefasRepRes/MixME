@@ -45,6 +45,10 @@ List elements may be the name of an in-built estimation
 method or a user-supplied function that is applied to the
 stock. If \code{NULL}, defaults to 'perfectObs'.}
 }
+\value{
+Nested named list containing a list of estimated stock objects,
+a list of stock-recruitment relationships and the tracking object.
+}
 \description{
 Function takes a time-series of observed catch or index data
 (\code{FLStock} and \code{FLIndex} respectively) and estimates current stock

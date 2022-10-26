@@ -6,16 +6,26 @@
 #
 #' Implementation of stock observation methods
 #'
-#' Function ...
+#' Function to generate stock observations (fleet catches and survey indices)
+#' with (optional) uncertainty.
 #'
-#' Note that this function is intended to be looped over, and therefore is run
-#' separately for each stock.
+#' @param om An operating model
+#' @param deviances ...
+#' @param observations ...
+#' @param args List of additional arguments
+#' @param tracking A named list of tracking objects to monitor emergent dynamic
+#'                 properties
+#' @param catch_timing A named list of catch timing relative to assessment year
+#' @param idx_timing A named list of survey index timing relative to assessment year
+#' @param use_stk_oem Logical vector. Length \code{n} stocks. Should a supplied
+#'                    Observation Error Model structure be used?
+#' @param use_catch_residuals Logical vector. Length \code{n} stocks. Should
+#'                            catch residuals be used to generate uncertainty?
+#' @param use_idx_residuals Logical vector. Length \code{n} stocks. Should
+#'                          survey index residuals be used to generate uncertainty?
 #'
-#' @param stk
-#' @param deviances
-#' @param observations
-#'
-#' @return
+#' @return A named list of stock observations, survey indices and updated tracking
+#'         object
 #'
 #' @export
 

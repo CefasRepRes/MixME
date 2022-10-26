@@ -18,12 +18,35 @@ oemMixME(
 )
 }
 \arguments{
-\item{observations}{}
+\item{om}{An operating model}
+
+\item{deviances}{...}
+
+\item{observations}{...}
+
+\item{args}{List of additional arguments}
+
+\item{tracking}{A named list of tracking objects to monitor emergent dynamic
+properties}
+
+\item{catch_timing}{A named list of catch timing relative to assessment year}
+
+\item{idx_timing}{A named list of survey index timing relative to assessment year}
+
+\item{use_stk_oem}{Logical vector. Length \code{n} stocks. Should a supplied
+Observation Error Model structure be used?}
+
+\item{use_catch_residuals}{Logical vector. Length \code{n} stocks. Should
+catch residuals be used to generate uncertainty?}
+
+\item{use_idx_residuals}{Logical vector. Length \code{n} stocks. Should
+survey index residuals be used to generate uncertainty?}
+}
+\value{
+A named list of stock observations, survey indices and updated tracking
+object
 }
 \description{
-Function ...
-}
-\details{
-Note that this function is intended to be looped over, and therefore is run
-separately for each stock.
+Function to generate stock observations (fleet catches and survey indices)
+with (optional) uncertainty.
 }

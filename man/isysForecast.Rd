@@ -54,6 +54,10 @@ fraction data in the most recent year.}
 
 \item{fwd_splitLD}{Separate landings and discards numbers in forecast outputs.}
 }
+\value{
+A named list containing a list of forward control objects and the
+tracking object.
+}
 \description{
 Function runs a short-term forecast for a single stock to translate a target
 fishing mortality into a catch target.

@@ -6,11 +6,54 @@
 \usage{
 makeTracking(om, projyrs, addmetrics = NULL)
 }
+\arguments{
+\item{om}{An operating model}
+
+\item{projyrs}{Character vector. Names of projection years over which the simulation
+will take place.}
+
+\item{addmetric}{Character vector. Names of additional stock metrics to be added
+to the tracking object.}
+}
+\value{
+List. An empty tracking object.
+}
 \description{
 This function generates a tracking object to store diagnostics and emergent
 properties generated during the MSE simulation.
 }
 \details{
-By default, containers for the following properies are generated. Additional
-containers are generated for user-supplied...
+The tracking object is a named list with the following hierarchical structure:
+
+\itemize{
+\item Named list for the i'th stock
+\itemize{
+\item Summary statistics (\code{stk})
+\itemize{
+\item Operating model mean fishing mortality (\code{F.om})
+\item Operating model total stock biomass (\code{B.om})
+\item Operating model spawning stock biomass (\code{SB.om})
+\item Operating model total catch weight (\code{C.om})
+\item Operating model total landings weight (\code{L.om})
+\item Operating model total discards weight (\code{D.om})
+\item Observed total catch weight (\code{C.obs})
+\item Observed total landings weight (\code{L.obs})
+\item Observed total discards weight (\code{D.obs})
+\item Estimated mean fishing mortality (\code{F.est})
+\item Estimated total stock biomass (\code{B.est})
+\item Estimated spawning stock biomass (\code{SB.est})
+\item Estimated total catch weight (\code{C.est})
+\item Estimated total landings weight (\code{L.est})
+\item Estimated total discards weight (\code{D.est})
+\item (Optional) additional user-supplied metrics
+}
+\item Stock advice prior to implementation (\code{advice})
+\item Operating model catch selection pattern aggregated across fleets (\code{sel_om})
+\item Estimated catch selection pattern aggregated across fleets (\code{sel_est})
+}
+\item Stock quota allocated to each fleet (\code{quota})
+\item Optimised objective function value and convergence code (\code{optim})
+\item Optimisation message outputs (\code{message})
+\item Stock quota uptake by fleet (\code{uptake})
+\item Stock over-quota discards by fleet (\code{overquota})}
 }

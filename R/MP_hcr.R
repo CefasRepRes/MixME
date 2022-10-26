@@ -208,7 +208,7 @@ hcrICES <- function(stk, args, hcrpars, tracking) {
   status_Blim     <- tail(ssb(stk), 1) / Blim     # Ratio of SSB to Blim (in final year)
 
   ## Identify iterations where SSB is below reference points
-  pos_Btrigger <- which(status_Btrigger < 1)
+  pos_Btrigger <- which(status_Btrigger > 1)
   pos_Blim     <- which(status_Blim < 1)
 
   # -----------------------------------------------------------------#
@@ -218,7 +218,8 @@ hcrICES <- function(stk, args, hcrpars, tracking) {
   # -----------------------------------------------------------------#
 
   ## multiplier should not exceed 1
-  Fmult <- ifelse(status_Btrigger < 1, status_Btrigger, 1)
+  Fmult <- status_Btrigger
+  Fmult[,,,,, pos_Btrigger] <- 1
 
   ## Adjust F multiplier if SSB is below Blim
   Fmult[,,,,, pos_Blim] <- 0
