@@ -249,6 +249,11 @@ isysForecast <- function(stk,
     minyr <- dims(stk0@stock[!is.na(stk0@stock.n)])$minyear # min year where data exists
     stk0  <- window(stk0, start = minyr)
 
+    ## If forward control projects beyond available data, extend stock object
+    if(max(ctrl@target[,"year"]) > max(dimnames(stk0)$year)) {
+      stk0 <- FLasher::stf(stk0, max(ctrl@target[,"year"]) > max(dimnames(stk0)$year))
+    }
+
   } else if(class(stk) == "FLBiol") {
 
     # NOTE: WE NEED TO BE ABLE TO HANDLE FORECASTS USING FLBIOLS AND FLFISHERIES
