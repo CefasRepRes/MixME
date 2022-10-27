@@ -1,9 +1,9 @@
 # ---
-# title: 'Operating Model projction methods'
+# title: 'Operating Model projection methods'
+# author: 'Matthew Pace'
+# date: 'August 2022'
 # ---
 #
-# Summary
-# =======
 #
 #' Forward projection of stocks - including process error
 #'
@@ -29,11 +29,13 @@
 #' @export
 
 fwd_MixME <- function(om,                       # FLBiols/FLFisheries
-                     ctrl,                     # Control object
-                     sr_residuals_mult = TRUE, # are stock recruitment residuals multiplicative?
-                     effort_max = 100,        # maximum allowed fishing effort
-                     proc_res = NULL,          # where is process error noise stored?
-                     ...) {
+                      ctrl,                     # Control object
+                      args,
+                      adviceType = "catch",     # is advice basis TAC?
+                      sr_residuals_mult = TRUE, # are stock recruitment residuals multiplicative?
+                      effort_max = 100,         # maximum allowed fishing effort
+                      proc_res = NULL,          # where is process error noise stored?
+                      ...) {
 
   # CURRENTLY ASSUMES THAT PROJECTION IS A SINGLE YEAR... PROBABLY UNAVOIDABLE
   # BECAUSE WE NEED TO RECALCULATE EFFORT FOR EACH TIMESTEP (EVEN IF ADVICE
@@ -43,16 +45,50 @@ fwd_MixME <- function(om,                       # FLBiols/FLFisheries
   # FLasher DOES NOT ALLOW EFFORT TO BE ZERO. I WILL NEED TO EITHER REPLACE
   # FLasher OR BUILD A ROUTINE TO PROJECT ZERO EFFORT CASES.
 
-  ## Extract advice format from control object
-  adviceType <- ctrl$adviceType
-  advice     <- ctrl$advice
+  # AT THE MOMENT, ADVICETYPE CAN ONLY TAKE A SINGLE VALUE - I WILL NEED TO ADAPT
+  # THIS SO THAT DIFFERENT STOCKS CAN HAVE LANDINGS, CATCH OR F-BASED ADVICE.
 
-  # ------------------------------------#
-  # Prepare forward control object
-  # ------------------------------------#
+  # ===========================================================================#
+  # Extract Arguments
+  # ===========================================================================#
+
+  ni <- dim(om$stks[[1]])[6]
+  yr <- args$ay
+
+  # ===========================================================================#
+  # Process Advice
+  # ===========================================================================#
+
+  ## process advice to a different format -- VERY HACKY
+  advice <- lapply(om$stks@names, function(x) {
+
+    ## if control object contains more than 1 iteration, extract vector
+    if(dim(ctrl[[x]]@iters)[3] > 1){
+      ctrl[[x]]@iters[,,]["value",]
+
+      ## Otherwise repeat elements to generate vector
+    } else {
+
+      ## HAVE A SMARTER WAY OF HANDLING MULTIPLE YEARS
+      if (length(ctrl[[x]]@iters[,,][,"value"]) > 1) {
+        rep(tail(ctrl[[x]]@iters[,,][,"value"],1), ni)
+      } else {
+        rep(ctrl[[x]]@iters[,,][,"value"], ni)
+      }
+    }
+  })
+  names(advice) <- om$stks@names
+
+  # ===========================================================================#
+  # Advice implementation given mixed fisheries technical interactions
+  # ===========================================================================#
 
   ## Advice is a TAC per stock
-  if(adviceType == "TAC") {
+  if(adviceType %in% c("catch","landings")) {
+
+    # -------------------------------------------------------------------------#
+    # Reorganise data for optimisation
+    # -------------------------------------------------------------------------#
 
     ## generate simplified list to pass to optimiser
     omList <- FLBiols2List(om = om,
@@ -60,13 +96,55 @@ fwd_MixME <- function(om,                       # FLBiols/FLFisheries
                            advice = advice,
                            useCpp = TRUE)
 
+    # -------------------------------------------------------------------------#
+    # Optimise fleet activity
+    # -------------------------------------------------------------------------#
+
     ## optimise effort
     effOptimised <- effortBaranov(omList = omList,
-                                  adviceType = "catch",
-                                  correctResid = TRUE)
+                                  adviceType = adviceType,
+                                  correctResid = FALSE)
 
     ## Extract effort parameters for each fleet
     pars <- sapply(1:ni, function(x) { effOptimised[[x]]$par})
+
+    # -------------------------------------------------------------------------#
+    # TRACKING
+    # -------------------------------------------------------------------------#
+
+    ## save quota stock-fleet
+    tracking$quota[,,ac(yr),] <- sapply(1:ni, function(y) {
+      omList[[y]]$quota
+    }, simplify = "array")
+
+    ## save optimisation results to tracker
+    tracking$optim[,ac(yr),] <- sapply(1:ni, function(x){
+      c(effOptimised[[x]]$objective,
+        effOptimised[[x]]$convergence)
+    })
+
+    ## save optimisation messages to tracker
+    tracking$message[1,ac(yr),] <- sapply(1:ni, function(x){
+      effOptimised[[x]]$message[1]
+    })
+
+    ## save re-scaling messages to tracker
+    tracking$message[2,ac(yr),] <- sapply(1:ni, function(x){
+      effOptimised[[x]]$message[2]
+    })
+
+    ## save quota uptake to tracker
+    tracking$uptake[,,ac(yr),] <- sapply(1:ni, function(x){
+
+      round(tracking$quota[,,ac(yr),x] - catchBaranov(par = exp(effOptimised[[x]]$par),
+                                                      dat = omList[[x]],
+                                                      adviceType = adviceType,
+                                                      islog = FALSE),3)
+    }, simplify = "array")
+
+    # -------------------------------------------------------------------------#
+    # Prepare forward control object
+    # -------------------------------------------------------------------------#
 
     ## Generate FCB matrix
     fcb <- makeFCB(biols = om$stks, flts = om$flts)
@@ -84,7 +162,7 @@ fwd_MixME <- function(om,                       # FLBiols/FLFisheries
       list(year = yr:maxyr,
            quant = "effort",
            fishery = names(om$flts)[x],
-           value = exp(pars[x,]))
+           value = rep(exp(pars[x,]), each = 2))
     })
     ctrlArgs$FCB <- fcb
 
@@ -105,12 +183,12 @@ fwd_MixME <- function(om,                       # FLBiols/FLFisheries
 
     stop("f-based advice not currently implemented")
   } else {
-    stop("Advice format (adviceType) must be 'f' or 'TAC'")
+    stop("Advice format (adviceType) must be 'f', 'catch' or 'landings'")
   }
 
-  # ------------------------------------#
+  # ===========================================================================#
   # Project forward using FLasher::fwd
-  # ------------------------------------#
+  # ===========================================================================#
 
   ## extend max effort for each stock
   effort_max <- rep(effort_max, length(om$flts))
@@ -120,6 +198,10 @@ fwd_MixME <- function(om,                       # FLBiols/FLFisheries
                          fishery  = om$flts,
                          control  = flasher_ctrl,
                          effort_max = effort_max)
+
+  # ===========================================================================#
+  # Update Operating Model slots
+  # ===========================================================================#
 
   ## extract FLBiols results
   if(yr < dims(om$stks[[1]])$maxyear) {
@@ -138,6 +220,130 @@ fwd_MixME <- function(om,                       # FLBiols/FLFisheries
       om$flts[[f]][[s]]@landings.n[,ac(yr)] <- om_fwd$fisheries[[f]][[s]]@landings.n[,ac(yr)]
       om$flts[[f]][[s]]@discards.n[,ac(yr)] <- om_fwd$fisheries[[f]][[s]]@discards.n[,ac(yr)]
 
+      ## Advice type simply determines the basis of how over-quota catches
+      ## are calculated. If advice is landings-based, then overquota discards will
+      ## take landings mean weights-at-age. If advice is catch-based, then overquota
+      ## discards will take catch mean weights-at-age.
+
+      ## If advice is landings based
+      if(adviceType == "landings") {
+
+        overquota_ind <- which(landings(om_fwd$fisheries[[f]][[s]])[,ac(yr)] > tracking$quota[s,f,ac(yr),])
+
+        if(length(overquota_ind) > 0){
+
+          ## If landings exceed quota, add excess to discards
+          ## - which iterations?
+          ## - calculate proportion of excess landings numbers to be removed
+          ##   - overquota * (lbiomass-at-age/sum(lbiomass)) / lmeanweight-at-age
+          ## - calculate proportion of discards numbers that are overquota (used to update discard weights)
+
+          ## Calculate over-quota biomass
+          overquota_qty <- (landings(om_fwd$fisheries[[f]][[s]])[,ac(yr)][overquota_ind] - tracking$quota[s,f,ac(yr),][overquota_ind])
+
+          # NOTE:
+          # In reality I would expect the selection pattern to be more heavily
+          # skewed towards larger fish than the within-quota landings fraction
+          # but we don't have data to parameterise this.
+
+          ## Calculate landings biomass distribution for relevant iterations
+          landings_dist <- sweep((landings.wt(om_fwd$fisheries[[f]][[s]])[,ac(yr)][overquota_ind] %*%
+                                  landings.n(om_fwd$fisheries[[f]][[s]])[,ac(yr)][overquota_ind]),
+                                 c(2:6),
+                                 (landings(om_fwd$fisheries[[f]][[s]])[,ac(yr)][overquota_ind]),
+                                 "/")
+
+          ## Calculate equivalent over-quota numbers
+          overquota_num <- sweep(overquota_qty %*% landings_dist,
+                                 c(1:6),
+                landings.wt(om_fwd$fisheries[[f]][[s]])[,ac(yr)][overquota_ind],
+                "/")
+
+          ## update landings and discards numbers
+          om$flts[[f]][[s]]@landings.n[,ac(yr)][overquota_ind] <- om$flts[[f]][[s]]@landings.n[,ac(yr)][overquota_ind] - overquota_num
+          om$flts[[f]][[s]]@discards.n[,ac(yr)][overquota_ind] <- om$flts[[f]][[s]]@discards.n[,ac(yr)][overquota_ind] + overquota_num
+
+          ## Update tracking object
+          tracking$overquota[s,f, ac(yr),overquota_ind] <-
+            quantSums(om$flts[[f]][[s]]@landings.wt[,ac(yr)][overquota_ind] %*% overquota_num)
+
+          ## proportion of over-quota landings and discards numbers
+          overdisc_prop <- sweep(overquota_num, c(1:6), (discards.n(om_fwd$fisheries[[f]][[s]])[,ac(yr)][overquota_ind] + overquota_num), "/")
+
+          # Discards mean weight will now be higher because of discarding of
+          # larger fish - calculate weighted mean for each age
+
+          om$flts[[f]][[s]]@discards.wt[,ac(yr)][overquota_ind] <-
+            om$flts[[f]][[s]]@discards.wt[,ac(yr)][overquota_ind] %*% (1- overdisc_prop) +
+            om$flts[[f]][[s]]@landings.wt[,ac(yr)][overquota_ind] %*% (overdisc_prop)
+
+        }
+      }
+
+      ## If advice is catch-based
+      if(adviceType == "catch"){
+
+        overquota_ind <- which(catch(om_fwd$fisheries[[f]][[s]])[,ac(yr)] > tracking$quota[s,f,ac(yr),])
+
+        if(length(overquota_ind) > 0) {
+
+          ## Calculate overquota biomass
+          overquota_qty <- (catch(om_fwd$fisheries[[f]][[s]])[,ac(yr)][overquota_ind] - tracking$quota[s,f,ac(yr),][overquota_ind])
+
+          ## Calculate landings biomass fraction for relevant iterations
+          landings_frac <- sweep((landings.wt(om_fwd$fisheries[[f]][[s]])[,ac(yr)][overquota_ind] %*%
+                                  landings.n(om_fwd$fisheries[[f]][[s]])[,ac(yr)][overquota_ind]),
+                                 c(1:6),
+                                 (catch.wt(om_fwd$fisheries[[f]][[s]])[,ac(yr)][overquota_ind] %*%
+                                  catch.n(om_fwd$fisheries[[f]][[s]])[,ac(yr)][overquota_ind]),
+                                 "/")
+
+          ## Calculate landings biomass distribution for relevant iterations
+          landings_dist <- sweep((landings.wt(om_fwd$fisheries[[f]][[s]])[,ac(yr)][overquota_ind] %*%
+                                    landings.n(om_fwd$fisheries[[f]][[s]])[,ac(yr)][overquota_ind]),
+                                 c(2:6),
+                                 (landings(om_fwd$fisheries[[f]][[s]])[,ac(yr)][overquota_ind]),
+                                 "/")
+
+          ## Calculate discards biomass distribution for relevant iterations
+          discards_dist <- sweep((discards.wt(om_fwd$fisheries[[f]][[s]])[,ac(yr)][overquota_ind] %*%
+                                    discards.n(om_fwd$fisheries[[f]][[s]])[,ac(yr)][overquota_ind]),
+                                 c(2:6),
+                                 (discards(om_fwd$fisheries[[f]][[s]])[,ac(yr)][overquota_ind]),
+                                 "/")
+
+          ## Calculate overquota numbers
+          overquota_landings_num <- sweep(overquota_qty %*% landings_dist %*% landings_frac,
+                                          c(1:6),
+                                 landings.wt(om_fwd$fisheries[[f]][[s]])[,ac(yr)][overquota_ind],
+                                 "/")
+          overquota_discards_num <- sweep(overquota_qty %*% discards_dist %*% (1 - landings_frac),
+                                          c(1:6),
+                                          discards.wt(om_fwd$fisheries[[f]][[s]])[,ac(yr)][overquota_ind],
+                                          "/")
+
+          ## update landings and discards numbers
+          om$flts[[f]][[s]]@landings.n[,ac(yr)][overquota_ind] <- om$flts[[f]][[s]]@landings.n[,ac(yr)][overquota_ind] - overquota_landings_num
+          om$flts[[f]][[s]]@discards.n[,ac(yr)][overquota_ind] <- om$flts[[f]][[s]]@discards.n[,ac(yr)][overquota_ind] + overquota_landings_num
+
+          # NOTE: I need to update the tracking object before I update discard
+          #       mean weights-at-age
+
+          ## Update tracking object
+          tracking$overquota[s,f, ac(yr),overquota_ind] <-
+            quantSums(om$flts[[f]][[s]]@discards.wt[,ac(yr)][overquota_ind] %*% overquota_discards_num +
+                        om$flts[[f]][[s]]@landings.wt[,ac(yr)][overquota_ind] %*% overquota_landings_num)
+
+          ## Calculate proportion of overquota discards numbers
+          overdisc_prop <- sweep(overquota_landings_num, c(1:6), om$flts[[f]][[s]]@discards.n[,ac(yr)][overquota_ind], "/")
+
+          ## Adjust discards mean weight-at-age
+          om$flts[[f]][[s]]@discards.wt[,ac(yr)][overquota_ind] <-
+            om$flts[[f]][[s]]@discards.wt[,ac(yr)][overquota_ind] %*% (1 - overdisc_prop) +
+            om$flts[[f]][[s]]@landings.wt[,ac(yr)][overquota_ind] %*% (overdisc_prop)
+
+        }
+      }
     }
   }
 
@@ -151,8 +357,53 @@ fwd_MixME <- function(om,                       # FLBiols/FLFisheries
 
   }
 
+  # ===========================================================================#
+  # Update tracking object
+  # ===========================================================================#
+
+  ## Update tracking object - True Stock Properties
+  for(x in om$stks@names) {
+
+    ## Update stock numbers
+    tracking[[x]]$stk["B.om",  ac(yr)] <- quantSums(om$stks[[x]]@n[,ac(yr)] * om$stks[[x]]@wt[,ac(yr)])
+    tracking[[x]]$stk["SB.om", ac(yr)] <- quantSums(om$stks[[x]]@n[,ac(yr)] * om$stks[[x]]@wt[,ac(yr)] * om$stks[[x]]@mat$mat[,ac(yr)])
+
+    ## Calculate overall landings and discards
+    fltlandings <- sapply(1:length(om$flts), function(y){
+      landings(om$flts[[y]][[x]])[,ac(yr)]
+    }, simplify = "array")
+
+    fltdiscards <- sapply(1:length(om$flts), function(y){
+      discards(om$flts[[y]][[x]])[,ac(yr)]
+    }, simplify = "array")
+
+    fltlandings <- apply(fltlandings, c(1:6), sum)
+    fltdiscards <- apply(fltdiscards, c(1:6), sum)
+
+    ## update landings, discards and catch numbers in tracking object
+    tracking[[x]]$stk["L.om",  ac(yr)] <- fltlandings
+    tracking[[x]]$stk["D.om",  ac(yr)] <- fltdiscards
+    tracking[[x]]$stk["C.om",  ac(yr)] <- fltlandings + fltdiscards
+
+    ## Update harvest
+    fltFage <- sapply(1:length(om$flts), function(y){
+      om$flts[[y]][[x]]@catch.q[1,] %*% om$flts[[y]]@effort[,ac(yr)] %*% om$flts[[y]][[x]]@catch.sel[,ac(yr)]
+    }, simplify = "array")
+
+    Fage <- apply(fltFage, c(1:6), sum)
+    tracking[[x]]$stk["F.om",  ac(yr)] <- apply(Fage[ac(args$frange[[x]][1]:args$frange[[x]][2]),,,,,,drop = FALSE], c(2:6), mean)
+
+    ## Save Selectivity
+    tracking[[x]]$sel_om[,ac(yr)] <-  sweep(Fage, c(2:6), tracking[[x]]$stk["F.om",  ac(yr)], "/")
+  }
+
+  # ===========================================================================#
+  # Return outputs
+  # ===========================================================================#
+
   ## return projected stock
-  return(om)
+  return(list(om       = om,
+              tracking = tracking))
 
 }
 
