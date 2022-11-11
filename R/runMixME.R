@@ -26,7 +26,7 @@
 
 runMixME <- function(om,
                      oem,
-                     mp,
+                     ctrl_obj,
                      args,
                      ...) {
 
@@ -42,20 +42,26 @@ runMixME <- function(om,
 
   ## Check that there are no NAs in critical slots
 
+  ## Define discarding options if not already specified
+  overquotaDiscarding <- TRUE
+  sizeselectDiscarding <- TRUE
+
   # ===========================================================================#
   # Set up objects
   # ===========================================================================#
 
-  ## Convert FLStocks into FLBiols
-  om$stks <- FLBiols(lapply(om$stks@names,
-                            function(x) {
-                              biol <- as(om$stks[[x]],"FLBiol")
+  ## If FLStocks are provided, convert FLStocks into FLBiols
+  if(class(om$stks) == "FLStocks") {
+    om$stks <- FLBiols(lapply(om$stks@names,
+                              function(x) {
+                                biol <- as(om$stks[[x]],"FLBiol")
 
-                              biol@rec@params <- sr_list[[x]]@params
-                              biol@rec@model  <- sr_list[[x]]@model
-                              biol@rec$rec    <- NULL
-                              return(biol)
+                                biol@rec@params <- sr_list[[x]]@params
+                                biol@rec@model  <- sr_list[[x]]@model
+                                biol@rec$rec    <- NULL
+                                return(biol)
                               }))
+  }
 
   ## define projection years
   projyrs <- (args$iy):(args$fy-1)
