@@ -124,7 +124,7 @@ estMixME <- function(stk,
           stop("Stock estimation using FLBiol class no yet supported!")
 
           ## insert stock numbers
-          n(stk0)[,ac(yrs_oem)] <- n(om$stks[[x]])[,ac(yrs_oem)]
+          FLCore::n(stk0)[,ac(yrs_oem)] <- FLCore::n(om$stks[[x]])[,ac(yrs_oem)]
 
           ## insert stock recruitment information
           sr0 <- NULL
@@ -135,8 +135,8 @@ estMixME <- function(stk,
         if(class(stk[[x]]) == "FLStock") {
 
           ## insert stock numbers and calculate stock biomass
-          stock.n(stk0)[,ac(yrs_oem)] <- n(om$stks[[x]])[,ac(yrs_oem)]
-          stock(stk0)                 <- computeStock(stk0)
+          FLCore::stock.n(stk0)[,ac(yrs_oem)] <- FLCore::n(om$stks[[x]])[,ac(yrs_oem)]
+          FLCore::stock(stk0)                 <- FLCore::computeStock(stk0)
 
           ## insert fishing mortality
           fltFage <- sapply(om$flts@names,
@@ -148,7 +148,7 @@ estMixME <- function(stk,
                               Fage#[drop = TRUE]
                             }, simplify = "array")
 
-          harvest(stk0)[,ac(yrs_oem)] <- apply(fltFage, c(1:6), sum)
+          FLCore::harvest(stk0)[,ac(yrs_oem)] <- apply(fltFage, c(1:6), sum)
 
           # Under perfect stock observations and zero management lag, the final
           # (current) year is also the advice year and no fishing has occurred yet. The
@@ -167,33 +167,33 @@ estMixME <- function(stk,
           ## Update intermediate year harvest selectivity
           if (mlag == 0) {
             if(ay == iy) {
-              harvest(stk0)[,ac(ay)] <- yearMeans(harvest(stk0)[,ac((ay-3):(ay-1))])
+              FLCore::harvest(stk0)[,ac(ay)] <- FLCore::yearMeans(harvest(stk0)[,ac((ay-3):(ay-1))])
             }
             if(ay > iy) {
 
-              harvest(stk0)[,ac(ay)] <- harvest(stk0)[,ac(ay-1)]
+              FLCore::harvest(stk0)[,ac(ay)] <- FLCore::harvest(stk0)[,ac(ay-1)]
               # harvest(stk0)[,ac(ay)] <- sweep(harvest(stk0)[,ac(ay-1)], c(2:6), fbar(stk0)[,ac(ay-1)], "/")
 
             }
           }
 
           ## extract stock recruitment information
-          sr0        <- as.FLSR(stk0, model = om$stks[[x]]@rec@model)
-          sr0@rec    <- rec(stk0)
-          sr0@ssb    <- ssb(stk0)
+          sr0        <- FLCore::as.FLSR(stk0, model = om$stks[[x]]@rec@model)
+          sr0@rec    <- FLCore::rec(stk0)
+          sr0@ssb    <- FLCore::ssb(stk0)
           sr0@params <- om$stks[[x]]@rec@params
 
           # Update tracking object
           # -------------------------#
-          tracking[[x]]$stk["F.est", ac(iy:ay)]  <- fbar(stk0)[,ac(iy:ay)]
-          tracking[[x]]$stk["B.est", ac(iy:ay)]  <- stock(stk0)[,ac(iy:ay)]
-          tracking[[x]]$stk["SB.est", ac(iy:ay)] <- ssb(stk0)[,ac(iy:ay)]
+          tracking[[x]]$stk["F.est", ac(iy:ay)]  <- FLCore::fbar(stk0)[,ac(iy:ay)]
+          tracking[[x]]$stk["B.est", ac(iy:ay)]  <- FLCore::stock(stk0)[,ac(iy:ay)]
+          tracking[[x]]$stk["SB.est", ac(iy:ay)] <- FLCore::ssb(stk0)[,ac(iy:ay)]
 
-          tracking[[x]]$stk["C.est", ac(iy:ay)] <- catch(stk0)[,ac(iy:ay)]
-          tracking[[x]]$stk["L.est", ac(iy:ay)] <- landings(stk0)[,ac(iy:ay)]
-          tracking[[x]]$stk["D.est", ac(iy:ay)] <- discards(stk0)[,ac(iy:ay)]
+          tracking[[x]]$stk["C.est", ac(iy:ay)] <- FLCore::catch(stk0)[,ac(iy:ay)]
+          tracking[[x]]$stk["L.est", ac(iy:ay)] <- FLCore::landings(stk0)[,ac(iy:ay)]
+          tracking[[x]]$stk["D.est", ac(iy:ay)] <- FLCore::discards(stk0)[,ac(iy:ay)]
 
-          tracking[[x]]$sel_est[,ac(ay)] <- sweep(harvest(stk0)[,ac(ay)], c(2:6), fbar(stk0)[,ac(ay)], "/")
+          tracking[[x]]$sel_est[,ac(ay)] <- sweep(FLCore::harvest(stk0)[,ac(ay)], c(2:6), fbar(stk0)[,ac(ay)], "/")
 
         }
 

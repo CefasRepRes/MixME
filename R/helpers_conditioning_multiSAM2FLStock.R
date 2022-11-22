@@ -482,7 +482,7 @@ multiSAM2FLStock <- function(SAMfit,
   # ==================================================================#
 
   if (!is.null(yearRange)) {
-    stk <- expand(stk, year = yearRange[1]:yearRange[2])
+    stk <- FLCore::expand(stk, year = yearRange[1]:yearRange[2])
   }
 
   # ==================================================================#
@@ -653,7 +653,7 @@ multiSAM2FLStock <- function(SAMfit,
     # -----------------------------------------------------#
 
     ## expand iteration dimension for landings fraction FLQuant
-    lf_qnt_iter <- propagate(lf_qnt, iter = niter)
+    lf_qnt_iter <- FLCore::propagate(lf_qnt, iter = niter)
 
     ## Calculate corresponding landings and discards uncertainty
     landings.n(stk)[ac(ages), ac(catch_years)] <- lf_qnt_iter[ac(ages), ac(catch_years)] * catch.n(stk)[ac(ages), ac(catch_years)]

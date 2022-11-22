@@ -599,7 +599,7 @@ makeFLCatch <- function(SAMfit,        # fitted SAM object
   # --------------------------------------------#
 
   if (!is.null(yearRange)) {
-    fleetstk_x <- expand(fleetstk_x, year = yearRange[1]:yearRange[2])
+    fleetstk_x <- FLCore::expand(fleetstk_x, year = yearRange[1]:yearRange[2])
   }
 
   return(fleetstk_x)
