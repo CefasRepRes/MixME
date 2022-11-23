@@ -18,19 +18,36 @@
 #' @export
 
 multiSAM2FLIndex <- function(SAMfit,
-                             yearRange) {
+                             yearRange   = NULL,
+                             uncertainty = FALSE,
+                             niter       = 1000,
+                             samVariates = NULL,
+                             seed        = NULL) {
 
-  # ------------------------------#
-  # 1. Extract observed indices
-  # 2. Extract survey catchability
-  # ------------------------------#
+  # -----------------------------------------#
+  # 1. Define dimensions and identify surveys
+  #
+  # 2. (Optional) Sample uncertainty from MVN distribution
+  #
+  # 3. Process each survey
+  # 3.1 ... Extract observed indices
+  # 3.2 ... Extract survey catchability
+  # 3.3 ... (Optional) catchability uncertainty
+  # 3.3.1 ... (Optional) extend stock year dimension to new range
+  # 3.3.2 ... (Optional) extend stock iteration dimension and add uncertainty
+  #
+  # -----------------------------------------#
 
   ## Some checks
   if(class(SAMfit) != "sam")
     stop("'SAMfit' must be class 'sam'")
 
+  ## stop if number of iterations are not provided
+  if(uncertainty == TRUE & is.null(niter))
+    stop("If 'uncertainty' is TRUE, the number of replicates 'niter' must be provided")
+
   # ===================================#
-  # SECTION 1: Extract observed indices
+  # SECTION 1: Define dimensions and identify surveys
   # ===================================#
 
   ## Extract dimensions
@@ -55,8 +72,52 @@ multiSAM2FLIndex <- function(SAMfit,
   surveyn <- cbind(survey_desc,
                    index = exp(SAMfit$data$logobs))
 
+  # ===================================#
+  # SECTION 2: (Optional) Sample uncertainty
+  # ===================================#
+
+  if(uncertainty == TRUE) {
+
+    ## Sample variates from MVN distribution if none provided
+    if(!is.null(samVariates)) {
+
+      variates <- samVariates[[1]]
+
+    } else {
+
+      ## Set random number seed if provided
+      if(!is.null(seed)) set.seed(seed)
+
+      ## Calculate standard deviation of model parameters
+      . <- capture.output(sds <- TMB::sdreport(obj = SAMfit$obj,
+                                               par.fixed = SAMfit$opt$par,
+                                               getJointPrecision = TRUE))
+
+      ## Best-fit values for parameters
+      est <- c(sds$par.fixed, sds$par.random)
+
+      ## Variance-Covariance matrix of all model parameters
+      cov <- solve(sds$jointPrecision)
+
+      ## generate a number of random variates by sampling from a multivariate
+      ## normal distribution
+      variates <- stockassessment::rmvnorm((niter-1), est, cov) # col = parameters, row = replicates
+      colnames(variates) <- names(est)
+
+    }
+
+  }
+
+  # ===================================#
+  # SECTION 3: Process each survey
+  # ===================================#
+
   ## Loop over each survey fleet
   idxs <- FLCore::FLIndices(lapply(survey_fleets, function(i) {
+
+    # -------------------------------------#
+    # SECTION 3.1: Extract observed indices
+    # -------------------------------------#
 
     ## subset for the i'th survey fleet
     surveyi <- surveyn[surveyn[,"fleet"] %in% i,]
@@ -88,6 +149,47 @@ multiSAM2FLIndex <- function(SAMfit,
     ## Fill index slot with values
     FLCore::index(idx)[ac(agei),ac(yeari)] <- Smatrix
 
+    # ----------------------------------------#
+    # SECTION 3.2: Extract survey catchability
+    # ----------------------------------------#
+
+    ## Generate an index to subset survey catchability
+    surveyq_index <- SAMfit$conf$keyLogFpar[i,] + 1
+    surveyq_index <- surveyq_index[surveyq_index > 0]
+
+    ## extract fitted survey catchability
+    surveyq <- exp(SAMfit$pl$logFpar)[surveyq_index]
+
+    ## insert catchability
+    FLCore::index.q(idx)[] <- surveyq
+
+    # ------------------------------------------------#
+    # SECTION 3.3: (Optional) catchability uncertainty
+    # ------------------------------------------------#
+    # SECTION 3.3.1: (Optional) extend stock year dimension to new range
+    # -------------------------------------------------------------------#
+
+    if(!is.null(yearRange)) {
+      idx <- window(idx, end = yearRange[2])
+    }
+
+    # -------------------------------------------------------------------#
+    # SECTION 3.3.2: (Optional) extend stock iteration dimension and add
+    #                catchability uncertainty
+    # -------------------------------------------------------------------#
+
+    if(uncertainty == TRUE & niter > 1) {
+
+      ## Extend stock iteration dimensions
+      idx <- propagate(idx, niter)
+
+      ## Fill index.q slot
+      FLCore::index.q(idx)[,,,,,-1] <- exp(t(variates[,
+                     colnames(variates) == "logFpar",
+                     drop = FALSE][, surveyq_index]))
+
+    }
+
     return(idx)
 
   }))
@@ -95,11 +197,6 @@ multiSAM2FLIndex <- function(SAMfit,
   ## update fleet names
   names(idxs) <- survey_names
 
-  # ======================================#
-  # SECTION 2: Extract survey catchability
-  # ======================================#
-
-
-
+  ## return stock survey indices
   return(idxs)
 }

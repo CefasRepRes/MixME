@@ -4,14 +4,15 @@
 # date: 'July 2022'
 # ---
 #
-#' Convert SAM fitted object into \code{FLStock} and either
-#' \code{FLFisheries} or \code{FLFleets} objects
+#' Convert SAM fitted object into \code{FLStocks},\code{FLFisheries} and
+#' \code{FLIndices} objects
 #'
 #' This function takes a SAM fitted stock assessment object as input and
-#' returns a list of \code{FLStocks} and either \code{FLFisheries}
-#' or \code{FLFleets} objects.
+#' returns a list of \code{FLStocks}, \code{FLFisheries} and a nested list of
+#' \code{FLIndices} objects.
 #'
-#' Returned \code{FLStock} objects contain data for:
+#' \code{FLStocks} contain one or more \code{FLStock} objects. Each
+#' \code{FLStock} object contains data for a given stock in the following slots:
 #' \itemize{
 #'   \item stock numbers-at-age (\code{stock.n})
 #'   \item catch numbers-at-age (\code{catch.n})
@@ -26,16 +27,19 @@
 #'   \item discards mean weight-at-age (\code{discards.wt})
 #' }
 #'
-#' Catch numbers and fishing mortality-at-age are summed across commercial fleets,
-#' whereas catch, landings and discards mean weight-at-age are averages weighted
-#' by the catch number proportions by commercial fleets. Landings and discards
-#' numbers-at-age are calculated using the catch proportion weighted mean
-#' landings fraction.
+#' Catch numbers and fishing mortality-at-age are summed across commercial
+#' fleets, whereas catch, landings and discards mean weight-at-age are averages
+#' weighted by the catch number proportions by commercial fleets. Landings and
+#' discards numbers-at-age are calculated using the catch proportion weighted
+#' mean landings fraction.
 #'
 #' The function also updates the Fbar range for the stock from the fitted
 #' SAM object.
 #'
-#' Returned \code{FLFleet} objects contain data for:
+#' Returned \code{FLFisheries} objects contain one or more \code{FLFishery}
+#' objects, each representing a distinct fishing fleet. Each \code{FLFishery}
+#' object contains an \code{FLCatch} for each stock harvested. \code{FLCatch}
+#' contains data for:
 #' \itemize{
 #'   \item partial fishing mortality-at-age (\code{harvest})
 #'   \item catch numbers-at-age (\code{catch.n})
@@ -46,10 +50,16 @@
 #'   \item discards mean weight-at-age (\code{discards.wt})
 #' }
 #'
+#' Returned \code{FLIndices} objects contain one or more \code{FLIndex} objects.
+#' These represent the survey indices for a given stock. Each \code{FLIndex}
+#' contains data for:
+#' \itemize{
+#'   \item survey index values (\code{index})
+#'   \item survey catchability (\code{index.q})
+#' }
+#'
 #' @param SAMfit A SAM fitted stock assessment model object or
 #'               a named list of SAM fitted stock assessment model objects
-#' @param fltClass Class structure to be used for fleets, defaults to
-#'                 \code{FLFishery}. Either \code{FLFishery} or \code{FLFleet}
 #' @param stkname Stock name to be used in  \code{FLFishery} or \code{FLFleet}
 #'                object. Ignored if object of class \code{sam_list} is supplied.
 #' @param useSAMcatch Optional argument. If \code{TRUE}, the fitted catches estimated
@@ -65,11 +75,11 @@
 #'             reproducible outputs. Defaults to \code{NULL}.
 #'
 #'
-#' @return A list containing an \code{FLStock} and \code{FLFleets} objects
+#' @return A list containing \code{FLStocks}, \code{FLFisheries} and
+#'         \code{FLIndices} objects
 #'
 #' @section  Warning:
-#' This function requires \code{FLCore} and either \code{FLFishery} or
-#' \code{FLFleet} to operate.
+#' This function requires \code{FLCore} and \code{FLFishery} to operate.
 #'
 #' @export
 
@@ -216,9 +226,22 @@ setMethod(f = "multiSAM2FLR",
                                        samVariates = samVariates,
                                        seed = seed)
 
+            # ==============================#
+            # Process Survey data
+            # ==============================#
 
+            idx <- multiSAM2FLIndex(SAMfit  = SAMfit,
+                                    uncertainty = uncertainty,
+                                    niter = niter,
+                                    samVariates = samVariates,
+                                    seed = seed)
+            idxs <- list(idx)
+            names(idxs) <- stkname
+
+            # return outputs
             return(list(stks = stks,
-                        flts = flts))
+                        flts = flts,
+                        idxs = idxs))
 
 
           })
@@ -399,7 +422,24 @@ setMethod(f = "multiSAM2FLR",
               }
             }
 
+            # ------------------------------#
+            # Process Survey data
+            # ------------------------------#
+
+            idxs <- lapply(1:nstks, function(x) {
+
+              multiSAM2FLIndex(SAMfit = SAMfit[[x]],
+                               yearRange = c(dim_minyear, dim_maxyear),
+                               uncertainty = uncertainty,
+                               niter = niter,
+                               samVariates = variatesList[[x]],
+                               seed = seed)
+
+            })
+            names(idxs) <- names(SAMfit)
+
             return(list(stks = stks,
-                        flts = flts))
+                        flts = flts,
+                        idxs = idxs))
 
           })
