@@ -225,11 +225,24 @@ fwdMixME <- function(om,                       # FLBiols/FLFisheries
       ## are calculated. If advice is landings-based, then overquota discards will
       ## take landings mean weights-at-age. If advice is catch-based, then overquota
       ## discards will take catch mean weights-at-age.
+      
+      ## Check if any landings or discards are missing weight information.
+      ## If so, throw error.
+      if(any(landings.n(om_fwd$fisheries[[f]][[s]])[,ac(yr)] > 0 & 
+         landings.wt(om_fwd$fisheries[[f]][[s]])[,ac(yr)] == 0))
+        stop(paste("In 'fwdMixME': for fleet ", f, " and stock ", s, 
+                   ", landings.n > 0 but 'landings.wt' is 0"))
+      
+      if(any(discards.n(om_fwd$fisheries[[f]][[s]])[,ac(yr)] > 0 & 
+         discards.wt(om_fwd$fisheries[[f]][[s]])[,ac(yr)] == 0))
+        stop(paste("In 'fwdMixME': for fleet ", f, " and stock ", s, 
+                   ", discards.n > 0 but 'discards.wt' is 0"))
 
       ## If advice is landings based
       if(adviceType == "landings") {
 
-        overquota_ind <- which(landings(om_fwd$fisheries[[f]][[s]])[,ac(yr)] > tracking$quota[s,f,ac(yr),])
+        overquota_ind <- 
+          which(landings(om_fwd$fisheries[[f]][[s]])[,ac(yr)] > tracking$quota[s,f,ac(yr),])
 
         if(length(overquota_ind) > 0){
 
@@ -240,7 +253,9 @@ fwdMixME <- function(om,                       # FLBiols/FLFisheries
           ## - calculate proportion of discards numbers that are overquota (used to update discard weights)
 
           ## Calculate over-quota biomass
-          overquota_qty <- (landings(om_fwd$fisheries[[f]][[s]])[,ac(yr)][overquota_ind] - tracking$quota[s,f,ac(yr),][overquota_ind])
+          overquota_qty <- 
+            (landings(om_fwd$fisheries[[f]][[s]])[,ac(yr)][overquota_ind] - 
+               tracking$quota[s,f,ac(yr),][overquota_ind])
 
           # NOTE:
           # In reality I would expect the selection pattern to be more heavily
@@ -261,15 +276,20 @@ fwdMixME <- function(om,                       # FLBiols/FLFisheries
                 "/")
 
           ## update landings and discards numbers
-          om$flts[[f]][[s]]@landings.n[,ac(yr)][overquota_ind] <- om$flts[[f]][[s]]@landings.n[,ac(yr)][overquota_ind] - overquota_num
-          om$flts[[f]][[s]]@discards.n[,ac(yr)][overquota_ind] <- om$flts[[f]][[s]]@discards.n[,ac(yr)][overquota_ind] + overquota_num
+          om$flts[[f]][[s]]@landings.n[,ac(yr)][overquota_ind] <- 
+            om$flts[[f]][[s]]@landings.n[,ac(yr)][overquota_ind] - overquota_num
+          om$flts[[f]][[s]]@discards.n[,ac(yr)][overquota_ind] <- 
+            om$flts[[f]][[s]]@discards.n[,ac(yr)][overquota_ind] + overquota_num
 
           ## Update tracking object
           tracking$overquota[s,f, ac(yr),overquota_ind] <-
             quantSums(om$flts[[f]][[s]]@landings.wt[,ac(yr)][overquota_ind] %*% overquota_num)
 
           ## proportion of over-quota landings and discards numbers
-          overdisc_prop <- sweep(overquota_num, c(1:6), (discards.n(om_fwd$fisheries[[f]][[s]])[,ac(yr)][overquota_ind] + overquota_num), "/")
+          overdisc_prop <- 
+            sweep(overquota_num, c(1:6), 
+                  (discards.n(om_fwd$fisheries[[f]][[s]])[,ac(yr)][overquota_ind] + 
+                     overquota_num), "/")
 
           # Discards mean weight will now be higher because of discarding of
           # larger fish - calculate weighted mean for each age
@@ -284,12 +304,15 @@ fwdMixME <- function(om,                       # FLBiols/FLFisheries
       ## If advice is catch-based
       if(adviceType == "catch"){
 
-        overquota_ind <- which(catch(om_fwd$fisheries[[f]][[s]])[,ac(yr)] > tracking$quota[s,f,ac(yr),])
+        overquota_ind <- which(catch(om_fwd$fisheries[[f]][[s]])[,ac(yr)] > 
+                                 tracking$quota[s,f,ac(yr),])
 
         if(length(overquota_ind) > 0) {
 
           ## Calculate overquota biomass
-          overquota_qty <- (catch(om_fwd$fisheries[[f]][[s]])[,ac(yr)][,,,,,overquota_ind] - tracking$quota[s,f,ac(yr),][overquota_ind])
+          overquota_qty <- 
+            (catch(om_fwd$fisheries[[f]][[s]])[,ac(yr)][,,,,,overquota_ind] - 
+               tracking$quota[s,f,ac(yr),][overquota_ind])
 
           ## Calculate landings biomass fraction for relevant iterations
           landings_frac <- sweep((landings.wt(om_fwd$fisheries[[f]][[s]])[,ac(yr)][,,,,,overquota_ind] %*%
@@ -312,36 +335,56 @@ fwdMixME <- function(om,                       # FLBiols/FLFisheries
                                  c(2:6),
                                  (discards(om_fwd$fisheries[[f]][[s]])[,ac(yr)][,,,,,overquota_ind]),
                                  "/")
+          
+          ## Gneerate objects to hold overquota numbers
+          overquota_landings_num <- landings.n(om_fwd$fisheries[[f]][[s]])[,ac(yr)] %=% 0
+          overquota_discards_num <- discards.n(om_fwd$fisheries[[f]][[s]])[,ac(yr)] %=% 0
 
           ## Calculate overquota numbers
-          overquota_landings_num <- sweep(overquota_qty %*% landings_dist %*% landings_frac,
-                                          c(1:6),
-                                 landings.wt(om_fwd$fisheries[[f]][[s]])[,ac(yr)][,,,,,overquota_ind],
-                                 "/")
-          overquota_discards_num <- sweep(overquota_qty %*% discards_dist %*% (1 - landings_frac),
+          overquota_landings_num[,,,,,overquota_ind] <- 
+            FLCore::FLQuant(
+              sweep(sweep(landings_dist, c(2:6), overquota_qty, "*") * landings_frac,
+                    c(1:6),
+                    landings.wt(om_fwd$fisheries[[f]][[s]])[,ac(yr)][,,,,,overquota_ind],"/"))
+          
+          overquota_discards_num[,,,,,overquota_ind] <- FLCore::FLQuant(sweep(
+            sweep(discards_dist, c(2:6), overquota_qty, "*") * (1 - landings_frac),
                                           c(1:6),
                                           discards.wt(om_fwd$fisheries[[f]][[s]])[,ac(yr)][,,,,,overquota_ind],
-                                          "/")
+                                          "/"))
+          
+          ## If landings/discards weight is zero for any age, this will result in NaN.
+          ## Replace these cases with zero numbers
+          overquota_landings_num[landings.wt(om_fwd$fisheries[[f]][[s]])[,ac(yr)] == 0] <- 0
+          overquota_discards_num[discards.wt(om_fwd$fisheries[[f]][[s]])[,ac(yr)] == 0] <- 0
 
           ## update landings and discards numbers
-          om$flts[[f]][[s]]@landings.n[,ac(yr)][,,,,,overquota_ind] <- om$flts[[f]][[s]]@landings.n[,ac(yr)][,,,,,overquota_ind] - overquota_landings_num
-          om$flts[[f]][[s]]@discards.n[,ac(yr)][,,,,,overquota_ind] <- om$flts[[f]][[s]]@discards.n[,ac(yr)][,,,,,overquota_ind] + overquota_landings_num
+          om$flts[[f]][[s]]@landings.n[,ac(yr)][,,,,,overquota_ind] <- 
+            om$flts[[f]][[s]]@landings.n[,ac(yr)][,,,,,overquota_ind] - 
+            overquota_landings_num[,,,,,overquota_ind]
+          
+          om$flts[[f]][[s]]@discards.n[,ac(yr)][,,,,,overquota_ind] <- 
+            om$flts[[f]][[s]]@discards.n[,ac(yr)][,,,,,overquota_ind] + 
+            overquota_landings_num[,,,,,overquota_ind]
 
           # NOTE: I need to update the tracking object before I update discard
           #       mean weights-at-age
 
           ## Update tracking object
           tracking$overquota[s,f, ac(yr),overquota_ind] <-
-            quantSums(om$flts[[f]][[s]]@discards.wt[,ac(yr)][,,,,,overquota_ind] %*% overquota_discards_num +
-                        om$flts[[f]][[s]]@landings.wt[,ac(yr)][,,,,,overquota_ind] %*% overquota_landings_num)
+            quantSums(om$flts[[f]][[s]]@discards.wt[,ac(yr)][,,,,,overquota_ind] * 
+                        overquota_discards_num[,,,,,overquota_ind] +
+                        om$flts[[f]][[s]]@landings.wt[,ac(yr)][,,,,,overquota_ind] * 
+                        overquota_landings_num[,,,,,overquota_ind])
 
           ## Calculate proportion of overquota discards numbers
-          overdisc_prop <- sweep(overquota_landings_num, c(1:6), om$flts[[f]][[s]]@discards.n[,ac(yr)][,,,,,overquota_ind], "/")
+          overdisc_prop <- sweep(overquota_landings_num[,,,,,overquota_ind], c(1:6), 
+                                 om$flts[[f]][[s]]@discards.n[,ac(yr)][,,,,,overquota_ind], "/")
 
           ## Adjust discards mean weight-at-age
           om$flts[[f]][[s]]@discards.wt[,ac(yr)][,,,,,overquota_ind] <-
-            om$flts[[f]][[s]]@discards.wt[,ac(yr)][,,,,,overquota_ind] %*% (1 - overdisc_prop) +
-            om$flts[[f]][[s]]@landings.wt[,ac(yr)][,,,,,overquota_ind] %*% (overdisc_prop)
+            om$flts[[f]][[s]]@discards.wt[,ac(yr)][,,,,,overquota_ind] * (1 - overdisc_prop) +
+            om$flts[[f]][[s]]@landings.wt[,ac(yr)][,,,,,overquota_ind] * (overdisc_prop)
 
         }
       }

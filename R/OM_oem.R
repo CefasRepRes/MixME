@@ -9,9 +9,16 @@
 #' Function to generate stock observations (fleet catches and survey indices)
 #' with (optional) uncertainty.
 #'
-#' @param om An operating model
-#' @param deviances ...
-#' @param observations ...
+#' @param om The operating model representing the true state and dynamics of 
+#'           the system. A named list comprising stock information (\code{FLStocks}) 
+#'           and fishing fleet information (\code{FLFisheries}).
+#' @param deviances Environmental noise in stock catch and survey data for the 
+#'                  historical and projection periods. A nested named list 
+#'                  with the elements \code{stk} and \code{idx}. See details.
+#' @param observations The structure of stock catch and survey data used to
+#'                     estimate stock status.
+#'                     A nested named list with the elements \code{stk} 
+#'                     and \code{idx}.
 #' @param args List of additional arguments
 #' @param tracking A named list of tracking objects to monitor emergent dynamic
 #'                 properties
@@ -30,17 +37,32 @@
 #' @export
 
 oemMixME <- function(om,
-                    deviances,
-                    observations,
-                    args,
-                    tracking,
-                    catch_timing = NULL, # catch timing relative to ay
-                    idx_timing   = NULL, # index timing relative to ay
-                    use_stk_oem         = FALSE,
-                    use_catch_residuals = FALSE,
-                    use_idx_residuals   = FALSE) {
+                     deviances,
+                     observations,
+                     args,
+                     tracking,
+                     catch_timing = NULL, # catch timing relative to ay
+                     idx_timing   = NULL, # index timing relative to ay
+                     use_stk_oem         = FALSE,
+                     use_catch_residuals = FALSE,
+                     use_idx_residuals   = FALSE) {
 
   # SHOULD I BE CLIPPING THE OBSERVATION TIMESERIES TO THE MOST RECENT DATA YEAR?
+  
+  # ---------------------------#
+  # 1. Extract global arguments
+  # 2. Iterative stock observation
+  # 2.1 ... Observed stock catches
+  #   I ...... Use oem observation structure (FLStock) 
+  #     ......... If perfect observations
+  #     ......... If observations with uncertainty
+  #  II ...... Use oem observation structure (FLBiol & FLFishery)
+  # III ...... Use OM structure (FLStock)
+  # 2.2 ... Trim to data period
+  # 2.3 ... Observed survey indices
+  # 3. Return objects
+  # 
+  # ---------------------------#
 
   # ===================================#
   # Error checking
@@ -48,17 +70,29 @@ oemMixME <- function(om,
 
   ## Check that correct structures supplied
   if(!all(names(observations) %in% c("stk","flt","idx")))
-    stop("'observations' must be a named list. Names may be 'stk', 'flt' or 'idx'")
+    stop("In 'oemMixME': 'observations' must be a named list. Names may be 'stk', 'flt' or 'idx'")
   if(!all(names(deviances)    %in% c("stk","flt","idx")))
-    stop("'Deviances' must be a named list. Names may be 'stk', 'flt' or 'idx'")
+    stop("In 'oemMixME': 'Deviances' must be a named list. Names may be 'stk', 'flt' or 'idx'")
 
   ## Check that the correct object classes are supplied
   if(!(class(observations$stk) %in% c("FLStocks","FLBiols")))
-    stop("'stk' must be of class FLStocks or FLBiols")
+    stop("In 'oemMixME': observations 'stk' must be of class FLStocks or FLBiols")
 
   if(!is.null(observations$flt)) {
     if(class(observations$flt) != "FLFisheries")
-      stop("'flt' must be of class FLFisheries")
+      stop("In 'oemMixME': observations 'flt' must be of class FLFisheries")
+  }
+  
+  if(class(observations$stk) == "FLBiols" & is.null(observations$flt)) {
+    stop("In 'oemMixME': If observations 'stk' is of class FLBiols, 'flt' cannot be NULL")
+  }
+  
+  ## Check that options are logical
+  if(any(use_catch_residuals == TRUE) & is.null(deviances$stk)) {
+    stop("In 'oemMixME': 'use_catch_residuals' is TRUE but no catch deviances supplied")
+  }
+  if(any(use_idx_residuals == TRUE) & is.null(deviances$idx)) {
+    stop("In 'oemMixME': 'use_idx_residuals' is TRUE but no index deviances supplied")
   }
 
   # ===================================#
@@ -72,15 +106,18 @@ oemMixME <- function(om,
 
   ## Process logical arguments if required
   if(length(use_stk_oem) == 1 & is.logical(use_stk_oem)) {
-    use_stk_oem <- sapply(observations$stk@names, function(x) use_stk_oem,
+    use_stk_oem <- sapply(observations$stk@names, 
+                          function(x) use_stk_oem,
                           USE.NAMES = TRUE)
   }
   if(length(use_catch_residuals) == 1 & is.logical(use_catch_residuals)) {
-    use_catch_residuals <- sapply(observations$stk@names, function(x) use_catch_residuals,
+    use_catch_residuals <- sapply(observations$stk@names, 
+                                  function(x) use_catch_residuals,
                                   USE.NAMES = TRUE)
   }
   if(length(use_idx_residuals) == 1 & is.logical(use_idx_residuals)) {
-    use_idx_residuals <- sapply(observations$stk@names, function(x) use_idx_residuals,
+    use_idx_residuals <- sapply(observations$stk@names, 
+                                function(x) use_idx_residuals,
                                 USE.NAMES = TRUE)
   }
 
@@ -103,7 +140,7 @@ oemMixME <- function(om,
   oemList <- lapply(observations$stk@names, function(x){
 
     # ------------------------------------#
-    # SECTION 2.2: Observed stock catches #
+    # SECTION 2.1: Observed stock catches #
     # ------------------------------------#
 
     # ---------------------------------------------------#
@@ -116,18 +153,21 @@ oemMixME <- function(om,
 
       ## use observations object
       stk0 <- observations$stk[[x]]
+      
+      ## Extract all catches for this stock
+      fltcatches <- lapply(om$flts, "[[", x)
 
       # If perfect observations
       # -----------------------#
 
       if(use_catch_residuals[x] == FALSE){
-
+        
         ## Calculate overall landings and discards
-        fltlandings <- sapply(1:length(om$flts), function(y){
-          om$flts[[y]][[x]]@landings.n
-        }, simplify = "array")
-        fltdiscards <- sapply(1:length(om$flts), function(y){
-          om$flts[[y]][[x]]@discards.n
+        fltlandings <- sapply(names(fltcatches), function(y){
+          fltcatches[[y]]@landings.n
+        }, simplify = "array", USE.NAMES = TRUE)
+        fltdiscards <- sapply(names(fltcatches), function(y){
+          fltcatches[[y]]@discards.n
         }, simplify = "array")
 
         ## Sum over fleets
@@ -144,26 +184,32 @@ oemMixME <- function(om,
       # --------------------------------#
 
       if(use_catch_residuals[x] == TRUE){
-
+        
+        # The catch residuals are assumed to be available for each fleet
+        # in the form of a 7-dimensional matrix [age, year, ..., iter, fleet]
+        
+        if(dim(deviances$stk[[x]]$catch.dev) != 7)
+          stop(paste0("In 'oemMixME': For stock ",x,", catch residuals must be a 7-D array with the dimensions: age, year, unit, season, area, iter, and fleet"))
+        
         ## Extract overall catch numbers-at-age
-        fltcatches <- sapply(1:length(om$flts), function(y){
-          catch.n(om$flts[[y]][[x]])
-        }, simplify = "array")
+        fltcatchn <- sapply(names(fltcatches), function(y){
+          catch.n(fltcatches[[y]])
+        }, simplify = "array", USE.NAMES = TRUE)
 
         ## Extract landings numbers-at-age
-        fltlandings <- sapply(1:length(om$flts), function(y){
-          om$flts[[y]][[x]]@landings.n
-        }, simplify = "array")
+        fltlandings <- sapply(names(fltcatches), function(y){
+          fltcatches[[y]]@landings.n
+        }, simplify = "array", USE.NAMES = TRUE)
 
         ## Implement catch numbers-at-age uncertainty
-        flt0catches <- fltcatches * deviances$stk[[x]]$catch.dev
+        flt0catchn <- fltcatchn %*% deviances$stk[[x]]$catch.dev
 
         ## Calculate landings fraction
-        catchSel <- sweep(fltlandings, c(1:7), fltcatches, "/")
+        catchSel <- sweep(fltlandings, c(1:7), fltcatchn, "/")
 
         ### split catch into discards and landings, based on landing fraction
-        flt0landings <- sweep(flt0catches, c(1:7), catchSel, "*")
-        flt0discards <- sweep(flt0catches, c(1:7), (1 - catchSel), "*")
+        flt0landings <- sweep(flt0catchn, c(1:7), catchSel, "*")
+        flt0discards <- sweep(flt0catchn, c(1:7), (1 - catchSel), "*")
 
         ## Sum over fleets
         stk0landings <- apply(flt0landings, c(1:6), sum)
@@ -200,11 +246,11 @@ oemMixME <- function(om,
 
     if(use_stk_oem[x] == TRUE & !is.null(observations$flt)) {
 
-      stop("fleet observations not currently implemented")
+      stop("In 'oemMixME': fleet observations not currently implemented")
 
       ## use observations object
       stk0 <- observations$stk[[x]]
-      flt0 <- observations$flt
+      flt0 <- lapply(observations$flt, "[[", x)
 
     }
 
@@ -217,7 +263,7 @@ oemMixME <- function(om,
     # valid for 99% of users
 
     if(use_stk_oem[x] == FALSE) {
-      stop("Automatic definition of stock structure not yet implemented")
+      stop("In 'oemMixME': Automatic definition of stock structure not yet implemented")
 
       if(class(om$stks[[x]]) == "FLStock") {
 
@@ -266,9 +312,9 @@ oemMixME <- function(om,
       }
     }
 
-    # --------------------#
-    # Trim to data period #
-    # --------------------#
+    # ---------------------------------#
+    # SECTION 2.2: Trim to data period #
+    # ---------------------------------#
 
     ## If survey data is more recent than catch data, then trim to survey year
     if(max(idx_timing[[x]]) > max(catch_timing[[x]])) {
@@ -295,16 +341,22 @@ oemMixME <- function(om,
 
     }
 
-    # ------------------------#
-    # Observed survey indices #
-    # ------------------------#
-
+    # -------------------------------------#
+    # SECTION 2.3: Observed survey indices #
+    # -------------------------------------#
+    
+    ## calculate index observations based on updated values in OM
+    observations$idx <- calculateSurvey(stk = om$stk, 
+                                        flt = om$flt,
+                                        idx = observations$idx)
+    
     ## use observed survey indices
     idx0 <- observations$idx
 
     ## should index uncertainty be added?
     if(use_idx_residuals[x] == TRUE) {
-
+      
+      ## loop over each survey index
       idx0 <- lapply(seq_along(idx0), function(idx_i) {
         idx_tmp <- idx0[[idx_i]]
         index(idx_tmp) <- index(idx_tmp) * deviances$idx[[idx_i]]
@@ -316,6 +368,10 @@ oemMixME <- function(om,
                 idx = idx0,
                 tracking = tracking[[x]]$stk))
   })
+  
+  # =====================================#
+  # SECTION 3: Return objects
+  # =====================================#
 
   ## Add names to list
   names(oemList) <- observations$stk@names

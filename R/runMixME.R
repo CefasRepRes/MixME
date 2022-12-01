@@ -52,7 +52,7 @@ runMixME <- function(om,
 
   ## If FLStocks are provided, convert FLStocks into FLBiols
   if(class(om$stks) == "FLStocks") {
-    om$stks <- FLBiols(lapply(om$stks@names,
+    om$stks <- FLCore::FLBiols(lapply(om$stks@names,
                               function(x) {
                                 biol <- as(om$stks[[x]],"FLBiol")
 
@@ -91,11 +91,11 @@ runMixME <- function(om,
       deviances(oem)$stk <- rep(list(NULL), length(observations(oem)$stk))
 
     ## Extract arguments
-    ctrl.oem        <- args(oem)
+    ctrl.oem        <- mse::args(oem)
     ctrl.oem$om     <- om
     ctrl.oem$args   <- args
-    ctrl.oem$observations <- observations(oem)
-    ctrl.oem$deviances    <- deviances(oem)
+    ctrl.oem$observations <- mse::observations(oem)
+    ctrl.oem$deviances    <- mse::deviances(oem)
     ctrl.oem$tracking     <- tracking
 
     ## Apply observation error model to each stock
@@ -118,7 +118,7 @@ runMixME <- function(om,
     # -------------------------------------------------------------------------#
 
     ## Extract arguments
-    ctrl.est          <- args(ctrl_obj$est)
+    ctrl.est          <- mse::args(ctrl_obj$est)
     ctrl.est$stk      <- stk0
     ctrl.est$idx      <- idx0
     ctrl.est$args     <- args
@@ -148,7 +148,7 @@ runMixME <- function(om,
     if(!is.null(ctrl_obj$phcr)){
 
       ## Set up inputs to parameterise harvest control rule
-      ctrl.phcr          <- args(ctrl_obj$phcr)
+      ctrl.phcr          <- mse::args(ctrl_obj$phcr)
       ctrl.phcr$stk      <- stk0
       ctrl.phcr$args     <- args
       ctrl.phcr$tracking <- tracking
@@ -160,7 +160,7 @@ runMixME <- function(om,
     }
 
     ## Set up inputs to HCR
-    ctrl.hcr          <- args(ctrl_obj$hcr)
+    ctrl.hcr          <- mse::args(ctrl_obj$hcr)
     ctrl.hcr$stk      <- stk0
     ctrl.hcr$args     <- args
     ctrl.hcr$tracking <- tracking
@@ -179,7 +179,7 @@ runMixME <- function(om,
     # -------------------------------------------------------------------------#
 
     ## Set up inputs to implementation system
-    ctrl.is          <- args(ctrl_obj$isys)
+    ctrl.is          <- mse::args(ctrl_obj$isys)
     ctrl.is$ctrl     <- ctrl
     ctrl.is$stk      <- stk0
     ctrl.is$sr       <- sr0
@@ -196,7 +196,7 @@ runMixME <- function(om,
     # -------------------------------------------------------------------------#
 
     ## Set up inputs to forward projection module
-    ctrl.fwd          <- args(ctrl_obj$fwd)
+    ctrl.fwd          <- mse::args(ctrl_obj$fwd)
     ctrl.fwd$om       <- om
     ctrl.fwd$ctrl     <- ctrl
     ctrl.fwd$args     <- args

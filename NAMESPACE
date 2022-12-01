@@ -4,6 +4,7 @@ useDynLib(MixME)
 importFrom(Rcpp, sourceCpp)
 
 export(FLBiols2List)
+export(calculateSurvey)
 export(catchBaranov)
 export(effortBaranov)
 export(estMixME)

@@ -4,7 +4,14 @@
 \alias{multiSAM2FLIndex}
 \title{Extract survey data from a SAM fitted object to an \code{FLIndices} object}
 \usage{
-multiSAM2FLIndex(SAMfit, yearRange)
+multiSAM2FLIndex(
+  SAMfit,
+  yearRange = NULL,
+  uncertainty = FALSE,
+  niter = 1000,
+  samVariates = NULL,
+  seed = NULL
+)
 }
 \arguments{
 \item{yearRange}{}
