@@ -144,3 +144,86 @@ makeTracking <- function(om,
 
   return(tracking)
 }
+
+# Update tracking object with OM properties for a given year
+# ===========================================================#
+# 
+# Function updates total stock biomass (B.om), spawning stock biomass (SB.om),
+# Landings (L.om), Discards (D.om), Catch (C.om), mean fishing mortality (F.om)
+# and fishing selectivity at age
+#' @export
+
+updateTrackingOM <- function(om, tracking, args, yr) {
+  
+  ## Update tracking object - True Stock Properties
+  for(x in om$stks@names) {
+    
+    ## Update stock numbers
+    tracking[[x]]$stk["B.om",  ac(yr)] <- 
+      quantSums(om$stks[[x]]@n[,ac(yr)] * om$stks[[x]]@wt[,ac(yr)])
+    tracking[[x]]$stk["SB.om", ac(yr)] <- 
+      quantSums(om$stks[[x]]@n[,ac(yr)] * 
+                  om$stks[[x]]@wt[,ac(yr)] * 
+                  om$stks[[x]]@mat$mat[,ac(yr)])
+    
+    ## Extract catches for stock
+    fltcatches <- lapply(om$flts, "[[", x)
+
+    ## Calculate overall landings and discards
+    fltlandings <- sapply(1:length(fltcatches), function(y){
+      if(!is.null(fltcatches[[y]])) {
+        landings(fltcatches[[y]])[,ac(yr)]
+      } else {
+        FLQuant(0, dimnames = list(year = ac(yr), iter = dimnames(om$stks[[x]])$iter))
+      }
+    }, simplify = "array")
+    
+    fltdiscards <- sapply(1:length(fltcatches), function(y){
+      if(!is.null(fltcatches[[y]])) {
+        discards(fltcatches[[y]])[,ac(yr)]
+      } else {
+        FLQuant(0, dimnames = list(year = ac(yr), iter = dimnames(om$stks[[x]])$iter))
+      }
+    }, simplify = "array")
+    
+    if(is.array(fltlandings)) {
+      fltlandings <- apply(fltlandings, c(1:6), sum)
+      fltdiscards <- apply(fltdiscards, c(1:6), sum)
+    } else {
+      fltlandings <- sum(fltlandings)
+      fltdiscards <- sum(fltdiscards)
+    }
+
+
+    
+    ## update landings, discards and catch numbers in tracking object
+    tracking[[x]]$stk["L.om",  ac(yr)] <- fltlandings
+    tracking[[x]]$stk["D.om",  ac(yr)] <- fltdiscards
+    tracking[[x]]$stk["C.om",  ac(yr)] <- fltlandings + fltdiscards
+    
+    ## Update harvest
+    fltFage <- sapply(1:length(om$flts), function(y){
+      
+      if(!is.null(om$flts[[y]][[x]])) {
+        om$flts[[y]][[x]]@catch.q[1,] %*% 
+          om$flts[[y]]@effort[,ac(yr)] %*% 
+          om$flts[[y]][[x]]@catch.sel[,ac(yr)]
+      } else {
+        
+        ## A bit of a hacky way to retrieve correct dimensions
+        FLQuant(0, dimnames = list(age = dimnames(om$stk[[x]])$age, 
+                                   year = yr, 
+                                   iter = dimnames(om$stk[[x]])$iter))
+      }
+    }, simplify = "array")
+    
+    Fage <- apply(fltFage, c(1:6), sum)
+    tracking[[x]]$stk["F.om",  ac(yr)] <- 
+      apply(Fage[ac(args$frange[[x]][1]:args$frange[[x]][2]),,,,,,drop = FALSE], c(2:6), mean)
+    
+    ## Save Selectivity
+    tracking[[x]]$sel_om[,ac(yr)] <-  sweep(Fage, c(2:6), tracking[[x]]$stk["F.om",  ac(yr)], "/")
+  }
+  
+  return(tracking)
+}

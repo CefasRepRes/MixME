@@ -1,5 +1,5 @@
 # ---
-# title: 'Main function to run MIME'
+# title: 'Main function to run MixME'
 # author: 'Matthew Pace'
 # date: 'August 2022'
 # ---
@@ -35,12 +35,27 @@ runMixME <- function(om,
   # ===========================================================================#
 
   ## om must contain "stks" and "flts"
+  if(!any(names(om) == "stks") | !any(names(om) == "flts")) 
+     stop("'om' must contain stock and fleet data in 'stks' and 'flts' respectively")
 
-  ## stock names in "stks", "flts" and advice objects must match
+  ## stock names in "stks", "flts" must match
+  if(!all(names(om$stks) %in% unique(unlist(lapply(om1$flts, names)))))
+    stop("stock names in 'stks' and catches names in 'flts' must match")
 
-  ## args must contain "adviceType"
+  ## args must contain critical elements
+  if(!any(names(args) == c("adviceType"))) stop("'adviceType' missing in 'args'.")
+  if(!any(names(args) == c("iy"))) stop("Intermediate year 'iy' missing in 'args'.")
+  
+  if(args$iy > args$fy) stop("Final year 'fy' must be greater than intermediate year 'iy'")
 
   ## Check that there are no NAs in critical slots
+  
+  ## If management lag or data lag > 0, first projection year must be the 
+  ## intermediate year and OM must contain catch.
+  
+  ## If banking and borrowing is used make sure forecast extends to TACyr+1 
+  ## --- do I really want to hard code this procedure?? Maybe better to bundle
+  ##     into implementation system?? 
 
   ## Define discarding options if not already specified
   overquotaDiscarding <- TRUE
@@ -65,9 +80,16 @@ runMixME <- function(om,
 
   ## define projection years
   projyrs <- (args$iy):(args$fy-1)
+  
+  ## if stock estimation methods are used, add metrics
+  if(is.function(ctrl_obj$est@args$estmethod)) {
+    addmetrics <- c("conv.est") # assessment model fit convergence code
+  } else {
+    addmetrics <- NULL
+  }
 
   ## Generate tracker for optimisation and warnings
-  tracking <- makeTracking(om = om, projyrs = projyrs)
+  tracking <- makeTracking(om = om, projyrs = projyrs, addmetrics = addmetrics)
 
   # ===========================================================================#
   # Run mp
@@ -81,6 +103,17 @@ runMixME <- function(om,
 
     ## Update current (assessment) year in args
     args$ay <- yr
+    
+    # -------------------------------------------------------------------------#
+    # Track OM in initial projection year
+    # -------------------------------------------------------------------------#
+    # Applies if fishery-stock dynamics are completed for this year (i.e. no
+    # management this year).
+    
+    if(yr == args$iy & args$management_lag > 0) {
+      
+      tracking <- updateTrackingOM(om = om, tracking = tracking, args = args, yr = yr)
+    }
 
     # -------------------------------------------------------------------------#
     # Observation Error Module
@@ -99,7 +132,7 @@ runMixME <- function(om,
     ctrl.oem$tracking     <- tracking
 
     ## Apply observation error model to each stock
-    out <- do.call("oemMixME", ctrl.oem)
+    out <- do.call("oemRun", ctrl.oem)
 
     # I'M CURRENTLY FORCING THE OBSERVED STOCKS TO BE FLSTOCKS... I PROBABLY WANT
     # TO ALLOW FOR FLBIOLS AND FLFLEETS TOO...
@@ -130,7 +163,7 @@ runMixME <- function(om,
     }
 
     ## Run the estimation module
-    out      <- do.call("estMixME", ctrl.est)
+    out      <- do.call("estRun", ctrl.est)
 
     ## Extract results
     stk0 <- out$stk
@@ -170,7 +203,7 @@ runMixME <- function(om,
     }
 
     ## Run HCR module
-    out      <- do.call("hcrMixME", ctrl.hcr)
+    out      <- do.call("hcrRun", ctrl.hcr)
     ctrl     <- out$ctrl
     tracking <- out$tracking
 
@@ -187,7 +220,7 @@ runMixME <- function(om,
     ctrl.is$tracking <- tracking
 
     ## Run implementation system
-    out      <- do.call("isysMixME", ctrl.is)
+    out      <- do.call("isysRun", ctrl.is)
     ctrl     <- out$ctrl
     tracking <- out$tracking
 
@@ -213,5 +246,7 @@ runMixME <- function(om,
   # ===========================================================================#
 
   return(list(om       = om,
-              tracking = tracking))
+              tracking = tracking,
+              ctrl_obj = ctrl_obj,
+              args     = args))
 }

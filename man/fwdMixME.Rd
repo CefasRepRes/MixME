@@ -9,7 +9,6 @@ fwdMixME(
   ctrl,
   args,
   tracking,
-  adviceType = "catch",
   sr_residuals_mult = TRUE,
   effort_max = 100,
   proc_res = NULL,

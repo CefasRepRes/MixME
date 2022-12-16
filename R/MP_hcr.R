@@ -61,104 +61,80 @@ phcrMixME <- function(stk, args, hcrpars, tracking) {
 #'
 #' @export
 
-hcrMixME <- function(stk,
+hcrMixME <- function(x,
+                     stk,
                     args,
                     hcrpars = NULL,
                     hcrmethod = NULL,
                     ctrg = NULL,
                     ftrg = NULL,
-                    tracking,
-                    ... ) {
-
+                    tracking) {
+  
   ## extract timings
   ay   <- args$ay             # current (assessment) year
   mlag <- args$management_lag # lag between assessment year and advice year
-
-  ## TO DO - How to apply a multistock harvest control rule? Cannot loop over
-  ##         each stock in that case... How to handle a mix of single stock and
-  ##         multistock harvest control rules?
-
-  ## TO DO - How to handle stocks that are not assessed but are simply by-catch?
-
-  ## Extract the methods to be used for each stock
-  #hcrmethod <- args$hcrmethod
-
-  ctrlList <- lapply(names(stk), function(x){
-
-    ## IF NOT DONE PREVIOUSLY - NEED TO CLIP THE STOCK TO
-    ## THE ADVICE YEAR - MIGHT BECOME REDUNDANT ONCE
-    ## I HAVE A PERFECT OR IMPERFECT OBSERVATION MODEL
-
-    stk0 <- window(stk[[x]], end = ay+mlag)
-
-    ## Run user-supplied method (if provided)
-    if(is.function(hcrmethod[[x]])){
-
-      out <- do.call(hcrmethod[[x]],
-                     list(stk      = stk0,
-                          args     = args,
-                          hcrpars  = hcrpars[[x]],
-                          tracking = tracking[[x]]))
-
-      ## Run ICES Harvest control Rule
-    } else if (hcrmethod[[x]] == "hcrICES"){
-
-      out <- hcrICES(stk      = stk0,
-                     args     = args,
-                     hcrpars  = hcrpars[[x]],
-                     tracking = tracking[[x]])
-
-      ## Run Fixed F advice
-    } else if (hcrmethod[[x]] == "hcrFixedF"){
-
-      out <- mse::fixedF.hcr(stk      = stk0,
-                             ftrg     = ftrg[[x]],
-                             args     = args,
-                             tracking = tracking[[x]])
-
-      ## Run Fixed Catch advice
-    } else if (hcrmethod[[x]] == "hcrFixedC"){
-
-      out <- mse::fixedC.hcr(stk  = stk0,
-                             ctrg = ctrg[[x]],
-                             args = args,
-                             tracking = tracking[[x]])
-
-      # ctrl <- hcrFixedC(stk  = stk[[x]],
-      #                   Ctrg = Ctrg[[x]],
-      #                   args = args)
-
-    } else {
-      stop("Only user-supplied functions, 'hcrICES', 'hcrFixedC' and 'hcrFixedF' are currently supported")
-    }
-
-    # A bit of a hacky fix to flexibly handle control object structures.
-    # 'value' is either a row or col name.
-
-    ## Update tracking
-    if("value" %in% rownames(out$ctrl@iters[,,])) { # ctrl structure from hcrICES
-      out$tracking$advice[1,ac(args$ay),] <- out$ctrl@iters[,,]["value",]
-    }
-    if("value" %in% colnames(out$ctrl@iters[,,])) { # ctrl structure from fixedF
-      out$tracking$advice[1,ac(args$ay),] <- out$ctrl@iters[,,][,"value"][1]
-    }
-
-    ## return control object
-    return(out)
-  })
-
-  ## A bit of a shoddy way of re-organising our returned list
-  ctrl <- vector(mode = "list", length = length(stk))
-  for(x in 1:length(stk)) {
-
-    ctrl[[x]]     <- ctrlList[[x]]$ctrl
-    tracking[[x]] <- ctrlList[[x]]$tracking
-
+  
+  ## IF NOT DONE PREVIOUSLY - NEED TO CLIP THE STOCK TO
+  ## THE ADVICE YEAR - MIGHT BECOME REDUNDANT ONCE
+  ## I HAVE A PERFECT OR IMPERFECT OBSERVATION MODEL
+  
+  stk0 <- window(stk[[x]], end = ay+mlag)
+  
+  ## Run user-supplied method (if provided)
+  if(is.function(hcrmethod[[x]])){
+    
+    out <- do.call(hcrmethod[[x]],
+                   list(stk      = stk0,
+                        args     = args,
+                        hcrpars  = hcrpars[[x]],
+                        tracking = tracking[[x]]))
+    
+    ## Run ICES Harvest control Rule
+  } else if (hcrmethod[[x]] == "hcrICES"){
+    
+    out <- hcrICES(stk      = stk0,
+                   args     = args,
+                   hcrpars  = hcrpars[[x]],
+                   tracking = tracking[[x]])
+    
+    ## Run Fixed F advice
+  } else if (hcrmethod[[x]] == "hcrFixedF"){
+    
+    out <- mse::fixedF.hcr(stk      = stk0,
+                           ftrg     = ftrg[[x]],
+                           args     = args,
+                           tracking = tracking[[x]])
+    
+    ## Run Fixed Catch advice
+  } else if (hcrmethod[[x]] == "hcrFixedC"){
+    
+    out <- mse::fixedC.hcr(stk  = stk0,
+                           ctrg = ctrg[[x]],
+                           args = args,
+                           tracking = tracking[[x]])
+    
+    # ctrl <- hcrFixedC(stk  = stk[[x]],
+    #                   Ctrg = Ctrg[[x]],
+    #                   args = args)
+    
+  } else {
+    stop("Only user-supplied functions, 'hcrICES', 'hcrFixedC' and 'hcrFixedF' are currently supported")
   }
-  names(ctrl) <- names(stk)
-
-  ## return control
-  return(list(ctrl = ctrl, tracking = tracking))
+  
+  # A bit of a hacky fix to flexibly handle control object structures.
+  # 'value' is either a row or col name.
+  
+  ## Update tracking
+  if("value" %in% rownames(out$ctrl@iters[,,])) { # ctrl structure from hcrICES
+    out$tracking$advice[1,ac(args$ay),] <- out$ctrl@iters[,,]["value",]
+  }
+  if("value" %in% colnames(out$ctrl@iters[,,])) { # ctrl structure from fixedF
+    out$tracking$advice[1,ac(args$ay),] <- out$ctrl@iters[,,][,"value"][1]
+  }
+  
+  ## return control object
+  return(out)
+  
 }
 
 #' ICES Harvest Control Rule implementation

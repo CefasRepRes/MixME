@@ -32,7 +32,6 @@ fwdMixME <- function(om,                       # FLBiols/FLFisheries
                      ctrl,                     # Control object
                      args,
                      tracking,
-                     adviceType = "catch",     # is advice basis TAC?
                      sr_residuals_mult = TRUE, # are stock recruitment residuals multiplicative?
                      effort_max = 100,         # maximum allowed fishing effort
                      proc_res = NULL,          # where is process error noise stored?
@@ -55,6 +54,13 @@ fwdMixME <- function(om,                       # FLBiols/FLFisheries
 
   ni <- dims(om$stks[[1]])$iter
   yr <- args$ay
+  
+  ## Extract basis of advice
+  if(!is.null(args$adviceType)) {
+    adviceType <- args$adviceType
+  } else {
+    adviceType <- "catch"
+  }
 
   # ===========================================================================#
   # Process Advice
@@ -210,13 +216,16 @@ fwdMixME <- function(om,                       # FLBiols/FLFisheries
       om$stks[[s]]@n[,ac(yr+1)] <- om_fwd$biols[[s]]@n[,ac(yr+1)]
     }
   }
+  
+  ## define list of fleet catches
+  fleetcatches <- lapply(om$flts, names)
 
   ## extract FLFisheries results
   for(f in names(om_fwd$fisheries)){
 
     om$flts[[f]]@effort[,ac(yr)] <- om_fwd$fisheries[[f]]@effort[,ac(yr)]
 
-    for(s in names(om_fwd$biols)){
+    for(s in fleetcatches[[f]]){
 
       om$flts[[f]][[s]]@landings.n[,ac(yr)] <- om_fwd$fisheries[[f]][[s]]@landings.n[,ac(yr)]
       om$flts[[f]][[s]]@discards.n[,ac(yr)] <- om_fwd$fisheries[[f]][[s]]@discards.n[,ac(yr)]
@@ -225,6 +234,8 @@ fwdMixME <- function(om,                       # FLBiols/FLFisheries
       ## are calculated. If advice is landings-based, then overquota discards will
       ## take landings mean weights-at-age. If advice is catch-based, then overquota
       ## discards will take catch mean weights-at-age.
+      
+      cat(f, "...", s, "\n")
       
       ## Check if any landings or discards are missing weight information.
       ## If so, throw error.
@@ -404,43 +415,9 @@ fwdMixME <- function(om,                       # FLBiols/FLFisheries
   # ===========================================================================#
   # Update tracking object
   # ===========================================================================#
-
-  ## Update tracking object - True Stock Properties
-  for(x in om$stks@names) {
-
-    ## Update stock numbers
-    tracking[[x]]$stk["B.om",  ac(yr)] <- quantSums(om$stks[[x]]@n[,ac(yr)] * om$stks[[x]]@wt[,ac(yr)])
-    tracking[[x]]$stk["SB.om", ac(yr)] <- quantSums(om$stks[[x]]@n[,ac(yr)] * om$stks[[x]]@wt[,ac(yr)] * om$stks[[x]]@mat$mat[,ac(yr)])
-
-    ## Calculate overall landings and discards
-    fltlandings <- sapply(1:length(om$flts), function(y){
-      landings(om$flts[[y]][[x]])[,ac(yr)]
-    }, simplify = "array")
-
-    fltdiscards <- sapply(1:length(om$flts), function(y){
-      discards(om$flts[[y]][[x]])[,ac(yr)]
-    }, simplify = "array")
-
-    fltlandings <- apply(fltlandings, c(1:6), sum)
-    fltdiscards <- apply(fltdiscards, c(1:6), sum)
-
-    ## update landings, discards and catch numbers in tracking object
-    tracking[[x]]$stk["L.om",  ac(yr)] <- fltlandings
-    tracking[[x]]$stk["D.om",  ac(yr)] <- fltdiscards
-    tracking[[x]]$stk["C.om",  ac(yr)] <- fltlandings + fltdiscards
-
-    ## Update harvest
-    fltFage <- sapply(1:length(om$flts), function(y){
-      om$flts[[y]][[x]]@catch.q[1,] %*% om$flts[[y]]@effort[,ac(yr)] %*% om$flts[[y]][[x]]@catch.sel[,ac(yr)]
-    }, simplify = "array")
-
-    Fage <- apply(fltFage, c(1:6), sum)
-    tracking[[x]]$stk["F.om",  ac(yr)] <- apply(Fage[ac(args$frange[[x]][1]:args$frange[[x]][2]),,,,,,drop = FALSE], c(2:6), mean)
-
-    ## Save Selectivity
-    tracking[[x]]$sel_om[,ac(yr)] <-  sweep(Fage, c(2:6), tracking[[x]]$stk["F.om",  ac(yr)], "/")
-  }
-
+  
+  tracking <- updateTrackingOM(om = om, tracking = tracking, args = args, yr = yr)
+  
   # ===========================================================================#
   # Return outputs
   # ===========================================================================#
@@ -451,10 +428,13 @@ fwdMixME <- function(om,                       # FLBiols/FLFisheries
 
 }
 
-# Automatic generation of FCB matrix for FLasher
-#
-# This function takes an FLBiols and FLFisheries object and generates an FCB
-# matrix
+
+#' Automatic generation of FCB matrix for FLasher
+#'
+#' This function takes an FLBiols and FLFisheries object and generates an FCB
+#' matrix
+#' 
+#' @export
 
 makeFCB <- function(biols, flts){
 
@@ -481,22 +461,37 @@ makeFCB <- function(biols, flts){
     biolspos <- sapply(1:length(catchnames), function(y){
       which(catchnames[y] == biolnames)
     })
+    
+    ## Warning if any catches don't have equivalent biols positions
+    if(is.list(biolspos)) {
+      missingbiols <- catchnames[unlist(lapply(biolspos, function(x) length(x) == 0))]
+      warning(paste0("in fleet ",
+                     names(flts)[x],
+                     ", catches do not have biols: ",
+                     missingbiols,"\n"))
+      
+      for(i in which(unlist(lapply(biolspos, function(x) length(x) == 0)))) {
+        biolspos[[i]] <- 0
+      }
+      biolspos <- unlist(biolspos)
+    }
 
     ## A hacky solution to get the numbers in the right order...
-    c(matrix(c(rep(x, length(catchnames)),
+    matrix(c(rep(x, length(catchnames)),
                catchpos,
                biolspos),
-             ncol = 3, byrow = TRUE))
+             ncol = 3, byrow = FALSE)
   })
-
-  ## calculate number of rows in fcb matrix
-  nrows <- ncol(nums) * nrow(nums) /3
-
-  ## Create matrix
-  fcb <- matrix(c(nums),
-                nrow = nrows, ncol = 3,
-                dimnames = list(1:nrows, c("F", "C", "B")),
-                byrow = TRUE)
+  
+  ## combine into single matrix
+  fcb <- do.call(rbind, nums)
+  
+  ## remove rows with missing biols 
+  fcb <- fcb[fcb[,3] > 0,]
+  
+  ## Define row and column names
+  dimnames(fcb) <- list(1:nrow(fcb), c("F", "C", "B"))
 
   return(fcb)
 }
+
