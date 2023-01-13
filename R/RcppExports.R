@@ -5,3 +5,7 @@ flr_to_list <- function(om, advice, year, nstock, nfleet, niter) {
     .Call('_MixME_flr_to_list', PACKAGE = 'MixME', om, advice, year, nstock, nfleet, niter)
 }
 
+fwd_update_fleets <- function(om, om_fwd, tracking, year, adviceType) {
+    .Call('_MixME_fwd_update_fleets', PACKAGE = 'MixME', om, om_fwd, tracking, year, adviceType)
+}
+

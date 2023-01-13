@@ -26,9 +26,25 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// fwd_update_fleets
+List fwd_update_fleets(List om, List om_fwd, List tracking, int year, CharacterVector adviceType);
+RcppExport SEXP _MixME_fwd_update_fleets(SEXP omSEXP, SEXP om_fwdSEXP, SEXP trackingSEXP, SEXP yearSEXP, SEXP adviceTypeSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< List >::type om(omSEXP);
+    Rcpp::traits::input_parameter< List >::type om_fwd(om_fwdSEXP);
+    Rcpp::traits::input_parameter< List >::type tracking(trackingSEXP);
+    Rcpp::traits::input_parameter< int >::type year(yearSEXP);
+    Rcpp::traits::input_parameter< CharacterVector >::type adviceType(adviceTypeSEXP);
+    rcpp_result_gen = Rcpp::wrap(fwd_update_fleets(om, om_fwd, tracking, year, adviceType));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_MixME_flr_to_list", (DL_FUNC) &_MixME_flr_to_list, 6},
+    {"_MixME_fwd_update_fleets", (DL_FUNC) &_MixME_fwd_update_fleets, 5},
     {NULL, NULL, 0}
 };
 

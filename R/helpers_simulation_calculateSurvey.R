@@ -157,11 +157,9 @@ calcSurveyIndex <- function(stk, flt, idx, use_q = TRUE, use_time = TRUE) {
   
   ## if biomass, calculate SSB
   if(idxBiomass == TRUE) {
-    index.n <- 
-      apply(index.n * 
-              # FLCore::mat(stk)[ac(ages), ac(years),,,, ac(iter)] *
-              FLCore::wt(stk)[ac(ages), ac(years),,,, ac(iter)],
-            c(2:6), sum)
+    index.n <- quantSums(index.n * 
+                           # FLCore::mat(stk)[ac(ages), ac(years),,,, ac(iter)] *
+                           FLCore::wt(stk)[ac(ages), ac(years),,,, ac(iter)])
 
     ## add catchability, if requested
     if (isTRUE(use_q)) {

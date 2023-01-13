@@ -372,6 +372,8 @@ catchBaranov <- function(par, dat, adviceType, islog = FALSE) {
 #' @param method (Optional) Character. Determines the optimisation algorithm that is used.
 #'               Values may be 'nlminb' or 'Nelder-Mead'. Default is 'nlminb'.
 #'               HIGHLY recommended that the default is used.
+#' @param maxRetry (Optional) Integer. How many times to re-run optimisation if
+#'                 identification of choke-stocks is unsuccessful? Default is 1.
 #' @param correctResid (Optional) Boolean. Should fleet efforts be scaled down
 #'                     to bring residual overquota catch to zero if residual
 #'                     over-quota catch following optimisation exceeds 0.001?
@@ -386,6 +388,7 @@ effortBaranov <- function(omList,
                           adviceType = "catch",
                           par = NULL,
                           method = "nlminb",
+                          maxRetry = 1,
                           correctResid = FALSE,
                           parallel = FALSE){
 
@@ -515,8 +518,10 @@ effortBaranov <- function(omList,
       stkLimMismatch <- !all(omList[[it]]$stkLim == sapply(1:ncol(stkEff), function(x) { which.min(stkEff[,x])}))
 
       ## If mismatch, re-run optimisation
-      if(stkLimMismatch) {
+      while(stkLimMismatch == TRUE & maxRetry > 0) {
+        
         cat("Choke stock mis-match detected - rerunning optimisation \n")
+        
         ## Update effort-limiting stock vector
         omList[[it]]$stkLim <- sapply(1:ncol(stkEff), function(x) { which.min(stkEff[,x])})
 
@@ -541,6 +546,12 @@ effortBaranov <- function(omList,
         stkEff <- omList[[it]]$quota - catchBaranov(par = exp(out$par),
                                                     dat = omList[[it]],
                                                     adviceType = adviceType)
+        
+        ## Check for mismatch in choke stocks
+        stkLimMismatch <- !all(omList[[it]]$stkLim == sapply(1:ncol(stkEff), function(x) { which.min(stkEff[,x])}))
+        
+        ## incrementally decrease number of tries
+        maxRetry <- maxRetry - 1
       }
 
       # -------------------------------------------------------------#
