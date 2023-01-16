@@ -202,8 +202,8 @@ List fwd_update_fleets(List om, List om_fwd, List tracking, int year, CharacterV
         }
       }
       
-      // Print year
-      // Rcout << "... calculated landings year index " << yr << " \n";
+      // Print stock name
+      // Rcout << "fl: " << fltsNames[fl] << ", ca: " << catsNames[ca] << "\n";
       
       // Create vectors to store landings and discards vectors
       NumericVector ln_vector(ln_Dims[0]);
@@ -249,8 +249,8 @@ List fwd_update_fleets(List om, List om_fwd, List tracking, int year, CharacterV
           lw_vector[a] = lw_fwd[idx];
           dw_vector[a] = dw_fwd[idx];
           
-          // Print year
-          // Rcout << "... print landings vector" << ln_vector << " \n";
+          // Print index
+          // Rcout << " ... " << idx;
           
         } // END loop age
         
@@ -441,6 +441,10 @@ List fwd_update_fleets(List om, List om_fwd, List tracking, int year, CharacterV
             
             // calculate over-quota biomass
             double overquota = catches - quota;
+            
+            // print progress
+            // Rcout << "fl: " << fltsNames[fl] << ", ca: " << catsNames[ca] << ", catch: " << catches << ", quota: " << quota << "\n";
+            // Rcout << "\n dn: " << dn_vector << "\n dw: " << dw_vector << "\n ln: " << ln_vector << "\n lw: " << lw_vector << "\n";
             
             // Update tracking object
             oq_array[oq_idx] = overquota;

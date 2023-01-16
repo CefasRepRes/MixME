@@ -9,6 +9,7 @@ effortBaranov(
   adviceType = "catch",
   par = NULL,
   method = "nlminb",
+  maxRetry = 1,
   correctResid = FALSE,
   parallel = FALSE
 )
@@ -29,6 +30,9 @@ landings. Defaults to 'catch'.}
 \item{method}{(Optional) Character. Determines the optimisation algorithm that is used.
 Values may be 'nlminb' or 'Nelder-Mead'. Default is 'nlminb'.
 HIGHLY recommended that the default is used.}
+
+\item{maxRetry}{(Optional) Integer. How many times to re-run optimisation if
+identification of choke-stocks is unsuccessful? Default is 1.}
 
 \item{correctResid}{(Optional) Boolean. Should fleet efforts be scaled down
 to bring residual overquota catch to zero if residual

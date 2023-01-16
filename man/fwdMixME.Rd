@@ -21,6 +21,11 @@ stock and fleet information in the Operating Model.}
 
 \item{ctrl}{Control object.}
 
+\item{args}{list of additional arguments}
+
+\item{tracking}{a named list of tracking objects to monitor emergent dynamic
+properties}
+
 \item{sr_residuals_mult}{(Optional) Logical. Are stock recruitment residuals
 multiplicative? Defaults to \code{TRUE}.}
 
