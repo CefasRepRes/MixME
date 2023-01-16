@@ -64,12 +64,12 @@ FLFleet2FLFishery <- function(fleets, na_replace = 0, verbose = TRUE) {
     ## extract list of harvested stocks over all metiers
     stk_list <- sapply(fleet_x@metiers@names, function(y) {
       fleet_x@metiers[[y]]@catches@names
-    },simplify = TRUE)
+    },simplify = FALSE)
     
     ## extract list of corresponding metier names for each harvested stock
     mtr_list <- sapply(fleet_x@metiers@names, function(y) {
       rep(y, length(fleet_x@metiers[[y]]@catches@names))
-    },simplify = TRUE)
+    },simplify = FALSE)
     
     stk_vector <- unlist(stk_list, use.names = FALSE)
     mtr_vector <- unlist(mtr_list, use.names = FALSE)

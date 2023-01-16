@@ -8,7 +8,7 @@
 #' 
 #' @export
 
-calculateQuotashare <- function(stks, flts, verbose = TRUE) {
+calculateQuotashare <- function(stks, flts, verbose = TRUE, useCpp = TRUE) {
   
   ## Check that dimensions are identical for different fleets
   
@@ -17,19 +17,29 @@ calculateQuotashare <- function(stks, flts, verbose = TRUE) {
   yvector <- dimnames(flts[[1]])$year
   ivector <- dimnames(flts[[1]])$iter
   
+  ## extract list of stocks caught by each fleet
+  fltcatches <- lapply(flts, names)
+  
+  ## Check that each catch for each fleet is unique
+  lapply(names(fltcatches), function(x){
+    if(any(duplicated(fltcatches[[x]]))){
+      stop("In fleet ",x,", catch names are duplicated!")
+    }
+  })
+  
   ## generate a vector of stock caught by fleets
-  stknames <- unique(unlist(lapply(flts, names)))
+  stknames <- unique(unlist(fltcatches))
   
   ## loop over each stock
-  for(s in stknames) {
+  for(st in stknames) {
     
     ## Print stock names
-    if(verbose) cat("\n",s,"\n")
+    if(verbose) cat("\n",st,"\n")
     
     ## extract the landings for stock s for each fleet
     land_s <- sapply(names(flts), function(x){
-      if(!is.null(flts[[x]][[s]])) {
-        landings(flts[[x]][[s]])
+      if(!is.null(flts[[x]][[st]])) {
+        landings(flts[[x]][[st]])
       } else {
         FLQuant(0, dimnames = list(age = "all",
                                    year = yvector,
@@ -41,28 +51,40 @@ calculateQuotashare <- function(stks, flts, verbose = TRUE) {
     qshare_s <- sweep(land_s, c(1:6), apply(land_s, c(1:6), sum, na.rm = TRUE), "/")
     names(dimnames(qshare_s))[7] <- "fishery"
     
-    ## Replace cases of NaN (resulting from divide by zero) with NA
-    qshare_s[is.nan(qshare_s)] <- NA
+    ## Replace cases of NaN (resulting from divide by zero) with 0
+    qshare_s[is.nan(qshare_s)] <- 0
     
     ## logical vector of catches for each fleet
     f_catch <- apply(qshare_s, c(7), sum, na.rm = TRUE)
     
     ## loop over each fleet and attach the proportional share for stock s as an attribute
-    for(f in dimnames(qshare_s)$fishery){
+    for(fl in dimnames(qshare_s)$fishery){
       
       ## Only process fleets with catches
-      if(f_catch[f] > 0) {
+      if(f_catch[fl] > 0) {
         
         ## print fleet name
-        if(verbose) cat(f,"; ")
+        if(verbose) cat(fl,"; ")
         
         ## create an FLQuant to store quota share
-        qshare_flq <- FLQuant(qshare_s[,,,,,,f, drop = FALSE], 
+        qshare_flq <- FLQuant(qshare_s[,,,,,,fl, drop = FALSE], 
                               dimnames = list(year = dimnames(qshare_s)$year,
                                               iter = dimnames(qshare_s)$iter))
         
-        ## attach as attribute - this is extremely slow
-        suppressMessages(attr(flts[[f]][[s]], "quotashare") <- qshare_flq)
+        if(useCpp == TRUE) {
+          
+          ## attach as attribute using C++
+          flts <- attach_attribute(fisheries = flts, 
+                                   attribute = qshare_flq, 
+                                   fl = fl, 
+                                   st = st, 
+                                   attribute_name = "quotashare")
+          
+        } else {
+          
+          ## attach as attribute using R - this is extremely slow
+          suppressMessages(attr(flts[[fl]][[st]], "quotashare") <- qshare_flq)
+        }
       }
     }
   }

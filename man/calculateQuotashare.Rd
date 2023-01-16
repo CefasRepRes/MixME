@@ -4,7 +4,7 @@
 \alias{calculateQuotashare}
 \title{Estimate stock quota-share from historic landings-share}
 \usage{
-calculateQuotashare(stks, flts, verbose = TRUE)
+calculateQuotashare(stks, flts, verbose = TRUE, useCpp = TRUE)
 }
 \description{
 Estimate stock quota-share from historic landings-share

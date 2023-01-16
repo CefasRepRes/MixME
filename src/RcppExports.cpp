@@ -10,6 +10,21 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
+// attach_attribute
+S4 attach_attribute(S4 fisheries, NumericVector attribute, CharacterVector fl, CharacterVector st, CharacterVector attribute_name);
+RcppExport SEXP _MixME_attach_attribute(SEXP fisheriesSEXP, SEXP attributeSEXP, SEXP flSEXP, SEXP stSEXP, SEXP attribute_nameSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< S4 >::type fisheries(fisheriesSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type attribute(attributeSEXP);
+    Rcpp::traits::input_parameter< CharacterVector >::type fl(flSEXP);
+    Rcpp::traits::input_parameter< CharacterVector >::type st(stSEXP);
+    Rcpp::traits::input_parameter< CharacterVector >::type attribute_name(attribute_nameSEXP);
+    rcpp_result_gen = Rcpp::wrap(attach_attribute(fisheries, attribute, fl, st, attribute_name));
+    return rcpp_result_gen;
+END_RCPP
+}
 // flr_to_list
 List flr_to_list(List om, List advice, int year, int nstock, int nfleet, int niter);
 RcppExport SEXP _MixME_flr_to_list(SEXP omSEXP, SEXP adviceSEXP, SEXP yearSEXP, SEXP nstockSEXP, SEXP nfleetSEXP, SEXP niterSEXP) {
@@ -43,6 +58,7 @@ END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
+    {"_MixME_attach_attribute", (DL_FUNC) &_MixME_attach_attribute, 5},
     {"_MixME_flr_to_list", (DL_FUNC) &_MixME_flr_to_list, 6},
     {"_MixME_fwd_update_fleets", (DL_FUNC) &_MixME_fwd_update_fleets, 5},
     {NULL, NULL, 0}

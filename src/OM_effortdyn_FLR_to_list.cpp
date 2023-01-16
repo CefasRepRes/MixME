@@ -345,6 +345,18 @@ List flr_to_list(List om, List advice, int year, int nstock, int nfleet, int nit
             (cat_qs_Dims[1] * cat_qs_Dims[0] * (1 - 1)) + // points to unit (assumed to be 1)
             (cat_qs_Dims[0] * (yr)) +
             (0);
+          
+          // Throw an error if quota-share is NA (I need better error handling!)
+          if(R_IsNA(cat_qs[idx_qs])) {
+            Rcout << "Fleet: " << fltsNames[fl] << "; Catch: " << catsNames[catsCheck] << "\n";
+            stop("quotashare is NA");
+          }
+          
+          // Throw an error if catch-q is NA
+          if(R_IsNA(cat_cq[idx_cq])) {
+            Rcout << "Fleet: " << fltsNames[fl] << "; Catch: " << catsNames[catsCheck] << "\n";
+            stop("catchq is NA");
+          }
 
           // Insert value into matrix
           cq_stFlt(st,fl) = cat_cq[idx_cq];

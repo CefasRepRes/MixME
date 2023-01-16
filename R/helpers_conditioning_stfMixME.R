@@ -112,6 +112,14 @@ stfMixME <- function(om,
         ## Check if catchq attribute exists
         if(!is.null(attr(fishery[[y]],"catchq"))) {
           
+          ## propagate "catchq" attribute if needed
+          if(dims(stkflt_ext)$iter > 1 & 
+             (dims(attr(fishery[[y]],"catchq"))$iter != dims(stkflt_ext)$iter)) {
+            
+            attr(fishery[[y]],"catchq") <- propagate(attr(fishery[[y]],"catchq"),
+                                                     iter = dims(stkflt_ext)$iter)
+          }
+          
           ## define single parameter
           catch.q(stkflt_ext)["alpha",] <- 
             apply(attr(fishery[[y]],"catchq")[,year_sel], 
@@ -140,6 +148,15 @@ stfMixME <- function(om,
         ## Handle future quotashare - extend FLQuant
         if(!is.null(attr(fishery[[y]],"quotashare"))) {
           
+          ## propagate "quotashare" attribute if needed
+          if(dims(stkflt_ext)$iter > 1 & 
+             (dims(attr(fishery[[y]],"quotashare"))$iter != dims(stkflt_ext)$iter)) {
+            
+            attr(fishery[[y]],"quotashare") <- propagate(attr(fishery[[y]],"quotashare"),
+                                                         iter = dims(stkflt_ext)$iter)
+          }
+          
+          ## extend quota shares
           attr(stkflt_ext,"quotashare") <- 
             window(attr(fishery[[y]],"quotashare"), end = (ydata+nyears))
           
