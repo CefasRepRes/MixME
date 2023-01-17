@@ -324,13 +324,25 @@ catchBaranov <- function(par, dat, adviceType, islog = FALSE) {
                      ## If advice is landings-based, account for
                      ## size-selective discarding
                      if(adviceType == "landings"){
+                       
+                       ## Calculate landings in weight at age per fleet
                        partLWage <- partCage * dat$landfrac[[x]] * dat$landwt[[x]]
+                       
+                       ## Handle possibility of NAs if landings weight is NA
+                       partLWage[partCage * dat$landfrac[[x]] == 0] <- 0 
+                       
                        return(colSums(partLWage))
 
                      } else if(adviceType == "catch"){
+                       
                        ## Calculate landings and discards in weight at age per fleet
                        partLWage <- partCage * dat$landfrac[[x]] * dat$landwt[[x]]
                        partDWage <- partCage * (1-dat$landfrac[[x]]) * dat$discwt[[x]]
+                       
+                       ## Handle possibility of NAs if landings weight is NA
+                       partLWage[partCage * dat$landfrac[[x]] == 0]     <- 0
+                       partDWage[partCage * (1-dat$landfrac[[x]]) == 0] <- 0
+                       
                        ## Calculate Catch in weight per fleet
                        return(colSums(partLWage + partDWage))
                      }
