@@ -160,9 +160,11 @@ stfMixME <- function(om,
           attr(stkflt_ext,"quotashare") <- 
             window(attr(fishery[[y]],"quotashare"), end = (ydata+nyears))
           
+          # Remove NAs to handle cases where no quota-share is recorded in a given year.
+          
           ## estimate future quota share
           attr(stkflt_ext,"quotashare")[,ac((ydata+1):(ydata+nyears))] <- 
-            apply(attr(fishery[[y]],"quotashare")[,year_qs], c(1,3:6), mean)
+            apply(attr(fishery[[y]],"quotashare")[,year_qs], c(1,3:6), mean, na.rm = TRUE)
           
         } else {
           warning("attr 'quotashare' for fishery ",x," and stock ",y," does not exist!")
