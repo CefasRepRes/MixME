@@ -29,6 +29,10 @@
 #'                            catch residuals be used to generate uncertainty?
 #' @param use_idx_residuals Logical vector. Length \code{n} stocks. Should
 #'                          survey index residuals be used to generate uncertainty?
+#' @param use_om_weights Logical vector. Length \code{n} stocks. Should stock
+#'                       catch, landings and discard individual mean weights be 
+#'                       updated with data from OM? Recommend \code{TRUE} if 
+#'                       attempting perfect stock observations.
 #'
 #' @return A named list of stock observations, survey indices and updated tracking
 #'         object
@@ -44,7 +48,8 @@ oemRun <- function(om,
                    idx_timing   = NULL, # index timing relative to ay
                    use_stk_oem         = FALSE,
                    use_catch_residuals = FALSE,
-                   use_idx_residuals   = FALSE) {
+                   use_idx_residuals   = FALSE,
+                   use_om_weights      = FALSE) {
   
   # SHOULD I BE CLIPPING THE OBSERVATION TIMESERIES TO THE MOST RECENT DATA YEAR?
   
@@ -99,6 +104,11 @@ oemRun <- function(om,
                                 function(x) use_idx_residuals,
                                 USE.NAMES = TRUE)
   }
+  if(length(use_om_weights) == 1 & is.logical(use_om_weights)) {
+    use_om_weights <- sapply(observations$stk@names, 
+                             function(x) use_om_weights,
+                             USE.NAMES = TRUE)
+  }
   
   ## Process catch and index timings
   if(is.null(catch_timing)) {
@@ -127,7 +137,8 @@ oemRun <- function(om,
                     idx_timing   = idx_timing,   # index timing relative to ay
                     use_stk_oem  = use_stk_oem,
                     use_catch_residuals = use_catch_residuals,
-                    use_idx_residuals   = use_idx_residuals)
+                    use_idx_residuals   = use_idx_residuals,
+                    use_om_weights      = use_om_weights)
   
   # -------------------------------------#
   # Return objects

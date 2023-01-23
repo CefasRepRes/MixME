@@ -30,6 +30,12 @@
 #'                            catch residuals be used to generate uncertainty?
 #' @param use_idx_residuals Logical vector. Length \code{n} stocks. Should
 #'                          survey index residuals be used to generate uncertainty?
+#' @param use_om_weights Logical vector. Length \code{n} stocks. Should stock
+#'                       catch, landings and discard individual mean weights be 
+#'                       updated with data from OM? Over-quota discards may 
+#'                       result in changes to discard and overall catch weights. 
+#'                       Recommend \code{TRUE} if attempting perfect stock 
+#'                       observations.
 #'
 #' @return A named list of stock observations, survey indices and updated tracking
 #'         object
@@ -47,6 +53,7 @@ oemMixME <- function(x,
                      use_stk_oem         = FALSE,
                      use_catch_residuals = FALSE,
                      use_idx_residuals   = FALSE,
+                     use_OM_weights      = FALSE,
                      ...) {
   
   # --------------------------------#
@@ -85,19 +92,44 @@ oemMixME <- function(x,
     ## Extract names with catches
     fltcatchesnames <- names(fltcatches)[!sapply(fltcatches, is.null)]
     
+    ## Calculate overall landings and discards
+    fltlandings <- sapply(fltcatchesnames, function(y){
+      fltcatches[[y]]@landings.n           
+    }, simplify = "array", USE.NAMES = TRUE)
+    
+    fltdiscards <- sapply(fltcatchesnames, function(y){
+      fltcatches[[y]]@discards.n
+    }, simplify = "array")
+    
+    ## Extract overall catch numbers-at-age
+    fltcatchn <- sapply(fltcatchesnames, function(y){
+      catch.n(fltcatches[[y]])
+    }, simplify = "array", USE.NAMES = TRUE)
+    
     # If perfect observations
     # -----------------------#
     
-    if(use_catch_residuals[x] == FALSE){
+    if(use_OM_weights[x] == TRUE) {
       
-      ## Calculate overall landings and discards
-      fltlandings <- sapply(fltcatchesnames, function(y){
-          fltcatches[[y]]@landings.n           
-      }, simplify = "array", USE.NAMES = TRUE)
+      ## Find total discards
+      stk0discards <- apply(fltdiscards, c(1:6), sum)
       
-      fltdiscards <- sapply(fltcatchesnames, function(y){
-          fltcatches[[y]]@discards.n
+      ## calculate updated weighted mean discards weights based on operating model
+      fltdiscardwts <- sapply(fltcatchesnames, function(y){
+        sweep(fltcatches[[y]]@discards.n, c(1:6), stk0discards, "/") * fltcatches[[y]]@discards.wt
       }, simplify = "array")
+      
+      stk0@discards.wt[] <- apply(fltdiscardwts, c(1:6), sum)
+      
+      ## Find updated discards fraction
+      stk0discfrac <- stk0discards / apply(fltcatchn, c(1:6), sum)
+      
+      ## calculate updated weighted mean catch weights
+      stk0@catch.wt[] <- (stk0@discards.wt * stk0discfrac) + (stk0@landings.wt * (1 - stk0discfrac))
+      
+    }
+    
+    if(use_catch_residuals[x] == FALSE){
       
       ## Sum over fleets
       stk0landings <- apply(fltlandings, c(1:6), sum)
@@ -120,25 +152,15 @@ oemMixME <- function(x,
       if(dim(deviances$stk[[x]]$catch.dev) != 7)
         stop(paste0("In 'oemMixME': For stock ",x,", catch residuals must be a 7-D array with the dimensions: age, year, unit, season, area, iter, and fleet"))
       
-      ## Extract overall catch numbers-at-age
-      fltcatchn <- sapply(fltcatchesnames, function(y){
-        catch.n(fltcatches[[y]])
-      }, simplify = "array", USE.NAMES = TRUE)
-      
-      ## Extract landings numbers-at-age
-      fltlandings <- sapply(fltcatchesnames, function(y){
-        fltcatches[[y]]@landings.n
-      }, simplify = "array", USE.NAMES = TRUE)
-      
       ## Implement catch numbers-at-age uncertainty
       flt0catchn <- fltcatchn %*% deviances$stk[[x]]$catch.dev
       
       ## Calculate landings fraction
-      catchSel <- sweep(fltlandings, c(1:7), fltcatchn, "/")
+      flt0landfrac <- sweep(fltlandings, c(1:7), fltcatchn, "/")
       
       ### split catch into discards and landings, based on landing fraction
-      flt0landings <- sweep(flt0catchn, c(1:7), catchSel, "*")
-      flt0discards <- sweep(flt0catchn, c(1:7), (1 - catchSel), "*")
+      flt0landings <- sweep(flt0catchn, c(1:7), flt0landfrac, "*")
+      flt0discards <- sweep(flt0catchn, c(1:7), (1 - flt0landfrac), "*")
       
       ## Sum over fleets
       stk0landings <- apply(flt0landings, c(1:6), sum)
