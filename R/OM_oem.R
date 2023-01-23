@@ -53,7 +53,7 @@ oemMixME <- function(x,
                      use_stk_oem         = FALSE,
                      use_catch_residuals = FALSE,
                      use_idx_residuals   = FALSE,
-                     use_OM_weights      = FALSE,
+                     use_om_weights      = FALSE,
                      ...) {
   
   # --------------------------------#
@@ -109,7 +109,7 @@ oemMixME <- function(x,
     # If perfect observations
     # -----------------------#
     
-    if(use_OM_weights[x] == TRUE) {
+    if(use_om_weights[x] == TRUE) {
       
       ## Find total discards
       stk0discards <- apply(fltdiscards, c(1:6), sum)
