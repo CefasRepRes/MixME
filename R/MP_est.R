@@ -138,7 +138,7 @@ estMixME <- function(x,
       ## insert stock recruitment information
       sr0 <- NULL
       
-    }
+    } # END if FLBiol
     
     ## If FLStock
     if(class(stk[[x]]) == "FLStock") {
@@ -197,7 +197,7 @@ estMixME <- function(x,
       sr0@ssb    <- FLCore::ssb(stk0)
       sr0@params <- om$stks[[x]]@rec@params
       
-    }
+    } # END if FLStock
     
     # ---------------------------------------------------------------------#
     # (Option 2.1) Apply short term forecast on perfect stock observation

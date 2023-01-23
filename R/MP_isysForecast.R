@@ -128,7 +128,12 @@ isysForecast <- function(stk,
   #
   # }
   
-  ## FLAsher::fwd to get catch target
+  # FLasher::fwd will throw an error if there are NAs in weights in future years.
+  # I need to zero these if associated numbers are zero
+  FLCore::discards.wt(stk0)[FLCore::discards.n(stk0) == 0] <- 0
+  FLCore::landings.wt(stk0)[FLCore::landings.n(stk0) == 0] <- 0
+  
+  ## FLasher::fwd to get catch target
   stk_fwd <- FLasher::fwd(stk0, sr = sr0, control = ctrl)
   
   ## Extract catch target

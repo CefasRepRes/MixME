@@ -94,10 +94,10 @@ fwdMixME <- function(om,                       # FLBiols/FLFisheries
     } else {
 
       ## HAVE A SMARTER WAY OF HANDLING MULTIPLE YEARS
-      if (length(ctrl[[x]]@iters[,,][,"value"]) > 1) {
-        rep(tail(ctrl[[x]]@iters[,,][,"value"],1), ni)
+      if (length(ctrl[[x]]@iters[,"value",]) > 1) {
+        rep(tail(ctrl[[x]]@iters[,"value",],1), ni)
       } else {
-        rep(ctrl[[x]]@iters[,,][,"value"], ni)
+        rep(ctrl[[x]]@iters[,"value",], ni)
       }
     }
   })
@@ -161,10 +161,10 @@ fwdMixME <- function(om,                       # FLBiols/FLFisheries
     ## save quota uptake to tracker
     tracking$uptake[,,ac(yr),] <- sapply(1:ni, function(x){
 
-      round(tracking$quota[,,ac(yr),x] - catchBaranov(par = exp(effOptimised[[x]]$par),
+      tracking$quota[,,ac(yr),x] - catchBaranov(par = exp(effOptimised[[x]]$par),
                                                       dat = omList[[x]],
                                                       adviceType = adviceType,
-                                                      islog = FALSE),3)
+                                                      islog = FALSE)
     }, simplify = "array")
 
     # -------------------------------------------------------------------------#
