@@ -118,10 +118,11 @@ summary_effort_MixME <- function(object,
 #' @export
 
 summary_catch_MixME <- function(object, 
-                                 minyr = NULL,
-                                 maxyr = NULL,
-                                 fltnames = NULL,
-                                 stknames = NULL) {
+                                minyr = NULL,
+                                maxyr = NULL,
+                                fltnames = NULL,
+                                stknames = NULL,
+                                byfleet = FALSE) {
   
   # ----------------
   # extract elements
@@ -139,6 +140,7 @@ summary_catch_MixME <- function(object,
   # calculate summary quantity and correct dimensions
   # -------------------------------------------------
   
+  ## Generate 8D array
   res <- sapply(names(om$stks), function(x){
     catch_fleets <- sapply(names(om$flts), function(y){
       if(!is.null(om$flts[[y]][[x]])) {
@@ -147,13 +149,24 @@ summary_catch_MixME <- function(object,
         FLQuant(0, dimnames = list(year = ac(minyr:maxyr),
                                    iter = dimnames(om$flts[[y]])$iter))
       }
-    }, simplify = "array")
-    apply(catch_fleets, c(1:6), sum)
-  }, simplify = "array")
+    }, simplify = "array")}, 
+    simplify = "array")
   
-  ## define dimension names
-  names(dimnames(res))[7] <- "stk"
-  dimnames(res)$stk       <- names(om$stks)
+  ## (Optional) aggregate over fleets
+  if(byfleet == TRUE) {
+    names(dimnames(res))[7] <- "flt"
+    dimnames(res)$flt       <- names(om$flts)
+
+    names(dimnames(res))[8] <- "stk"
+    dimnames(res)$stk       <- names(om$stks)
+  }
+  
+  if(byfleet == FALSE) {
+    res <- apply(res, c(1:6,8), sum)
+    
+    names(dimnames(res))[7] <- "stk"
+    dimnames(res)$stk       <- names(om$stks)
+  }
   
   ## transform array to dataframe
   res <- as.data.frame.table(res)
@@ -162,6 +175,11 @@ summary_catch_MixME <- function(object,
   ## (optional) filter for specific stocks
   if(!is.null(stknames)) {
     res <- res[res$stk %in% stknames,]
+  }
+  
+  ## (optional) filter for specific fleets
+  if(!is.null(fltnames)) {
+    res <- res[res$flt %in% fltnames,]
   }
   
   ## coerce "year" and "iter" to numeric
@@ -183,7 +201,8 @@ summary_uptake_MixME <- function(object,
                                  minyr = NULL,
                                  maxyr = NULL,
                                  fltnames = NULL,
-                                 stknames = NULL) {
+                                 stknames = NULL,
+                                 byfleet = FALSE) {
   
   # ----------------
   # extract elements
@@ -218,6 +237,11 @@ summary_uptake_MixME <- function(object,
     res <- res[res$stk %in% stknames,]
   }
   
+  ## (optional) filter for specific fleets
+  if(!is.null(fltnames)) {
+    res <- res[res$flt %in% fltnames,]
+  }
+  
   ## (optional) filter for specific years
   if(!is.null(minyr)) {
     res <- res[res$year >= minyr,]
@@ -226,10 +250,24 @@ summary_uptake_MixME <- function(object,
     res <- res[res$year <= maxyr,]
   }
   
-  summary_uptake <- aggregate(res, cbind(quota, uptake) ~ year + stk + iter, sum)
-  summary_uptake$uptake_percentage <- ((summary_uptake$quota - summary_uptake$uptake)/summary_uptake$quota) * 100
-  
-  return(summary_uptake[,c("stk","year","iter","uptake_percentage")])
+  if(byfleet == TRUE) {
+    res$uptake_percentage <- ((res$quota - res$uptake)/res$quota) * 100
+    
+    ## if quota = 0 and uptake = 0, % uptake = 100
+    res$uptake_percentage[res$quota == 0 & res$uptake == 0] <- 100
+    
+    return(res[,c("stk","flt","year","iter","uptake_percentage")])
+    
+  } else {
+    summary_uptake <- aggregate(res, cbind(quota, uptake) ~ year + stk + iter, sum)
+    summary_uptake$uptake_percentage <- ((summary_uptake$quota - summary_uptake$uptake)/summary_uptake$quota) * 100
+    
+    ## if quota = 0 and uptake = 0, % uptake = 100
+    res$uptake_percentage[res$quota == 0 & res$uptake == 0] <- 100
+    
+    return(summary_uptake[,c("stk","year","iter","uptake_percentage")])
+  }
+
 }
 
 #' Generate summaries of Operating Model mean fishing mortality
@@ -283,25 +321,16 @@ summary_fbar_MixME <- function(object,
   stkvector <- unlist(stklist, use.names = FALSE)
   fltvector <- unlist(fltlist, use.names = FALSE)
   
-  fage <- Reduce("+", Map(getf, 
-                          fn = fltvector[stkvector == y][1], 
-                          cn = stkvector[stkvector == y][1],
-                          bn = stkvector[stkvector == y][1],
-                          op = om))
-  
-  res <- sapply(1:length(om$stks), function(x){
-    ## First generate a blank object to store results
-    fa <- getf(op = om, fn = 1, cn = x, bn = x)
-    fa[] <- 0
-    ## Loop over fleets and calculate partial F for stock
-    for(y in 1:length(om$flts)){
-      fx <- getf(op = om, fn = y, cn = x, bn = x)
-      fa <- fx + fa
-    }
+  res <- sapply(unique(stkvector), function(y){
+    fage <- Reduce("+", Map(getf, 
+                            fn = fltvector[stkvector == y], 
+                            cn = stkvector[stkvector == y],
+                            bn = stkvector[stkvector == y],
+                            op = list(om)))
     
-    age_range <- args$frange[[x]]["minfbar"]:args$frange[[x]]["maxfbar"]
-    fbar <- apply(fa[ac(age_range), ], 2:6, mean)
-    return(fbar[,ac(minyr:maxyr),drop = TRUE])
+    age_range <- args$frange[[y]]["minfbar"]:args$frange[[y]]["maxfbar"]
+    fbar <- apply(fage[ac(age_range), ], 2:6, mean)
+    return(fbar[,ac(minyr:maxyr),,,,])
   }, simplify = "array")
   
   ## define dimension names
@@ -375,26 +404,39 @@ summary_f_MixME <- function(object,
   # calculate summary quantity and correct dimensions
   # -------------------------------------------------
   
-  ## Calculate summary array
-  res <- sapply(om$stks@names, function(x){
-    ff <- sapply(om$flts@names, function(y){
-      ## First generate a blank object to store results
-      fa <- getf(op = om, fn = y, cn = x, bn = x)
-      fa[drop = TRUE]
-    }, simplify = "array", USE.NAMES = TRUE)
-    apply(ff, c(1:3), sum)
-  }, simplify = "array", USE.NAMES = TRUE)
+  ## get vector of stock names and fleets catching these
+  stklist <- sapply(om$flts, function(y) {
+    names(y)
+  },simplify = TRUE)
   
-  ## define dimension names
-  names(dimnames(res))[7] <- "stk"
-  dimnames(res)$stk       <- names(om$stks)
+  fltlist <- sapply(names(om$flts), function(y) {
+    rep(y, length(om$flts[[y]]))
+  },simplify = TRUE)
+  
+  stkvector <- unlist(stklist, use.names = FALSE)
+  fltvector <- unlist(fltlist, use.names = FALSE)
+  
+  res <- lapply(unique(stkvector), function(y){
+    fage <- Reduce("+", Map(getf, 
+                            fn = fltvector[stkvector == y], 
+                            cn = stkvector[stkvector == y],
+                            bn = stkvector[stkvector == y],
+                            op = list(om)))
+    
+    ## transform array to dataframe
+    out <- as.data.frame.table(fage[,ac(minyr:maxyr)])
+    out$stk <- y
+    
+    return(out)
+  })
+  
+  res <- do.call(rbind, res)
   
   # -------------------------------------------------
   # optional filter and return result
   # -------------------------------------------------
   
-  ## transform array to dataframe
-  res <- as.data.frame.table(res)
+  ## rename result
   names(res)[names(res) == "Freq"] <- "f"
   
   ## (optional) filter for specific stocks
@@ -405,14 +447,6 @@ summary_f_MixME <- function(object,
   ## coerce "year" and "iter" to numeric
   res$year <- as.numeric(as.character(res$year))
   res$iter <- as.numeric(as.character(res$iter))
-  
-  ## (optional) filter for specific years
-  if(!is.null(minyr)) {
-    res <- res[res$year > minyr,]
-  }
-  if(!is.null(maxyr)) {
-    res <- res[res$year < maxyr,]
-  }
   
   return(res)
   

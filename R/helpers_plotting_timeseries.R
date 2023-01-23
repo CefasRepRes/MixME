@@ -62,7 +62,7 @@ plot_timeseries_MixME <- function(object,
   
   if(quantity == "uptake") {
     res <- summary_uptake_MixME(object = object, minyr = minyr, maxyr = maxyr,
-                                fltnames = stknames)
+                                stknames = stknames)
     
     out <- plot_uptake_MixME(res = res, trajectories = trajectories, 
                             quantiles = quantiles)
@@ -70,7 +70,10 @@ plot_timeseries_MixME <- function(object,
   
   if(quantity == "fbar"){
     res <- summary_fbar_MixME(object = object, minyr = minyr, maxyr = maxyr,
-                              fltnames = stknames)
+                              stknames = stknames)
+    
+    out <- plot_fbar_MixME(res = res, trajectories = trajectories,
+                           quantiles = quantiles)
   }
   
   if(quantity == "f") {
@@ -381,3 +384,77 @@ plot_uptake_MixME <- function(res,
   
 }
 
+# -----------------------------
+# Mean fishing mortality - fbar
+# -----------------------------
+
+plot_fbar_MixME <- function(res, 
+                            trajectories = NULL,
+                            quantiles = c(0.05, 0.25, 0.75, 0.95)) {
+  
+  ## Calculate median fbar
+  summary_fbar <- aggregate(res, fbar ~ year + stk, quantile, probs = 0.5)
+  
+  ## summarise quantiles
+  if(is.numeric(quantiles)){
+    
+    if(!(length(quantiles) %in% c(2,4))) {
+      stop("quantiles must be a vector of 2 or 4 values")
+    }
+    
+    for(q in quantiles){
+      
+      if(length(quantiles) == 4)
+        l <- c("min","low","upp","max")[q == quantiles[order(quantiles)]]
+      if(length(quantiles) == 2)
+        l <- c("min","max")[q == quantiles[order(quantiles)]]
+      
+      summary_fbar[,l] <- 
+        aggregate(res, fbar ~ year + stk, quantile, probs = q)$fbar
+      
+    }
+  }
+  
+  ## sample trajectories
+  if(!is.null(trajectories)){
+    
+    itraj <- sample(1:max(res$iter), trajectories, replace = FALSE)
+    traj_fbar <- res[res$iter %in% itraj,]
+    traj_fbar$iter <- as.character(traj_fbar$iter)
+    
+  }
+  
+  ## build plot
+  plot_out <- ggplot2::ggplot(data = summary_fbar,
+                              aes(x = year)) +
+    facet_wrap(~stk, scales = "free_y") +
+    scale_y_continuous("Quota uptake (%)") +
+    theme_bw()
+  
+  ## add quantiles
+  if(is.numeric(quantiles)) {
+    if(length(quantiles) == 4){
+      plot_out <- plot_out + 
+        geom_ribbon(aes(ymin = min, ymax = max), fill = "steelblue", alpha = 0.2) +
+        geom_ribbon(aes(ymin = low, ymax = upp), fill = "steelblue", alpha = 0.2)
+    }
+    if(length(quantiles) == 2){
+      plot_out <- plot_out + 
+        geom_ribbon(aes(ymin = min, ymax = max), fill = "steelblue", alpha = 0.2)
+    }
+  }
+  
+  ## add trajectories
+  if(!is.null(trajectories)) {
+    plot_out <- plot_out +
+      geom_line(aes(y = fbar, colour = iter), data = traj_fbar) +
+      theme(legend.position = "none")
+    
+  }
+  
+  plot_out <- plot_out +
+    geom_line(aes(y = fbar), size = 1.2)
+  
+  return(plot_out)
+  
+}
