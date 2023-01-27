@@ -362,9 +362,9 @@ List flr_to_list(List om, List advice, int year, int nstock, int nfleet, int nit
           cq_stFlt(st,fl) = cat_cq[idx_cq];
           qs_stFlt(st,fl) = cat_qs[idx_qs] * adv_st[it];
 
-        }
-      }
-    }
+        } // END if fleet catches stock
+      } // END loop over fleets
+    } // END loop over stocks
 
     // add names to matrix
     rownames(cq_stFlt) = stksNames;
@@ -372,7 +372,46 @@ List flr_to_list(List om, List advice, int year, int nstock, int nfleet, int nit
 
     colnames(cq_stFlt) = fltsNames;
     colnames(qs_stFlt) = fltsNames;
-
+    
+    // -----------------------------------------------------------------------
+    // Process: effort by fleet                  (vector: fleet)
+    // -----------------------------------------------------------------------
+    
+    // Generate vector to store fleet efforts 
+    NumericVector ef_flt(nfleet);
+    
+    // Loop over each fleet
+    for(int fl = 0; fl < nfleet; fl++){
+      
+      // Extract data from fleet of interest
+      S4 fltS4 = fltsList[fl];
+      
+      // Extract effort slot
+      NumericVector flt_effort = fltS4.slot("effort");
+      
+      // Extract dimensions for effort
+      List flt_eff_Dimnames = flt_effort.attr("dimnames");
+      CharacterVector dimnameYear   = flt_eff_Dimnames["year"];   // year
+      NumericVector flt_eff_Dims = flt_effort.attr("dim");
+      
+      // create index for year of interest (previous year)
+      int minyr = atoi(dimnameYear[0]); // convert from element of CharacterVector to integer
+      int yr = (year-minyr);
+      
+      // Generate index for quotashare
+      int idx_eff =
+        (flt_eff_Dims[4] * flt_eff_Dims[3] * flt_eff_Dims[2] * flt_eff_Dims[1] * flt_eff_Dims[0] * (it)) +
+        (flt_eff_Dims[3] * flt_eff_Dims[2] * flt_eff_Dims[1] * flt_eff_Dims[0] * (1 - 1)) + // points to area (assumed to be 1)
+        (flt_eff_Dims[2] * flt_eff_Dims[1] * flt_eff_Dims[0] * (1 - 1)) + // points to season (assumed to be 1)
+        (flt_eff_Dims[1] * flt_eff_Dims[0] * (1 - 1)) + // points to unit (assumed to be 1)
+        (flt_eff_Dims[0] * (yr-1)) +
+        (0);
+      
+      // Insert efforts
+      ef_flt[fl] = flt_effort[idx_eff];
+      
+    } // END loop over fleets
+    
     // -----------------------------------------------------------------------
     // Combine results into a single list
     // -----------------------------------------------------------------------
@@ -384,6 +423,7 @@ List flr_to_list(List om, List advice, int year, int nstock, int nfleet, int nit
     dw_age.names() = stksNames;
     lf_age.names() = stksNames;
     sl_age.names() = stksNames;
+    ef_flt.names() = fltsNames;
 
     // insert
     omList[it] = List::create(_["n"] = n_age,
@@ -393,7 +433,8 @@ List flr_to_list(List om, List advice, int year, int nstock, int nfleet, int nit
                               _["landfrac"] = lf_age,
                               _["catchsel"] = sl_age,
                               _["catchq"]   = cq_stFlt,
-                              _["quota"]    = qs_stFlt);
+                              _["quota"]    = qs_stFlt,
+                              _["effort"]   = ef_flt);
   }
   return(omList);
 }

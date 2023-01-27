@@ -312,11 +312,11 @@ summary_fbar_MixME <- function(object,
   ## get vector of stock names and fleets catching these
   stklist <- sapply(om$flts, function(y) {
     names(y)
-  },simplify = TRUE)
+  },simplify = FALSE)
   
   fltlist <- sapply(names(om$flts), function(y) {
     rep(y, length(om$flts[[y]]))
-  },simplify = TRUE)
+  },simplify = FALSE)
   
   stkvector <- unlist(stklist, use.names = FALSE)
   fltvector <- unlist(fltlist, use.names = FALSE)
@@ -329,7 +329,7 @@ summary_fbar_MixME <- function(object,
                             op = list(om)))
     
     age_range <- args$frange[[y]]["minfbar"]:args$frange[[y]]["maxfbar"]
-    fbar <- apply(fage[ac(age_range), ], 2:6, mean)
+    fbar <- FLCore::quantMeans(fage[ac(age_range), ])
     return(fbar[,ac(minyr:maxyr),,,,])
   }, simplify = "array")
   
@@ -407,11 +407,11 @@ summary_f_MixME <- function(object,
   ## get vector of stock names and fleets catching these
   stklist <- sapply(om$flts, function(y) {
     names(y)
-  },simplify = TRUE)
+  },simplify = FALSE)
   
   fltlist <- sapply(names(om$flts), function(y) {
     rep(y, length(om$flts[[y]]))
-  },simplify = TRUE)
+  },simplify = FALSE)
   
   stkvector <- unlist(stklist, use.names = FALSE)
   fltvector <- unlist(fltlist, use.names = FALSE)

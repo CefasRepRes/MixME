@@ -78,6 +78,13 @@ fwdMixME <- function(om,                       # FLBiols/FLFisheries
   } else {
     testfwd <- FALSE # use c++
   }
+  
+  ## use last year effort as initial parameters? Default = FALSE
+  # if(!is.null(args$useEffortAsInit)) {
+  #   useEffortAsInit <- args$useEffortAsInit
+  # } else {
+  #   useEffortAsInit <- FALSE
+  # }
 
   # ===========================================================================#
   # Process Advice
@@ -123,11 +130,12 @@ fwdMixME <- function(om,                       # FLBiols/FLFisheries
     # -------------------------------------------------------------------------#
     # Optimise fleet activity
     # -------------------------------------------------------------------------#
-
+    
     ## optimise effort
     effOptimised <- effortBaranov(omList       = omList,
                                   adviceType   = adviceType,
                                   maxRetry     = maxRetry,
+                                  useEffortAsInit = args$useEffortAsInit,
                                   correctResid = FALSE)
 
     ## Extract effort parameters for each fleet
@@ -166,6 +174,11 @@ fwdMixME <- function(om,                       # FLBiols/FLFisheries
                                                       adviceType = adviceType,
                                                       islog = FALSE)
     }, simplify = "array")
+    
+    ## save choke stock vector to tracker
+    tracking$choke[,ac(yr),] <- sapply(1:ni, function(x){
+      effOptimised[[x]]$stkLim
+    })
 
     # -------------------------------------------------------------------------#
     # Prepare forward control object

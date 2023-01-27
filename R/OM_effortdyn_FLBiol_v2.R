@@ -386,6 +386,9 @@ catchBaranov <- function(par, dat, adviceType, islog = FALSE) {
 #'               HIGHLY recommended that the default is used.
 #' @param maxRetry (Optional) Integer. How many times to re-run optimisation if
 #'                 identification of choke-stocks is unsuccessful? Default is 1.
+#' @param useEffortAsInit (Optional) Boolean. Should the fleet effort from the 
+#'                        previous year be used as initial values. Default is
+#'                        \code{FALSE}
 #' @param correctResid (Optional) Boolean. Should fleet efforts be scaled down
 #'                     to bring residual overquota catch to zero if residual
 #'                     over-quota catch following optimisation exceeds 0.001?
@@ -401,6 +404,7 @@ effortBaranov <- function(omList,
                           par = NULL,
                           method = "nlminb",
                           maxRetry = 1,
+                          useEffortAsInit = FALSE,
                           correctResid = FALSE,
                           parallel = FALSE){
 
@@ -416,8 +420,12 @@ effortBaranov <- function(omList,
     out <- lapply(1:ni, function(it) {
 
       ## define default initial log-effort values if not defined
-      if(is.null(par)){
+      if(is.null(par) & useEffortAsInit == FALSE){
         par <- rep(log(0.5), nflt)
+      }
+      
+      if(is.null(par) & useEffortAsInit == TRUE){
+        par <- log(omList[[it]]$effort)
       }
 
       # ------------------------------------------------------#
@@ -491,7 +499,12 @@ effortBaranov <- function(omList,
                                                   adviceType = adviceType)
 
       ## note that I apply over fleets (cols)
-      stkLim <- sapply(1:ncol(stkEff), function(x) { which.min(stkEff[,x])})
+      ## NOTE: we need to select from only stocks the fleet has catching power for!
+      stkLim <- sapply(1:ncol(stkEff), function(x) { 
+        xx <- stkEff[,x]
+        xx[omList[[it]]$catchq[,x] == 0] <- NA
+        which.min(xx)
+        })
 
       ## Add vector of effort-limiting stock per fleet to omList
       omList[[it]]$stkLim <- stkLim
@@ -499,17 +512,25 @@ effortBaranov <- function(omList,
       # ------------------------------------------------------#
       # Optimise using selected optimisation routine
       # ------------------------------------------------------#
+      
+      ## use last year effort or global optimisation output as initial values
+      if(useEffortAsInit == TRUE){
+        par <- log(omList[[it]]$effort)
+      } else {
+        par <- eff$par
+      }
+      
 
       if(method == "nlminb") {
 
-        out <- nlminb(start = eff$par, objective = Fobj,
+        out <- nlminb(start = par, objective = Fobj,
                       dat = omList[[it]], adviceType = adviceType,
                       control = list("iter.max" = 1000,
                                      "eval.max" = 1000))
 
       } else {
 
-        out <- optim(par = eff$par, fn = Fobj,
+        out <- optim(par = par, fn = Fobj,
                      dat = omList[[it]], adviceType = adviceType,
                      method = "Nelder-Mead")
 
@@ -527,7 +548,11 @@ effortBaranov <- function(omList,
                                                   adviceType = adviceType)
 
       ## Check for mismatch in choke stocks
-      stkLimMismatch <- !all(omList[[it]]$stkLim == sapply(1:ncol(stkEff), function(x) { which.min(stkEff[,x])}))
+      stkLimMismatch <- !all(omList[[it]]$stkLim == sapply(1:ncol(stkEff), function(x) {
+        xx <- stkEff[,x]
+        xx[omList[[it]]$catchq[,x] == 0] <- NA
+        which.min(xx)
+        }))
 
       ## If mismatch, re-run optimisation
       while(stkLimMismatch == TRUE & maxRetry > 0) {
@@ -535,12 +560,24 @@ effortBaranov <- function(omList,
         cat("Choke stock mis-match detected - rerunning optimisation \n")
         
         ## Update effort-limiting stock vector
-        omList[[it]]$stkLim <- sapply(1:ncol(stkEff), function(x) { which.min(stkEff[,x])})
+        ## NOTE: we need to select from only stocks the fleet has catching power for!
+        omList[[it]]$stkLim <- sapply(1:ncol(stkEff), function(x) { 
+          xx <- stkEff[,x]
+          xx[omList[[it]]$catchq[,x] == 0] <- NA
+          which.min(xx)
+          })
+        
+        ## use last year effort or global optimisation output as initial values
+        if(useEffortAsInit == TRUE){
+          par <- log(omList[[it]]$effort)
+        } else {
+          par <- out$par
+        }
 
         ## Re-run optimisation
         if(method == "nlminb") {
 
-          out <- nlminb(start = out$par, objective = Fobj,
+          out <- nlminb(start = par, objective = Fobj,
                         dat = omList[[it]],
                         adviceType = adviceType,
                         control = list("iter.max" = 1000,
@@ -548,7 +585,7 @@ effortBaranov <- function(omList,
 
         } else {
 
-          out <- optim(par = out$par, fn = Fobj,
+          out <- optim(par = par, fn = Fobj,
                        dat = omList[[it]],
                        adviceType = adviceType,
                        method = "Nelder-Mead")
@@ -560,11 +597,19 @@ effortBaranov <- function(omList,
                                                     adviceType = adviceType)
         
         ## Check for mismatch in choke stocks
-        stkLimMismatch <- !all(omList[[it]]$stkLim == sapply(1:ncol(stkEff), function(x) { which.min(stkEff[,x])}))
+        ## NOTE: we need to select from only stocks the fleet has catching power for!
+        stkLimMismatch <- !all(omList[[it]]$stkLim == sapply(1:ncol(stkEff), function(x) { 
+          xx <- stkEff[,x]
+          xx[omList[[it]]$catchq[,x] == 0] <- NA
+          which.min(xx)
+          }))
         
         ## incrementally decrease number of tries
         maxRetry <- maxRetry - 1
       }
+      
+      ## Save vector of fleet choke stocks
+      out$stkLim <- omList[[it]]$stkLim
 
       # -------------------------------------------------------------#
       # (Optional) Rescale effort down if residual overshoot remains

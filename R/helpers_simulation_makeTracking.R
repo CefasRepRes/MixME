@@ -141,6 +141,12 @@ makeTracking <- function(om,
                                               flt    = om$flts@names,
                                               year  = projyrs,
                                               iter  = 1:ni))
+  
+  ## track fleet choke stock
+  tracking$choke <- array(NA, dim = c(nf,ny,ni),
+                          dimnames = list(flt = om$flts@names,
+                                          year = projyrs,
+                                          iter = 1:ni))
 
   return(tracking)
 }
