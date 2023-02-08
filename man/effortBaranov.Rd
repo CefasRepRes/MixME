@@ -8,8 +8,9 @@ effortBaranov(
   omList,
   adviceType = "catch",
   par = NULL,
-  method = "nlminb",
   maxRetry = 1,
+  useEffortAsInit = FALSE,
+  useTMB = TRUE,
   correctResid = FALSE,
   parallel = FALSE
 )
@@ -27,12 +28,16 @@ landings. Defaults to 'catch'.}
 
 \item{par}{(Optional) Numeric vector. A vector of fleet effort on a log-scale.}
 
-\item{method}{(Optional) Character. Determines the optimisation algorithm that is used.
-Values may be 'nlminb' or 'Nelder-Mead'. Default is 'nlminb'.
-HIGHLY recommended that the default is used.}
-
 \item{maxRetry}{(Optional) Integer. How many times to re-run optimisation if
 identification of choke-stocks is unsuccessful? Default is 1.}
+
+\item{useEffortAsInit}{(Optional) Boolean. Should the fleet effort from the
+previous year be used as initial values. Default is
+\code{FALSE}}
+
+\item{useTMB}{(Optional) Boolean. Should TMB be used to estimate fleet effort?
+Default is \code{TRUE}. Highly recommended that the default is
+used.}
 
 \item{correctResid}{(Optional) Boolean. Should fleet efforts be scaled down
 to bring residual overquota catch to zero if residual
@@ -40,6 +45,10 @@ over-quota catch following optimisation exceeds 0.001?
 Defaults to \code{FALSE}}
 
 \item{parallel}{(Optional) Boolean. Should function be run in parallel?}
+
+\item{method}{(Optional) Character. Determines the optimisation algorithm that is used.
+Values may be 'nlminb' or 'Nelder-Mead'. Default is 'nlminb'.
+HIGHLY recommended that the default is used.}
 }
 \value{
 A list containing outputs for the final optimisation.

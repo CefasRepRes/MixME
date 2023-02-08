@@ -234,10 +234,18 @@ List flr_to_list(List om, List advice, int year, int nstock, int nfleet, int nit
             dw_stAgeFlt(a,fl) = cat_dw[idx];
             lf_stAgeFlt(a,fl) = cat_lf[idx];
             sl_stAgeFlt(a,fl) = cat_sl[idx];
+            
+            // if weights are NA, use zero
+            if(NumericVector::is_na(cat_lw[idx])) {
+              lw_stAgeFlt(a,fl) = 0;
+            }
+            if(NumericVector::is_na(cat_dw[idx])) {
+              dw_stAgeFlt(a,fl) = 0;
+            }
 
-          }
-        }
-      }
+          } // END loop over ages
+        } // END if stock is caught
+      } // END loop over fleets
 
       // Rprintf("... extracted value at age-fleet \n");
 

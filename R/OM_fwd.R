@@ -79,12 +79,19 @@ fwdMixME <- function(om,                       # FLBiols/FLFisheries
     testfwd <- FALSE # use c++
   }
   
+  ## use R or TMB to optimise fleet efforts - DELETE THIS LATER
+  if(!is.null(args$useTMB)) {
+    useTMB <- args$useTMB
+  } else {
+    useTMB <- TRUE
+  }
+  
   ## use last year effort as initial parameters? Default = FALSE
-  # if(!is.null(args$useEffortAsInit)) {
-  #   useEffortAsInit <- args$useEffortAsInit
-  # } else {
-  #   useEffortAsInit <- FALSE
-  # }
+  if(!is.null(args$useEffortAsInit)) {
+    useEffortAsInit <- args$useEffortAsInit
+  } else {
+    useEffortAsInit <- FALSE
+  }
 
   # ===========================================================================#
   # Process Advice
@@ -135,7 +142,8 @@ fwdMixME <- function(om,                       # FLBiols/FLFisheries
     effOptimised <- effortBaranov(omList       = omList,
                                   adviceType   = adviceType,
                                   maxRetry     = maxRetry,
-                                  useEffortAsInit = args$useEffortAsInit,
+                                  useEffortAsInit = useEffortAsInit,
+                                  useTMB       = useTMB,
                                   correctResid = FALSE)
 
     ## Extract effort parameters for each fleet
@@ -168,11 +176,16 @@ fwdMixME <- function(om,                       # FLBiols/FLFisheries
 
     ## save quota uptake to tracker
     tracking$uptake[,,ac(yr),] <- sapply(1:ni, function(x){
+      
+      if(useTMB == TRUE) {
+        tracking$quota[,,ac(yr),x] - effOptimised[[x]]$Cfleet
+      } else {
+        tracking$quota[,,ac(yr),x] - catchBaranov(par = exp(effOptimised[[x]]$par),
+                                                  dat = omList[[x]],
+                                                  adviceType = adviceType,
+                                                  islog = FALSE)
+      }
 
-      tracking$quota[,,ac(yr),x] - catchBaranov(par = exp(effOptimised[[x]]$par),
-                                                      dat = omList[[x]],
-                                                      adviceType = adviceType,
-                                                      islog = FALSE)
     }, simplify = "array")
     
     ## save choke stock vector to tracker

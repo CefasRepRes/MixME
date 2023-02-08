@@ -14,7 +14,8 @@ oemRun(
   idx_timing = NULL,
   use_stk_oem = FALSE,
   use_catch_residuals = FALSE,
-  use_idx_residuals = FALSE
+  use_idx_residuals = FALSE,
+  use_om_weights = FALSE
 )
 }
 \arguments{
@@ -48,6 +49,11 @@ catch residuals be used to generate uncertainty?}
 
 \item{use_idx_residuals}{Logical vector. Length \code{n} stocks. Should
 survey index residuals be used to generate uncertainty?}
+
+\item{use_om_weights}{Logical vector. Length \code{n} stocks. Should stock
+catch, landings and discard individual mean weights be
+updated with data from OM? Recommend \code{TRUE} if
+attempting perfect stock observations.}
 }
 \value{
 A named list of stock observations, survey indices and updated tracking

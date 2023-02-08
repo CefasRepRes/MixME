@@ -10,8 +10,8 @@ Authors@R:
 Description: What the package does (one paragraph).
 License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
     license
-LinkingTo: Rcpp
-Imports: Rcpp
+LinkingTo: Rcpp, TMB, RcppEigen
+Imports: Rcpp, TMB
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)

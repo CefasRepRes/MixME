@@ -9,7 +9,8 @@ summary_uptake_MixME(
   minyr = NULL,
   maxyr = NULL,
   fltnames = NULL,
-  stknames = NULL
+  stknames = NULL,
+  byfleet = FALSE
 )
 }
 \description{
