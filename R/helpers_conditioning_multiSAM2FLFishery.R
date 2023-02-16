@@ -168,6 +168,8 @@ multiSAM2FLFishery <- function(SAMfit,
       ## generate a number of random variates by sampling from a multivariate
       ## normal distribution
       variates <- stockassessment::rmvnorm((niter-1), est, cov) # col = parameters, row = replicates
+      # variates <- MASS::mvrnorm((niter-1), est, cov) # col = parameters, row = replicates
+      
       colnames(variates) <- names(est)
 
       # ------------------------------------------#
@@ -559,9 +561,11 @@ makeFLCatch <- function(SAMfit,        # fitted SAM object
   # -----------------------------------------------#
 
   Fidx <- (SAMfit$conf$keyLogFsta + 1)[fishing_idx,] # index for fleet x
+  Fidx <- Fidx[Fidx > 0] # remove ages without F-at-age
   F_matrix <- exp(SAMfit$pl$logF)[Fidx,]
   F_qnt <- qnt
-  F_qnt[FLCore::ac(ages),FLCore::ac(years)] <- F_matrix
+  F_qnt[] <- 0 # default value is 0
+  F_qnt[unique(FLCore::ac(catchn[,"age"])),FLCore::ac(years)] <- F_matrix
 
   ## Insert partial fishing mortality variates if available (i.e. uncertainty == TRUE)
   if(!is.null(variates)){
@@ -580,7 +584,7 @@ makeFLCatch <- function(SAMfit,        # fitted SAM object
     F_uncertainty[] <- c(exp(t(Fvariates[,idxy])))
 
     ## insert sampled partial F-at-age into FLQuant
-    F_qnt[,,1,1,1,-1] <- F_uncertainty
+    F_qnt[unique(FLCore::ac(catchn[,"age"])),,1,1,1,-1] <- F_uncertainty
   }
 
   ## Calculate selectivity-at-age as a proportion of

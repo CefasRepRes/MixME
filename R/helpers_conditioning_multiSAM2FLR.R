@@ -135,6 +135,8 @@ setMethod(f = "multiSAM2FLR",
               ## generate a number of random variates by sampling from a multivariate
               ## normal distribution
               variates <- stockassessment::rmvnorm((niter-1), est, cov) # col = parameters, row = replicates
+              # variates <- MASS::mvrnorm((niter-1), est, cov) # col = parameters, row = replicates
+              
               colnames(variates) <- names(est)
 
               # ------------------------------------------#
@@ -299,6 +301,8 @@ setMethod(f = "multiSAM2FLR",
                 ## generate a number of random variates by sampling from a multivariate
                 ## normal distribution
                 variates <- stockassessment::rmvnorm((niter-1), est, cov) # col = parameters, row = replicates
+                # variates <- MASS::mvrnorm((niter-1), est, cov) # col = parameters, row = replicates
+                
                 colnames(variates) <- names(est)
 
                 # ------------------------------------------#

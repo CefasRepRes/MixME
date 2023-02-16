@@ -150,7 +150,7 @@ multiSAM2FLStock <- function(SAMfit,
   swt_yrs <- colnames(stockwt)
 
   ## Fill stock weights
-  stock.wt(stk)[FLCore::ac(swt_age), FLCore::ac(swt_yrs)] <- stockwt
+  FLCore::stock.wt(stk)[FLCore::ac(swt_age), FLCore::ac(swt_yrs)] <- stockwt
 
   # ------------------------------------#
   # SECTION 2.3: Natural mortality-at-age
@@ -240,7 +240,8 @@ multiSAM2FLStock <- function(SAMfit,
   Cmatrix[cbind(ac(catchnn[,"age"]), ac(catchnn[,"year"]))] <- catchnn[,"catch"]
 
   ## insert into catch.n slot
-  catch.n(stk)[FLCore::ac(ages), FLCore::ac(years)] <- Cmatrix
+  FLCore::catch.n(stk)[] <- 0
+  FLCore::catch.n(stk)[rownames(Cmatrix), colnames(Cmatrix)] <- Cmatrix
 
   # --------------------------------------#
   # SECTION 3.2: Catch mean weight-at-age
@@ -316,7 +317,7 @@ multiSAM2FLStock <- function(SAMfit,
   }
 
   ## use landings fraction to calculate landings from total catch
-  landings.n(stk) <- lf_qnt * catch.n(stk)
+  FLCore::landings.n(stk) <- lf_qnt * catch.n(stk)
 
   # -----------------------------------------#
   # SECTION 3.4: Landings mean weight-at-age
@@ -358,7 +359,7 @@ multiSAM2FLStock <- function(SAMfit,
   # ------------------------------------#
 
   ## use landings fraction to calculate discards from total catch
-  discards.n(stk) <- (1 - lf_qnt) * catch.n(stk)
+  FLCore::discards.n(stk) <- (1 - lf_qnt) * FLCore::catch.n(stk)
 
   # -----------------------------------------#
   # SECTION 3.6: Discards mean weight-at-age
@@ -433,7 +434,8 @@ multiSAM2FLStock <- function(SAMfit,
   }
 
   ## Fill fishing mortality-at-age
-  FLCore::harvest(stk)[FLCore::ac(ages), FLCore::ac(years)] <- Ftotal
+  FLCore::harvest(stk)[] <- 0
+  FLCore::harvest(stk)[rownames(Cmatrix), colnames(Cmatrix)] <- Ftotal
 
 
   # -----------------------------------------------------#
@@ -472,10 +474,10 @@ multiSAM2FLStock <- function(SAMfit,
   # SECTION 5:   Update stock, catch, landings, discards Biomass slots
   # ==================================================================#
 
-  stock(stk)    <- FLCore::computeStock(stk)
-  catch(stk)    <- FLCore::computeCatch(stk)
-  landings(stk) <- FLCore::computeLandings(stk)
-  discards(stk) <- FLCore::computeDiscards(stk)
+  FLCore::stock(stk)    <- FLCore::computeStock(stk)
+  FLCore::catch(stk)    <- FLCore::computeCatch(stk)
+  FLCore::landings(stk) <- FLCore::computeLandings(stk)
+  FLCore::discards(stk) <- FLCore::computeDiscards(stk)
 
   # ==================================================================#
   # SECTION 6:   (Optional) extend stock year dimension to new range
@@ -525,6 +527,8 @@ multiSAM2FLStock <- function(SAMfit,
       ## generate a number of random variates by sampling from a multivariate
       ## normal distribution
       variates <- stockassessment::rmvnorm((niter-1), est, cov) # col = parameters, row = replicates
+      # variates <- MASS::mvrnorm((niter-1), est, cov) # col = parameters, row = replicates
+      
       colnames(variates) <- names(est)
     }
 
@@ -533,7 +537,7 @@ multiSAM2FLStock <- function(SAMfit,
     # -----------------------------------------------------#
 
     ## Exponentiate and insert stock numbers into iterations 2-n
-    stock.n(stk)[,ac(years),,,,-1] <- exp(t(variates[, colnames(variates) == "logN"]))
+    FLCore::stock.n(stk)[,ac(years),,,,-1] <- exp(t(variates[, colnames(variates) == "logN"]))
 
     # -----------------------------------------------------#
     # SECTION 7.3: Insert sampled fishing mortality-at-age
@@ -551,6 +555,7 @@ multiSAM2FLStock <- function(SAMfit,
       Farray <- sapply(which(SAMfit$data$fleetTypes == 0), function(x){
 
         idx <- (SAMfit$conf$keyLogFsta + 1)[x,] # index for fleet x
+        idx <-  idx[idx > 0] # remove cases of no F-at-age
 
         # because I am subsetting sampled logF for a multifleet model, logF columns
         # are associated with both age and year.
@@ -579,7 +584,7 @@ multiSAM2FLStock <- function(SAMfit,
     }
 
     ## Fill fishing mortality-at-age
-    FLCore::harvest(stk)[FLCore::ac(ages), FLCore::ac(years),,,,-1] <- Ftotal
+    FLCore::harvest(stk)[rownames(Cmatrix), colnames(Cmatrix),,,,-1] <- Ftotal
 
     # -----------------------------------------------------#
     # SECTION 7.4: Insert sampled catch numbers
@@ -646,7 +651,7 @@ multiSAM2FLStock <- function(SAMfit,
     }
 
     ## insert into catch.n slot
-    catch.n(stk)[FLCore::ac(ages), FLCore::ac(catch_years),1,1,1,-1] <- res_n
+    FLCore::catch.n(stk)[rownames(Cmatrix), FLCore::ac(catch_years),1,1,1,-1] <- res_n
 
     # -----------------------------------------------------#
     # SECTION 7.5: Update additional slots
@@ -656,14 +661,14 @@ multiSAM2FLStock <- function(SAMfit,
     lf_qnt_iter <- FLCore::propagate(lf_qnt, iter = niter)
 
     ## Calculate corresponding landings and discards uncertainty
-    landings.n(stk)[ac(ages), ac(catch_years)] <- lf_qnt_iter[ac(ages), ac(catch_years)] * catch.n(stk)[ac(ages), ac(catch_years)]
-    discards.n(stk)[ac(ages), ac(catch_years)] <- (1 - lf_qnt_iter[ac(ages), ac(catch_years)]) * catch.n(stk)[ac(ages), ac(catch_years)]
+    FLCore::landings.n(stk)[ac(ages), ac(catch_years)] <- lf_qnt_iter[ac(ages), ac(catch_years)] * catch.n(stk)[ac(ages), ac(catch_years)]
+    FLCore::discards.n(stk)[ac(ages), ac(catch_years)] <- (1 - lf_qnt_iter[ac(ages), ac(catch_years)]) * catch.n(stk)[ac(ages), ac(catch_years)]
 
     ## compute total stock, catch, landings and discards weights
-    stock(stk)    <- FLCore::computeStock(stk)
-    catch(stk)    <- FLCore::computeCatch(stk)
-    landings(stk) <- FLCore::computeLandings(stk)
-    discards(stk) <- FLCore::computeDiscards(stk)
+    FLCore::stock(stk)    <- FLCore::computeStock(stk)
+    FLCore::catch(stk)    <- FLCore::computeCatch(stk)
+    FLCore::landings(stk) <- FLCore::computeLandings(stk)
+    FLCore::discards(stk) <- FLCore::computeDiscards(stk)
   }
 
   return(stk)
