@@ -601,6 +601,9 @@ effortBaranov <- function(omList,
           which.min(xx)
         }))
         
+        ## Save vector of fleet choke stocks
+        out$stkLim <- omList[[it]]$stkLim
+        
       }
       
       # If useTMB is TRUE, there is some reorganisation of how parameters are 
@@ -632,6 +635,20 @@ effortBaranov <- function(omList,
           xx[omList[[it]]$catchq[,x] == 0] <- NA
           which.min(xx)-1
         }))
+        
+        ## Save vector of fleet choke stocks
+        out$stkLim <- omList[[it]]$stkLim + 1
+        
+        ## attach catch matrix to out
+        out$Cfleet <- Fobj$report()$Cfleet
+        
+        ## attach TMB 
+        sdr<- TMB::sdreport(Fobj)
+        pl   <- as.list(sdr,"Est")
+        plsd <- as.list(sdr,"Std")
+        
+        out$pl <- pl
+        out$plsd <- plsd
       }
 
       # ----------------------------------------------------------------#
