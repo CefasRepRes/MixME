@@ -85,6 +85,8 @@ makeTracking <- function(om,
                "L.obs", # OEM Landings (biomass)
                "D.obs", # OEM Discards (biomass)
 
+               "conv.est", # Stock estimation model convergence
+               
                "F.est", # Estimated Mean Fishing mortality
                "B.est", # Estimated Total Stock Biomass
               "SB.est", # Estimated Spawning Stock Biomass
