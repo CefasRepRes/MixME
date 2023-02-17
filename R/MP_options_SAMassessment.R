@@ -119,13 +119,32 @@ SAMassessment <- function(stk, idx, tracking,
   
   if (isTRUE(track_ini)) {
     
-    ## extract fitted par
-    par_fit <- fit$pl
-    par_fit$missing <- NULL
-    attr(par_fit, "what") <- NULL
+    ### check class
+    if (is(fit, "sam") | is(fit, "list")) {
+      fit <- list(fit)
+    } else if (is(fit, "sam_list")) {
+      ### do nothing
+    } else {
+      stop("unknown fit object")
+    }
+    
+    ### go through fits and extract parameters
+    pars <- lapply(fit, function(fit_i) {
+      tryCatch({
+        p <- fit_i$pl
+        p$missing <- NULL
+        attr(p, "what") <- NULL
+        return(p)
+      }, error = function(e) NULL)
+    })
+    
+    ### return list or params
+    if (length(pars) == 1) {
+      pars <- pars[[1]]
+    }
     
     ## store par
-    tracking$par_ini <- par_fit
+    tracking$par_ini <- pars
     
   }
   
@@ -201,11 +220,18 @@ SAMassessment <- function(stk, idx, tracking,
     if (args$iy == ay) {
       
       ## in first year of simulation, use value from OM saved earlier in ay
-      TAC_last <- tracking["C.om", ac(ay)]
+      TAC_last <- tracking$stk["C.om", ac(ay)]
     } else {
       
       ## in following years, use TAC advised the year before
-      TAC_last <- tracking["metric.is", ac(ay - 1)]
+      TAC_last <- FLCore::FLQuant(tracking$advice[, ac(ay - 1)], 
+                                  dim = c(1,1,1,1,1,10), 
+                                  dimnames = list(advice = 1, 
+                                                  year = ac(ay-1), 
+                                                  unit = "all", 
+                                                  season = "all", 
+                                                  area = "unique", 
+                                                  iter = dimnames(tracking$advice)$iter))
     }
     
     # -------------------------------#
@@ -309,7 +335,7 @@ SAMassessment <- function(stk, idx, tracking,
   }
   
   ## save convergence for all iterations
-  tracking["conv.est", ac(ay)] <- sapply(fit, function(x) {
+  tracking$stk["conv.est", ac(ay)] <- sapply(fit, function(x) {
     if (isTRUE(is(x, "sam"))) {
       return(x$opt$convergence)
     } else {
