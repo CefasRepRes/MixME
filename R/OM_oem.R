@@ -296,7 +296,7 @@ oemMixME <- function(x,
   # SECTION 2.3: Observed survey indices #
   # -------------------------------------#
   
-  if(!is.null(observations[[x]])) {
+  if(!is.null(observations$idx[[x]])) {
     
     ## calculate index observations based on updated values in OM
     observations$idx[[x]] <- calculateSurvey(stk = om$stk[[x]], 
