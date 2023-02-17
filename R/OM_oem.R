@@ -267,11 +267,16 @@ oemMixME <- function(x,
   # SECTION 2.2: Trim to data period #
   # ---------------------------------#
   
+  ## We probably want to remove years preceding the data period - find mimumum data year
+  checkCatch <- iterSums(catch(stk0) > 0)
+  checkCatch[is.na(checkCatch)] <- 0
+  mindatayr <- dims(stk0[,checkCatch > 0])$minyear
+  
   ## If survey data is more recent than catch data, then trim to survey year
   if(max(idx_timing[[x]]) > max(catch_timing[[x]])) {
     
     ## Trim stock object
-    stk0 <- window(stk0, end = ay + max(idx_timing[[x]]))
+    stk0 <- window(stk0, start = mindatayr, end = ay + max(idx_timing[[x]]))
     
     ## Remove data in years where no catch data is available
     yrs_remove <- (ay + catch_timing[[x]] + 1):ay
@@ -288,7 +293,7 @@ oemMixME <- function(x,
     
   } else {
     
-    stk0 <- window(stk0, end = ay + max(catch_timing[[x]]))
+    stk0 <- window(stk0, start = mindatayr, end = ay + max(catch_timing[[x]]))
     
   }
   
@@ -316,6 +321,9 @@ oemMixME <- function(x,
         return(idx_tmp)
       }))
     }
+    
+    ## Trim index to match stock object
+    idx0 <- window(idx0, start = mindatayr, end = ay + max(max(idx_timing[[x]]), max(catch_timing[[x]])))
     
   } else {
     
