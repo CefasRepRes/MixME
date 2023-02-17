@@ -100,12 +100,12 @@ estMixME <- function(x,
     }
     
     stk_est <- do.call(estmethod[[x]],
-                       list(stk = stk[[x]],
-                            idx = idx[[x]],
-                            tracking = tracking[[x]],
-                            args,
-                            fitList[[x]],
-                            fwdList[[x]]))
+                       c(list(stk      = stk[[x]],
+                              idx      = idx[[x]],
+                              tracking = tracking[[x]],
+                              args     = args),
+                         fitList[[x]],
+                         fwdList[[x]]))
     
     ## DO I WANT TO EXTRACT SOME GENERIC RECRUITMENT MODEL???
     
