@@ -66,7 +66,7 @@ makeTracking <- function(om,
   ## Generate tracker for optimisation and warnings
   tracking <- lapply(om1$stks@names, function(x){
 
-    ## track stock advice
+    ## track stock advice (as implemented)
     track_advice_stk <- array(NA, dim = c(1,ny, ni),
                               dimnames = list(advice = 1,
                                               year = projyrs,
@@ -93,6 +93,9 @@ makeTracking <- function(om,
                "C.est", # Estimated Catch (biomass)
                "L.est", # Estimated Landings (biomass)
                "D.est", # Estimated Discards (biomass)
+              
+              "hcr.adv", # HCR advice output (fbar / catch)
+              
               addmetrics),
       year=projyrs,
       unit="unique",

@@ -126,10 +126,12 @@ hcrMixME <- function(x,
   
   ## Update tracking
   if("value" %in% rownames(out$ctrl@iters[,,])) { # ctrl structure from hcrICES
-    out$tracking$advice[1,ac(args$ay),] <- out$ctrl@iters[,,]["value",]
+    #out$tracking$advice[1,ac(args$ay),] <- out$ctrl@iters[,,]["value",]
+    out$tracking$stk["hcr.adv", ac(ay + mlag)] <- out$ctrl@iters[,,]["value",]
   }
   if("value" %in% colnames(out$ctrl@iters[,,])) { # ctrl structure from fixedF
-    out$tracking$advice[1,ac(args$ay),] <- out$ctrl@iters[,,][,"value"][1]
+    #out$tracking$advice[1,ac(args$ay),] <- out$ctrl@iters[,,][,"value"][1]
+    out$tracking$stk["hcr.adv", ac(ay + mlag)] <- out$ctrl@iters[,,][,"value"][1]
   }
   
   ## return control object

@@ -144,6 +144,14 @@ isysMixME <- function(x,
       stop("Advice must be catch or f")
     }
     
+  } # END if is null isysMethod
+  
+  ## add implemented advice to tracking object
+  if("value" %in% rownames(out$ctrl@iters[,,])) { # ctrl structure from hcrICES
+    out$tracking$advice[1,ac(ay + mlag),] <- out$ctrl@iters[,,]["value",]
+  }
+  if("value" %in% colnames(out$ctrl@iters[,,])) { # ctrl structure from fixedF
+    out$tracking$advice[1,ac(ay + mlag),] <- out$ctrl@iters[,,][,"value"][1]
   }
   
   return(list(ctrl     = ctrl0,
