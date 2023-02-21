@@ -55,8 +55,10 @@ fwdMixME <- function(om,                       # FLBiols/FLFisheries
   # Extract Arguments
   # ===========================================================================#
 
-  ni <- dims(om$stks[[1]])$iter
-  yr <- args$ay
+  ni   <- dims(om$stks[[1]])$iter
+  yr   <- args$ay
+  iy   <- args$iy
+  mlag <- args$management_lag
   
   ## Extract basis of advice
   if(!is.null(args$adviceType)) {
@@ -92,29 +94,57 @@ fwdMixME <- function(om,                       # FLBiols/FLFisheries
   } else {
     useEffortAsInit <- FALSE
   }
+  
+  # ===========================================================================#
+  # Do not project if initial projection year with management lag
+  # ===========================================================================#
+  #
+  # If it is the initial year and there is a management lag, we expect that there 
+  # is already catch for the year and stock information for the next year provide
+  # as part of the operating model conditioning. What is needed is the advice for
+  # the next year and this has already been prepared in the previous modules.
+  
+  # Therefore, do not project the system. 
+  
+  if(yr == iy & mlag > 0) {
+    
+    ## update tracking object
+    tracking <- updateTrackingOM(om = om, tracking = tracking, args = args, yr = yr)
+    
+    ## return unprojected stock
+    return(list(om       = om,
+                tracking = tracking))
+    
+  }
 
+  
   # ===========================================================================#
   # Process Advice
   # ===========================================================================#
+  
+  ## extract advice from tracking object
+  advice <- lapply(om$stks@names, function(x) {
+    c(tracking[[x]]$advice[1,ac(yr),])
+  })
 
   ## process advice to a different format -- VERY HACKY
-  advice <- lapply(om$stks@names, function(x) {
-
-    ## if control object contains more than 1 iteration, extract vector
-    if(dim(ctrl[[x]]@iters)[3] > 1){
-      ctrl[[x]]@iters[,,]["value",]
-
-      ## Otherwise repeat elements to generate vector
-    } else {
-
-      ## HAVE A SMARTER WAY OF HANDLING MULTIPLE YEARS
-      if (length(ctrl[[x]]@iters[,"value",]) > 1) {
-        rep(tail(ctrl[[x]]@iters[,"value",],1), ni)
-      } else {
-        rep(ctrl[[x]]@iters[,"value",], ni)
-      }
-    }
-  })
+  # advice <- lapply(om$stks@names, function(x) {
+  # 
+  #   ## if control object contains more than 1 iteration, extract vector
+  #   if(dim(ctrl[[x]]@iters)[3] > 1){
+  #     ctrl[[x]]@iters[,,]["value",]
+  # 
+  #     ## Otherwise repeat elements to generate vector
+  #   } else {
+  # 
+  #     ## HAVE A SMARTER WAY OF HANDLING MULTIPLE YEARS
+  #     if (length(ctrl[[x]]@iters[,"value",]) > 1) {
+  #       rep(tail(ctrl[[x]]@iters[,"value",],1), ni)
+  #     } else {
+  #       rep(ctrl[[x]]@iters[,"value",], ni)
+  #     }
+  #   }
+  # })
   names(advice) <- om$stks@names
 
   # ===========================================================================#

@@ -112,14 +112,13 @@ estMixME <- function(x,
     #tracking["F.est", ac(ay)] <- fbar(stk0)[, ac(ay - 1)]
     #tracking["B.est", ac(ay)] <- tail(ssb(stk0))
     
-  }
+  } else if(estmethod[[x]] == "perfectObs") {
   
   # ---------------------------------------------------------#
   # (Option 2) Apply perfect stock observation
   # ---------------------------------------------------------#
-  
-  ## Alternatively, simply populate OEM stock numbers and recruitment from OM
-  if(estmethod[[x]] == "perfectObs") {
+  #
+  # Alternatively, simply populate OEM stock numbers and recruitment from OM
     
     ## Copy observed stock object
     stk0 <- stk[[x]]
