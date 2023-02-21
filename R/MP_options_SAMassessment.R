@@ -52,6 +52,8 @@ SAMassessment <- function(stk, idx, tracking,
                           par_ini = NULL,           # initial parameters
                           track_ini = FALSE,        # store ini for next year
                           forecast = FALSE,
+                          newtonsteps = 0,          # switch off newton steps
+                          rel.tol = 0.001,          # reduce relative tolerance
                           fwd_trgt = "fsq",         # what to target in forecast
                           fwd_yrs = 1,              # number of years to add
                           fwd_yrs_average = -3:-1,  # years used for averages
@@ -110,8 +112,14 @@ SAMassessment <- function(stk, idx, tracking,
   # ==========================#
   
   ## fit SAM to provided data
-  fit <- FLfse::FLR_SAM(stk = stk, idx = idx, conf = conf, par_ini = par_ini,
-                        DoParallel = parallel, ...)
+  fit <- FLfse::FLR_SAM(stk = stk, 
+                        idx = idx, 
+                        conf        = conf, 
+                        par_ini     = par_ini,
+                        DoParallel  = parallel, 
+                        newtonsteps = newtonsteps,
+                        rel.tol     = rel.tol, 
+                        ...)
   
   # store parameter values and provide them as initial values next year
   # store in tracking object, this is the only object which does not get 
@@ -224,8 +232,8 @@ SAMassessment <- function(stk, idx, tracking,
     } else {
       
       ## in following years, use TAC advised the year before
-      TAC_last <- FLCore::FLQuant(tracking$advice[, ac(ay - 1)], 
-                                  dim = c(1,1,1,1,1,10), 
+      TAC_last <- FLCore::FLQuant(tracking$advice[, ac(ay - 1),], 
+                                  dim = c(1,1,1,1,1,dim(tracking$advice)[3]), 
                                   dimnames = list(advice = 1, 
                                                   year = ac(ay-1), 
                                                   unit = "all", 
@@ -239,57 +247,63 @@ SAMassessment <- function(stk, idx, tracking,
     # -------------------------------#
     
     ## do forecast for all iterations
-    fc <- foreach(fit_i = fit, iter_i = seq_along(fit),
-                  .errorhandling = "pass") %do% {
-                    
-                    ## overwrite landing fraction with last year, if requested
-                    if (!is.null(fwd_yrs_lf_remove)) {
-                      
-                      ## index for years to remove/overwrite
-                      idx_remove <- nrow(fit_i$data$landFrac) + args$fwd_yrs_lf_remove
-                      
-                      ## overwrite
-                      fit_i$data$landFrac[idx_remove, ] <- fit_i$data$landFrac[rep(nrow(fit_i$data$landFrac), 
-                                                                                   length(idx_remove)), ]
-                    }
-                    
-                    ## define forecast targets for current iteration
-                    fscale_i <- fscale
-                    
-                    ## load TAC as catch target
-                    catchval_i <- ifelse(catchval == -1, c(TAC_last[,,,,, iter_i]), catchval)
-                    
-                    ## arguments for forecast
-                    fc_args <- list(fit = fit_i, fscale = fscale_i, catchval = catchval_i,
-                                    ave.years = ave.years, rec.years = rec.years,
-                                    overwriteSelYears = overwriteSelYears, 
-                                    splitLD = fwd_splitLD)
-                    
-                    ## for compatibility of stockassessment's commit a882a11 and later:
-                    if ("savesim" %in% names(formals(base::args(stockassessment::forecast)))) {
-                      fc_args$savesim <- TRUE
-                    }
-                    
-                    ## run forecast
-                    fc_i <- do.call(stockassessment::forecast, fc_args)
-                    
-                    ## get numbers at age for all forecast years
-                    numbers <- lapply(seq(fwd_yrs), function(x) {
-                      
-                      ## index for numbers at age
-                      idx <- seq(length(fit_i$conf$keyLogFsta[1, ]))
-                      
-                      ## get simulated numbers
-                      n <- exp(fc_i[[x]]$sim[, idx])
-                      
-                      ## median
-                      apply(n, 2, median)
-                    })
-                    numbers <- do.call(cbind, numbers)
-                    
-                    return(list(stock.n = numbers))
-                    
-                  }
+    fc <- lapply(seq_along(fit), function(iter_i){
+      
+      ## extract i'th iteration
+      fit_i <- fit[[iter_i]]
+      
+      fcn_i <- tryCatch({
+        
+        ## overwrite landing fraction with last year, if requested
+        if (!is.null(fwd_yrs_lf_remove)) {
+          
+          ## index for years to remove/overwrite
+          idx_remove <- nrow(fit_i$data$landFrac) + fwd_yrs_lf_remove
+          
+          ## overwrite
+          fit_i$data$landFrac[idx_remove, ,] <- fit_i$data$landFrac[rep(nrow(fit_i$data$landFrac), 
+                                                                       length(idx_remove)), ,]
+        }
+        
+        ## define forecast targets for current iteration
+        fscale_i <- fscale
+        
+        ## load TAC as catch target
+        catchval_i <- ifelse(catchval == -1, c(TAC_last[,,,,, iter_i]), catchval)
+        
+        ## arguments for forecast
+        fc_args <- list(fit = fit_i, fscale = fscale_i, catchval = catchval_i,
+                        ave.years = ave.years, rec.years = rec.years,
+                        overwriteSelYears = overwriteSelYears, 
+                        splitLD = fwd_splitLD)
+        
+        ## for compatibility of stockassessment's commit a882a11 and later:
+        if ("savesim" %in% names(formals(base::args(stockassessment::forecast)))) {
+          fc_args$savesim <- TRUE
+        }
+        
+        ## run forecast
+        fc_i <- do.call(stockassessment::forecast, fc_args)
+        
+        ## get numbers at age for all forecast years
+        numbers <- lapply(seq(fwd_yrs), function(x) {
+          
+          ## index for numbers at age
+          idx <- seq(length(fit_i$conf$keyLogFsta[1, ]))
+          
+          ## get simulated numbers
+          n <- exp(fc_i[[x]]$sim[, idx])
+          
+          ## median
+          apply(n, 2, median)
+        })
+        numbers <- do.call(cbind, numbers)
+        
+        return(list(stock.n = numbers))
+      }, error = function(e) e)
+      
+      return(fcn_i)
+    })
     
     ## if forecast failed for a iteration, the list element will for this
     ## iteration will be an error message

@@ -66,72 +66,80 @@ SAMimplementation <- function(stk, tracking, ctrl,
   if (args$iy == ay) {
     
     ## in first year of simulation, use value from OM saved earlier in ay
-    TAC_last <- tracking["C.om", ac(ay)]
+    TAC_last <- tracking$stk["C.om", ac(ay)]
   } else {
     
     ## in following years, use TAC advised the year before
-    TAC_last <- tracking["metric.is", ac(ay - 1)]
+    TAC_last <- tracking$advice[, ac(ay - 1),]
   }
   
   ## go through all model fits
-  fc <- foreach(fit_i = fit, iter_i = seq_along(fit), 
-                .errorhandling = "pass") %do% {
-                  
-                  ## overwrite landing fraction with last year, if requested
-                  if (!is.null(fwd_yrs_lf_remove)) {
-                    
-                    ## index for years to remove/overwrite
-                    idx_remove <- nrow(fit_i$data$landFrac) + fwd_yrs_lf_remove
-                    
-                    ## overwrite
-                    fit_i$data$landFrac[idx_remove, ] <- 
-                      fit_i$data$landFrac[rep(nrow(fit_i$data$landFrac), length(idx_remove)), ]
-                  }
-                  
-                  ## check how to do forecast
-                  ## can handle F status quo, F target from ctrl object and TAC
-                  
-                  ## scaled F
-                  fscale <- ifelse(fwd_trgt == "fsq", 1, NA)
-                  
-                  ## target F values
-                  fval <- ifelse(fwd_trgt == "hcr", ctrl@trgtArray[, "val", iter_i], NA)
-                  
-                  ## target catch values
-                  catchval <- ifelse(fwd_trgt == "TAC", c(TAC_last[,,,,, iter_i]), NA)
-                  
-                  ## years for average values
-                  ave.years <- max(fit_i$data$years) + fwd_yrs_average
-                  
-                  ## years for sampling of recruitment years
-                  if (is.null(fwd_yrs_rec_start)) {
-                    rec.years <- fit_i$data$years ### use all years, if not defined
-                  } else {
-                    rec.years <- seq(from = fwd_yrs_rec_start, max(fit_i$data$years))
-                  }
-                  
-                  ## years where selectivity is not used for mean in forecast
-                  overwriteSelYears <- max(fit_i$data$years) + fwd_yrs_sel
-                  
-                  ## arguments for forecast
-                  fc_args <- list(fit = fit_i, fscale = fscale, fval = fval, 
-                                  catchval = catchval,
-                                  ave.years = ave.years, rec.years = rec.years,
-                                  overwriteSelYears = overwriteSelYears, 
-                                  splitLD = fwd_splitLD)
-                  
-                  ## for compatibility of stockassessment's commit a882a11 and later:
-                  if ("savesim" %in% names(formals(base::args(stockassessment::forecast)))) {
-                    fc_args$savesim <- TRUE
-                  }
-                  
-                  ## run forecast
-                  fc_i <- do.call(stockassessment::forecast, fc_args)
-                  
-                  ## return forecast table
-                  return(attr(fc_i, "tab"))
-                  
-                }
+  fc <- lapply(seq_along(fit), function(iter_i) {
+    
+    ## extract the i'th fit
+    fit_i <- fit[[iter_i]]
+    
+    fcn <- tryCatch({
+      
+      ## overwrite landing fraction with last year, if requested
+      if (!is.null(fwd_yrs_lf_remove)) {
+        
+        ## index for years to remove/overwrite
+        idx_remove <- nrow(fit_i$data$landFrac) + fwd_yrs_lf_remove
+        
+        ## overwrite
+        fit_i$data$landFrac[idx_remove, ,] <- 
+          fit_i$data$landFrac[rep(nrow(fit_i$data$landFrac), length(idx_remove)), ,]
+      }
+      
+      ## check how to do forecast
+      ## can handle F status quo, F target from ctrl object and TAC
+      
+      ## scaled F
+      fscale <- ifelse(fwd_trgt == "fsq", 1, NA)
+      
+      ## target F values
+      # fval <- ifelse(fwd_trgt == "hcr", ctrl@trgtArray[, "val", iter_i], NA)
+      fval <- ifelse(fwd_trgt == "hcr", ctrl@iters[, "value", iter_i], NA)
+      
+      ## target catch values
+      catchval <- ifelse(fwd_trgt == "TAC", c(TAC_last[,,,,, iter_i]), NA)
+      
+      ## years for average values
+      ave.years <- max(fit_i$data$years) + fwd_yrs_average
+      
+      ## years for sampling of recruitment years
+      if (is.null(fwd_yrs_rec_start)) {
+        rec.years <- fit_i$data$years ### use all years, if not defined
+      } else {
+        rec.years <- seq(from = fwd_yrs_rec_start, max(fit_i$data$years))
+      }
+      
+      ## years where selectivity is not used for mean in forecast
+      overwriteSelYears <- max(fit_i$data$years) + fwd_yrs_sel
+      
+      ## arguments for forecast
+      fc_args <- list(fit = fit_i, fscale = fscale, fval = fval, 
+                      catchval = catchval,
+                      ave.years = ave.years, rec.years = rec.years,
+                      overwriteSelYears = overwriteSelYears, 
+                      splitLD = fwd_splitLD)
+      
+      ## for compatibility of stockassessment's commit a882a11 and later:
+      if ("savesim" %in% names(formals(base::args(stockassessment::forecast)))) {
+        fc_args$savesim <- TRUE
+      }
+      
+      ## run forecast
+      fc_i <- do.call(stockassessment::forecast, fc_args)
+      
+      ## return forecast table
+      return(attr(fc_i, "tab"))
+      
+    }, error = function(e) e)
+  
+    return(fcn)                
+  })
   
   ## if forecast fails, error message returned
   ## replace error message with NA
@@ -145,9 +153,12 @@ SAMimplementation <- function(stk, tracking, ctrl,
   })
   
   ## create ctrl object
-  ctrl <- getCtrl(values = catch_target, 
-                  quantity = "catch", 
-                  years = ctrl@target$year, it = niter)
+  # ctrl <- getCtrl(values = catch_target, 
+  #                 quantity = "catch", 
+  #                 years = ctrl@target$year, it = niter)
+  ctrl <- FLasher::fwdControl(list(year = ctrl@target$year, 
+                                   quant = "catch", 
+                                   value = catch_target))
   
   ## return catch target and tracking
   return(list(ctrl = ctrl, tracking = tracking))
