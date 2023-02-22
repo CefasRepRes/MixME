@@ -120,6 +120,11 @@ makeTracking <- function(om,
                                           flt = om$flts@names,
                                           year = projyrs,
                                           iter = 1:ni))
+  
+  ## track failed management procedure iterations
+  tracking$iterfail <- matrix(0, nrow = ny, ncol = ni,
+                              dimnames = list(year = projyrs,
+                                              iter = 1:ni))
 
   ## track optimisation
   tracking$optim <- array(NA,

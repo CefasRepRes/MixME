@@ -146,7 +146,34 @@ fwdMixME <- function(om,                       # FLBiols/FLFisheries
   #   }
   # })
   names(advice) <- om$stks@names
-
+  
+  # ===========================================================================#
+  # Handle cases of failed advice generation
+  # ===========================================================================#
+  
+  ## index for iterations with missing advice
+  adv_missing <- which(!apply(!is.na(do.call(rbind, advice)), MARGIN = c(2), FUN = all))
+  
+  ## handle cases of missing advice
+  if(length(adv_missing) > 0) {
+    
+    ## impute previous year's true realised target
+    for(x in om$stks@names) {
+      if(adviceType == "catch")    adv_metric <- "C.om"
+      if(adviceType == "landings") adv_metric <- "L.om"
+      if(adviceType == "f")        adv_metric <- "F.om"
+      advice[[x]][adv_missing] <- c(tracking[[x]]$stk[adv_metric, ac(yr-1), 1, 1, 1, adv_missing])
+    }
+    
+    ## mark iteration(s) as failed
+    tracking$iterfail[ac(yr), adv_missing] <- 1
+    
+  }
+  
+  ## track previous instances of failed management procedure advice
+  tracking$iterfail[ac(yr), which(tracking$iterfail[ac(yr-1),] > 0)] <- 1
+  
+  
   # ===========================================================================#
   # Advice implementation given mixed fisheries technical interactions
   # ===========================================================================#
