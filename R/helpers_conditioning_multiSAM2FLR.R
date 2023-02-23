@@ -120,79 +120,14 @@ setMethod(f = "multiSAM2FLR",
               # TO DO - build a tryCatch here to handle error outputs.
               # sdreport will throw an error if applying a newer version of TMB
               # to an object fitted using older version.
-
-              ## Calculate standard deviation of model parameters
-              . <- capture.output(sds <- TMB::sdreport(obj = SAMfit$obj,
-                                                       par.fixed = SAMfit$opt$par,
-                                                       getJointPrecision = TRUE))
-
-              ## Best-fit values for parameters
-              est <- c(sds$par.fixed, sds$par.random)
-
-              ## Variance-Covariance matrix of all model parameters
-              cov <- solve(sds$jointPrecision)
-
-              ## generate a number of random variates by sampling from a multivariate
-              ## normal distribution
-              variates <- stockassessment::rmvnorm((niter-1), est, cov) # col = parameters, row = replicates
-              # variates <- MASS::mvrnorm((niter-1), est, cov) # col = parameters, row = replicates
               
-              colnames(variates) <- names(est)
+              variates <- multiSAMvariates(SAMfit, niter)
 
               # ------------------------------------------#
               # Calculate corresponding predicted catches
               # ------------------------------------------#
 
-              ### catch fleet index/indices
-              catch_fleets <- which(SAMfit$data$fleetTypes == 0)
-              catch_desc <- SAMfit$data$aux
-              years      <- SAMfit$data$years
-
-              ## convert year from index to actual year - only do this if the max index
-              ## year vector matches actual year vector length
-              if(!(min(catch_desc[,"year"]) %in% years) & (max(catch_desc[,"year"]) == length(years))) {
-
-                ## update year index to actual year
-                catch_desc[,"year"] <- catch_desc[,"year"] + min(years) - 1
-
-              }
-
-              ## Calculate years for which we have catch data
-              catch_years <- unique(catch_desc[catch_desc[,"fleet"] %in% catch_fleets,"year"])
-
-              ## Loop over each iteration
-              . <- capture.output(res_n <- sapply(1:(niter-1), function(iter_i) {
-
-                ## run the observation function for the using sampled fixed parameters
-                SAMfit$obj$fn(variates[iter_i, 1:length(sds$par.fixed)])
-
-                ## extract predicted observation estimates
-                tmp <- cbind(catch_desc, est = SAMfit$obj$report()$predObs)
-
-                ## Subset for commercial fleets
-                tmp <- tmp[tmp[, "fleet"] %in% catch_fleets, ]
-
-                ## Exponentiate to work in real catches
-                tmp[,"est"] <- exp(tmp[,"est"])
-
-                ## reorder to insert in the correct order
-                tmp <- tmp[order(tmp[,"fleet"], tmp[,"year"], tmp[,"age"]),]
-
-                ## Generate blank array which has full age and year dimensions
-                Cmatrix <- array(NA,
-                                 dim = c(length(unique(tmp[,"age"])),
-                                         length(unique(tmp[,"year"])),
-                                         length(catch_fleets)),
-                                 dimnames = list(age = sort(unique(tmp[,"age"])),
-                                                 year = sort(unique(tmp[,"year"]))))
-
-                ## insert catches into blank matrix
-                Cmatrix[] <- tmp[,"est"]
-
-                return(Cmatrix)
-
-              }, simplify = "array"))
-
+              res_n <- multiSAMcay(SAMfit, variates, niter, option = 2)
 
               samVariates <- list(variates = variates,
                                   res_n    = res_n)
@@ -287,75 +222,13 @@ setMethod(f = "multiSAM2FLR",
                 # Sample replicates from MVN distribution
                 # ------------------------------------------#
 
-                ## Calculate standard deviation of model parameters
-                . <- capture.output(sds <- TMB::sdreport(obj = SAMfit[[x]]$obj,
-                                                         par.fixed = SAMfit[[x]]$opt$par,
-                                                         getJointPrecision = TRUE))
-
-                ## Best-fit values for parameters
-                est <- c(sds$par.fixed, sds$par.random)
-
-                ## Variance-Covariance matrix of all model parameters
-                cov <- solve(sds$jointPrecision)
-
-                ## generate a number of random variates by sampling from a multivariate
-                ## normal distribution
-                variates <- stockassessment::rmvnorm((niter-1), est, cov) # col = parameters, row = replicates
-                # variates <- MASS::mvrnorm((niter-1), est, cov) # col = parameters, row = replicates
-                
-                colnames(variates) <- names(est)
+                variates <- multiSAMvariates(SAMfit[[x]], niter)
 
                 # ------------------------------------------#
                 # Calculate corresponding predicted catches
                 # ------------------------------------------#
-
-                ### catch fleet index/indices
-                catch_fleets <- which(SAMfit[[x]]$data$fleetTypes == 0)
-                catch_desc   <- SAMfit[[x]]$data$aux
-                years        <- SAMfit[[x]]$data$years
-
-                ## convert year from index to actual year - only do this if the max index
-                ## year vector matches actual year vector length
-                if(!(min(catch_desc[,"year"]) %in% years) & (max(catch_desc[,"year"]) == length(years))) {
-
-                  ## update year index to actual year
-                  catch_desc[,"year"] <- catch_desc[,"year"] + min(years) - 1
-
-                }
-
-                ## Calculate years for which we have catch data
-                catch_years <- unique(catch_desc[catch_desc[,"fleet"] %in% catch_fleets,"year"])
-
-                ## Loop over each iteration
-                . <- capture.output(res_n <- sapply(1:(niter-1), function(iter_i){
-
-                  ## run the observation function for the using sampled fixed parameters
-                  SAMfit[[x]]$obj$fn(variates[iter_i, 1:length(sds$par.fixed)])
-
-                  ## extract predicted observation estimates
-                  tmp <- cbind(catch_desc, est = SAMfit[[x]]$obj$report()$predObs)
-
-                  ## Subset for commercial fleets
-                  tmp <- tmp[tmp[, "fleet"] %in% catch_fleets, ]
-
-                  ## Exponentiate to work in real catches
-                  tmp[,"est"] <- exp(tmp[,"est"])
-
-                  ## reorder to insert in the correct order
-                  tmp <- tmp[order(tmp[,"fleet"], tmp[,"year"], tmp[,"age"]),]
-
-                  ## Generate blank array which has full age and year dimensions
-                  Cmatrix <- array(NA,
-                                   dim = c(length(unique(tmp[,"age"])), length(unique(tmp[,"year"])), length(catch_fleets)),
-                                   dimnames = list(age = sort(unique(tmp[,"age"])),
-                                                   year = sort(unique(tmp[,"year"]))))
-
-                  ## insert catches into blank matrix
-                  Cmatrix[] <- tmp[,"est"]
-
-                  return(Cmatrix)
-
-                }, simplify = "array"))
+                
+                res_n <- multiSAMcay(SAMfit[[x]], variates, niter, option = 2)
 
                 return(list(variates = variates,
                             res_n    = res_n))
@@ -447,3 +320,195 @@ setMethod(f = "multiSAM2FLR",
                         idxs = idxs))
 
           })
+
+
+#' Sample variates from fitted SAM object
+#' -----------------------------------------------------------------------------
+#' 
+#' Function takes a fitted SAM object and samples a number of variates for each
+#' estimated parameter from a multivariate normal distribution. Function returns
+#' a matrix.
+
+multiSAMvariates <- function(SAMfit, niter) {
+  
+  ## Calculate standard deviation of model parameters
+  . <- capture.output(sds <- TMB::sdreport(obj = SAMfit$obj,
+                                           par.fixed = SAMfit$opt$par,
+                                           getJointPrecision = TRUE))
+  
+  ## Best-fit values for parameters
+  est <- c(sds$par.fixed, sds$par.random)
+  
+  ## Variance-Covariance matrix of all model parameters
+  cov <- solve(sds$jointPrecision)
+  
+  ## generate a number of random variates by sampling from a multivariate
+  ## normal distribution
+  variates <- stockassessment::rmvnorm((niter-1), est, cov) # col = parameters, row = replicates
+  # variates <- MASS::mvrnorm((niter-1), est, cov) # col = parameters, row = replicates
+  
+  ## add parameter names to variates
+  colnames(variates) <- names(est)
+  
+  return(variates)
+}
+
+#' Extract fleet F-at-age from sampled SAM parameters
+#' -----------------------------------------------------------------------------
+#' 
+#' Function takes a fitted SAM object and previously sampled parameter variates
+#' and coerces the fleet F-at-age into an array
+
+multiSAMfay <- function(SAMfit, variates, niter, catch_fleets = NULL) {
+  
+  ## Automatically identify catch fleets if null
+  if(is.null(catch_fleets)) catch_fleets <- which(SAMfit$data$fleetTypes == 0)
+  
+  ## Extract fishing mortality variates to a separate object
+  Fvariates <- variates[, colnames(variates) == "logF"]
+  
+  ## extract dimensions
+  cw <- SAMfit$data$catchMeanWeight
+  aa <- colnames(cw[,,1])
+  yy <- rownames(cw[,,1])
+  
+  # Loop over each fleet that is identified and extract the corresponding
+  # partial fishing mortality-at-age matrices
+  
+  ## calculate fleet F-at-age
+  Farray <- sapply(catch_fleets, function(x){
+    
+    ## define indices for fleet x
+    idx <- (SAMfit$conf$keyLogFsta + 1)[x,] # index for fleet x
+    fa   <- aa[idx > 0]                    # vector of fished ages
+    idx <-  idx[idx > 0]                    # remove cases of no F-at-age
+    
+    # because I am subsetting sampled logF for a multifleet model, logF columns
+    # are associated with both age and year.
+    
+    ## generate an index to handle ages and years
+    idxy <- c(sapply(1:length(yy), function(y) idx + max(SAMfit$conf$keyLogFsta + 1)*(y-1)))
+    
+    ## generate an array to hold age, year, iteration data
+    F_array_i <- array(0, dim = c(length(aa), 
+                                  length(yy), 
+                                  niter-1))
+    rownames(F_array_i) <- aa # full ages
+    colnames(F_array_i) <- yy # full years
+    
+    ## insert fleet F-at-age data
+    F_array_i[fa,,] <- c(exp(t(Fvariates[,idxy])))
+
+    return(F_array_i)
+    
+  },simplify = "array", USE.NAMES = TRUE)
+  return(Farray)
+}
+
+
+#' Calculate predicted catches from sampled SAM parameters
+#' -----------------------------------------------------------------------------
+#' 
+#' Function takes a fitted SAM object and previously sampled parameter variates
+#' and calculates the corresponding predicted catches.
+#' 
+#' There are two ways of doing this. Either updated the objective function with
+#' the sampled parameter values and extract the predicted catches from TMB, or
+#' directly calculate predicted catches from sampled parameters given inputted
+#' estimates of natural mortality.
+#' 
+#' The advantage of the latter methods is that catch predictions are extended
+#' into the aggregated data period.
+
+multiSAMcay <- function(SAMfit, variates, niter, option = 2) {
+  
+  ### catch fleet index/indices
+  catch_fleets <- which(SAMfit$data$fleetTypes == 0)
+  catch_desc   <- SAMfit$data$aux
+  years        <- SAMfit$data$years
+  
+  # Option 1 involves iteratively running the SAM objective function with sampled
+  # parameter values and extracting the reported predicted observations. These are
+  # then coerced into an array with age, year and fleet dimensions. Note that
+  # predictions are generated for only the disaggregated data period.
+  
+  # dimensions: age, year, fleet, iter
+  
+  if(option == 1) {
+    
+    ## convert year from index to actual year - only do this if the max index
+    ## year vector matches actual year vector length
+    if(!(min(catch_desc[,"year"]) %in% years) & (max(catch_desc[,"year"]) == length(years))) {
+      
+      ## update year index to actual year
+      catch_desc[,"year"] <- catch_desc[,"year"] + min(years) - 1
+      
+    }
+    
+    ## Calculate years for which we have catch data
+    catch_years <- unique(catch_desc[catch_desc[,"fleet"] %in% catch_fleets,"year"])
+    
+    ## Loop over each iteration
+    . <- capture.output(res_n <- sapply(1:(niter-1), function(iter_i) {
+      
+      ## run the observation function for the using sampled fixed parameters
+      SAMfit$obj$fn(variates[iter_i, 1:length(sds$par.fixed)])
+      
+      ## extract predicted observation estimates
+      tmp <- cbind(catch_desc, est = SAMfit$obj$report()$predObs)
+      
+      ## Subset for commercial fleets
+      tmp <- tmp[tmp[, "fleet"] %in% catch_fleets, ]
+      
+      ## Exponentiate to work in real catches
+      tmp[,"est"] <- exp(tmp[,"est"])
+      
+      ## reorder to insert in the correct order
+      tmp <- tmp[order(tmp[,"fleet"], tmp[,"year"], tmp[,"age"]),]
+      
+      ## Generate blank array which has full age and year dimensions
+      Cmatrix <- array(NA,
+                       dim = c(length(unique(tmp[,"age"])),                # age
+                               length(unique(tmp[,"year"])),               # year
+                               length(catch_fleets)),                      # fleets
+                       dimnames = list(age = sort(unique(tmp[,"age"])),    # age names
+                                       year = sort(unique(tmp[,"year"])))) # year names
+      
+      ## insert catches into blank matrix
+      Cmatrix[] <- tmp[,"est"]
+      
+      return(Cmatrix)
+      
+    }, simplify = "array")) ## END sapply over iteration
+  } ## END option 1
+  
+  # Option 2 involves extracting the sampled fishing mortality at age for each fleet,
+  # and the sampled stock numbers at age, then calculating catch numbers using the
+  # Baranov catch equation given estimates of natural mortality at age.
+  
+  # dimensions: age, year, iter, fleet
+  
+  if(option == 2) {
+    
+    ## extract fleet F-at-age
+    F_array <- multiSAMfay(SAMfit, variates, niter)
+    
+    ## calculate numbers-at-age
+    N_array   <- array(NA, dim = c(length(SAMfit$conf$minAge:SAMfit$conf$maxAge), # ages
+                                   length(years),                                 # years
+                                   niter-1))                                      # iterations
+    N_array[] <- exp(t(variates[, colnames(variates) == "logN"]))
+    
+    ## calculate total F-at-age and total Z-at-age
+    Ftotal <- apply(F_array, c(1,2,3), sum, na.rm = TRUE)
+    Ztotal <- sweep(Ftotal, c(1,2), t(SAMfit$data$natMor), "+")
+    
+    ## calculate Catch at age for each fleet
+    res_n <- sapply(catch_fleets, function(x) {
+      (F_array[,,,x] / Ztotal) * (1 - exp(-Ztotal)) * N_array
+    }, simplify = "array", USE.NAMES = TRUE)
+  } ## END option 2
+  
+  ## return result
+  return(res_n)
+}

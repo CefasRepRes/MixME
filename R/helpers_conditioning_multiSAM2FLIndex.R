@@ -90,23 +90,7 @@ multiSAM2FLIndex <- function(SAMfit,
       ## Set random number seed if provided
       if(!is.null(seed)) set.seed(seed)
 
-      ## Calculate standard deviation of model parameters
-      . <- capture.output(sds <- TMB::sdreport(obj = SAMfit$obj,
-                                               par.fixed = SAMfit$opt$par,
-                                               getJointPrecision = TRUE))
-
-      ## Best-fit values for parameters
-      est <- c(sds$par.fixed, sds$par.random)
-
-      ## Variance-Covariance matrix of all model parameters
-      cov <- solve(sds$jointPrecision)
-
-      ## generate a number of random variates by sampling from a multivariate
-      ## normal distribution
-      variates <- stockassessment::rmvnorm((niter-1), est, cov) # col = parameters, row = replicates
-      # variates <- MASS::mvrnorm((niter-1), est, cov) # col = parameters, row = replicates
-      
-      colnames(variates) <- names(est)
+      variates <- multiSAMvariates(SAMfit, niter)
 
     }
 
