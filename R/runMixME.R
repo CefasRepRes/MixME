@@ -47,6 +47,9 @@ runMixME <- function(om,
   if(!any(names(args) == c("iy"))) stop("Intermediate year 'iy' missing in 'args'.")
   
   if(args$iy > args$fy) stop("Final year 'fy' must be greater than intermediate year 'iy'")
+  
+  if(is.null(args$management_lag)) args$management_lag <- 1 # default management lag to 1
+  if(is.null(args$frq)) args$frq <- 1                       # default advice frequency to 1
 
   ## Check that there are no NAs in critical slots
   
@@ -79,7 +82,7 @@ runMixME <- function(om,
   }
 
   ## define projection years
-  projyrs <- (args$iy):(args$fy-1)
+  projyrs <- (args$iy):(args$fy - args$management_lag)
   
   ## if stock estimation methods are used, add metrics
   if(is.function(ctrl_obj$est@args$estmethod)) {
@@ -89,7 +92,7 @@ runMixME <- function(om,
   }
 
   ## Generate tracker for optimisation and warnings
-  tracking <- makeTracking(om = om, projyrs = projyrs, addmetrics = addmetrics)
+  tracking <- makeTracking(om = om, projyrs = (args$iy):(args$fy), addmetrics = addmetrics)
 
   # ===========================================================================#
   # Run mp
