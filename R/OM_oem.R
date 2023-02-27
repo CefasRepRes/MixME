@@ -323,7 +323,7 @@ oemMixME <- function(x,
     }
     
     ## Trim index to match stock object
-    idx0 <- window(idx0, start = mindatayr, end = ay + max(max(idx_timing[[x]]), max(catch_timing[[x]])))
+    idx0 <- window(idx0, end = ay + max(max(idx_timing[[x]]), max(catch_timing[[x]])))
     
   } else {
     
