@@ -191,7 +191,8 @@ extract_idx <- function(i,
   # -------------------------------------------------------------------#
   
   if(!is.null(yearRange)) {
-    idx <- window(idx, end = yearRange[2])
+    idx   <- window(idx, end = yearRange[2])
+    yeari <- (yeari[1]):(yearRange[2])
   }
   
   # -------------------------------------------------------------------#
@@ -205,10 +206,11 @@ extract_idx <- function(i,
     idx <- propagate(idx, niter)
     
     ## Fill index.q slot
-    FLCore::index.q(idx)[,,,,,-1] <- 
-      exp(t(variates[, colnames(variates) == "logFpar", 
-                     drop = FALSE][, surveyq_index]))
-    
+    for(y in FLCore::ac(yeari)) {
+      FLCore::index.q(idx)[, y, 1, 1, 1, -1] <- 
+        exp(t(variates[, colnames(variates) == "logFpar", drop = FALSE][, surveyq_index]))
+      
+    }
   }
   
   # ------------------------------------------------#
