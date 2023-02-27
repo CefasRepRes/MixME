@@ -215,6 +215,11 @@ SAMassessment <- function(stk, idx, tracking,
     fscale <- ifelse(fwd_trgt == "fsq", 1, NA)
     catchval <- ifelse(fwd_trgt == "TAC", -1, NA)
     
+    ## SAM forecasts consider year 1 to be the final datayear, so account for this
+    ## in forecast targets
+    fscale   <- c(1,  fscale)
+    catchval <- c(NA, catchval)
+    
     ## recycle target if necessary
     if (fwd_yrs > length(fwd_trgt)) {
       fscale <- c(fscale, tail(fscale, 1))

@@ -105,6 +105,12 @@ SAMimplementation <- function(stk, tracking, ctrl,
       ## target catch values
       catchval <- ifelse(fwd_trgt == "TAC", c(TAC_last[,,,,, iter_i]), NA)
       
+      ## SAM forecasts consider year 1 to be the final datayear, so account for this
+      ## in forecast targets
+      fscale   <- c(1,  fscale)
+      fval     <- c(NA, fval)
+      catchval <- c(NA, catchval)
+      
       ## years for average values
       ave.years <- max(fit_i$data$years) + fwd_yrs_average
       
