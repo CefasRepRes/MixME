@@ -74,11 +74,8 @@ hcrMixME <- function(x,
   ay   <- args$ay             # current (assessment) year
   mlag <- args$management_lag # lag between assessment year and advice year
   
-  ## IF NOT DONE PREVIOUSLY - NEED TO CLIP THE STOCK TO
-  ## THE ADVICE YEAR - MIGHT BECOME REDUNDANT ONCE
-  ## I HAVE A PERFECT OR IMPERFECT OBSERVATION MODEL
-  
-  stk0 <- window(stk[[x]], end = ay+mlag)
+  ## extrack stock
+  stk0 <- stk[[x]]
   
   ## Run user-supplied method (if provided)
   if(is.function(hcrmethod[[x]])){
