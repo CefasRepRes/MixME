@@ -18,7 +18,8 @@ plot_timeseries_MixME <- function(object,
                                   stknames = NULL,
                                   fltnames = NULL,
                                   trajectories = NULL,
-                                  quantiles = c(0.05, 0.25, 0.75, 0.95)) {
+                                  quantiles = c(0.05, 0.25, 0.75, 0.95),
+                                  addRefpts = TRUE) {
   
   # -------------------------------------
   # extract elements and define arguments
@@ -32,16 +33,35 @@ plot_timeseries_MixME <- function(object,
   if(isTRUE(quantiles))
     quantiles <- c(0.05, 0.25, 0.75, 0.95)
   
+  ## define min and max year if null
+  SSBmaxyr <- maxyr
+  if(is.null(maxyr)) {
+    maxyr    <- object$args$fy - object$args$management_lag
+    SSBmaxyr <- object$args$fy
+  }
+  
+  if(addRefpts == TRUE & !is.null(object$ctrl_obj$phcr)){
+    Refpts <- as.data.frame(do.call(rbind, object$ctrl_obj$phcr@args$hcrpars))
+    Refpts$stk <- rownames(Refpts)
+  } else {
+    Refpts <- NULL
+  }
+  
+  ## starting projection year
+  iy <- res$args$iy
+  
   # -------------------------------------
   # calculate requested quantity
   # -------------------------------------
   
   if(quantity == "ssb") {
-    res <- summary_ssb_MixME(object = object, minyr = minyr, maxyr = maxyr,
+    res <- summary_ssb_MixME(object = object, minyr = minyr, maxyr = SSBmaxyr,
                              stknames = stknames)
     
     out <- plot_ssb_MixME(res = res, trajectories = trajectories, 
-                          quantiles = quantiles)
+                          quantiles = quantiles,
+                          Refpts = Refpts,
+                          iy = iy)
   }
   
   if(quantity == "effort"){
@@ -49,7 +69,8 @@ plot_timeseries_MixME <- function(object,
                                 fltnames = fltnames)
     
     out <- plot_effort_MixME(res = res, trajectories = trajectories, 
-                             quantiles = quantiles)
+                             quantiles = quantiles,
+                             iy = iy)
   }
   
   if(quantity == "catch") {
@@ -57,7 +78,8 @@ plot_timeseries_MixME <- function(object,
                                stknames = stknames)
     
     out <- plot_catch_MixME(res = res, trajectories = trajectories, 
-                             quantiles = quantiles)
+                            quantiles = quantiles,
+                            iy = iy)
   }
   
   if(quantity == "uptake") {
@@ -65,7 +87,8 @@ plot_timeseries_MixME <- function(object,
                                 stknames = stknames)
     
     out <- plot_uptake_MixME(res = res, trajectories = trajectories, 
-                            quantiles = quantiles)
+                            quantiles = quantiles,
+                            iy = iy)
   }
   
   if(quantity == "fbar"){
@@ -73,7 +96,9 @@ plot_timeseries_MixME <- function(object,
                               stknames = stknames)
     
     out <- plot_fbar_MixME(res = res, trajectories = trajectories,
-                           quantiles = quantiles)
+                           quantiles = quantiles,
+                           Refpts = Refpts,
+                           iy = iy)
   }
   
   if(quantity == "f") {
@@ -91,7 +116,9 @@ plot_timeseries_MixME <- function(object,
 
 plot_ssb_MixME <- function(res, 
                            trajectories = NULL,
-                           quantiles = c(0.05, 0.25, 0.75, 0.95)) {
+                           quantiles = c(0.05, 0.25, 0.75, 0.95),
+                           Refpts = NULL,
+                           iy     = NULL) {
   
   ## Calculate median ssb
   summary_ssb <- aggregate(res, SSB ~ year + stk, quantile, probs = 0.5)
@@ -153,8 +180,26 @@ plot_ssb_MixME <- function(res,
     
   }
   
+  ## (Optional) Add reference points 
+  if(!is.null(Refpts)) {
+    if(!is.null(Refpts$Btrigger)) {
+      plot_out <- plot_out + 
+        geom_hline(aes(yintercept = Btrigger), linetype = 3, data = Refpts)
+    }
+    if(!is.null(Refpts$Blim)) {
+      plot_out <- plot_out + 
+        geom_hline(aes(yintercept = Blim), linetype = 3, data = Refpts)
+    }
+  }
+  
+  ## (Optional) Add start line
+  if(!is.null(iy)){
+    plot_out <- plot_out +
+      geom_vline(aes(xintercept = iy), linetype = 2)
+  }
+  
   plot_out <- plot_out +
-    geom_line(aes(y = SSB), size = 1.2)
+    geom_line(aes(y = SSB))
   
   return(plot_out)
 }
@@ -165,7 +210,8 @@ plot_ssb_MixME <- function(res,
 
 plot_effort_MixME <- function(res, 
                               trajectories = NULL,
-                              quantiles = c(0.05, 0.25, 0.75, 0.95)) {
+                              quantiles = c(0.05, 0.25, 0.75, 0.95),
+                              iy = NULL) {
   
   ## Calculate median effort
   summary_effort <- aggregate(res, effort ~ year + flt, quantile, probs = 0.5)
@@ -227,8 +273,15 @@ plot_effort_MixME <- function(res,
     
   }
   
+  ## (Optional) Add start line
+  if(!is.null(iy)){
+    plot_out <- plot_out +
+      geom_vline(aes(xintercept = iy), linetype = 2)
+  }
+  
+  
   plot_out <- plot_out +
-    geom_line(aes(y = effort), size = 1.2)
+    geom_line(aes(y = effort))
   
   return(plot_out)
   
@@ -240,7 +293,8 @@ plot_effort_MixME <- function(res,
 
 plot_catch_MixME <- function(res, 
                              trajectories = NULL,
-                             quantiles = c(0.05, 0.25, 0.75, 0.95)) {
+                             quantiles = c(0.05, 0.25, 0.75, 0.95),
+                             iy = NULL) {
   
   ## Calculate median catch
   summary_catch <- aggregate(res, catch ~ year + stk, quantile, probs = 0.5)
@@ -302,8 +356,14 @@ plot_catch_MixME <- function(res,
     
   }
   
+  ## (Optional) Add start line
+  if(!is.null(iy)){
+    plot_out <- plot_out +
+      geom_vline(aes(xintercept = iy), linetype = 2)
+  }
+  
   plot_out <- plot_out +
-    geom_line(aes(y = catch), size = 1.2)
+    geom_line(aes(y = catch))
   
   return(plot_out)
 
@@ -315,7 +375,8 @@ plot_catch_MixME <- function(res,
 
 plot_uptake_MixME <- function(res, 
                               trajectories = NULL,
-                              quantiles = c(0.05, 0.25, 0.75, 0.95)) {
+                              quantiles = c(0.05, 0.25, 0.75, 0.95),
+                              iy = NULL) {
   
   ## Calculate median catch
   summary_uptake <- aggregate(res, uptake_percentage ~ year + stk, quantile, probs = 0.5)
@@ -377,8 +438,14 @@ plot_uptake_MixME <- function(res,
     
   }
   
+  ## (Optional) Add start line
+  if(!is.null(iy)){
+    plot_out <- plot_out +
+      geom_vline(aes(xintercept = iy), linetype = 2)
+  }
+  
   plot_out <- plot_out +
-    geom_line(aes(y = uptake_percentage), size = 1.2)
+    geom_line(aes(y = uptake_percentage))
   
   return(plot_out)
   
@@ -390,7 +457,9 @@ plot_uptake_MixME <- function(res,
 
 plot_fbar_MixME <- function(res, 
                             trajectories = NULL,
-                            quantiles = c(0.05, 0.25, 0.75, 0.95)) {
+                            quantiles = c(0.05, 0.25, 0.75, 0.95),
+                            Refpts = NULL,
+                            iy = NULL) {
   
   ## Calculate median fbar
   summary_fbar <- aggregate(res, fbar ~ year + stk, quantile, probs = 0.5)
@@ -428,7 +497,7 @@ plot_fbar_MixME <- function(res,
   plot_out <- ggplot2::ggplot(data = summary_fbar,
                               aes(x = year)) +
     facet_wrap(~stk, scales = "free_y") +
-    scale_y_continuous("Quota uptake (%)") +
+    scale_y_continuous("Mean fishing mortality") +
     theme_bw()
   
   ## add quantiles
@@ -452,8 +521,23 @@ plot_fbar_MixME <- function(res,
     
   }
   
+  ## (Optional) Add reference points 
+  if(!is.null(Refpts)) {
+    if(!is.null(Refpts$Ftrgt)) {
+      plot_out <- plot_out + 
+        geom_hline(aes(yintercept = Ftrgt), linetype = 3, data = Refpts)
+    }
+  }
+  
+  ## (Optional) Add start line
+  if(!is.null(iy)){
+    plot_out <- plot_out +
+      geom_vline(aes(xintercept = iy), linetype = 2)
+  }
+  
+  ## Assemble final plot
   plot_out <- plot_out +
-    geom_line(aes(y = fbar), size = 1.2)
+    geom_line(aes(y = fbar))
   
   return(plot_out)
   
