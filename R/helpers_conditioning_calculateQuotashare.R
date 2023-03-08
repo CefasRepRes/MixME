@@ -8,7 +8,10 @@
 #' 
 #' @export
 
-calculateQuotashare <- function(stks, flts, verbose = TRUE, useCpp = TRUE) {
+calculateQuotashare <- function(stks,             # Not currently used
+                                flts,             # FLFisheries
+                                verbose = TRUE,   # Print progress?
+                                useCpp = TRUE) {  # Use C++ to attach results
   
   ## Check that dimensions are identical for different fleets
   
@@ -83,7 +86,7 @@ calculateQuotashare <- function(stks, flts, verbose = TRUE, useCpp = TRUE) {
         } else {
           
           ## attach as attribute using R - this is extremely slow
-          suppressMessages(attr(flts[[fl]][[st]], "quotashare") <- qshare_flq)
+          attr(flts[[fl]][[st]], "quotashare") <- qshare_flq
         }
       }
     }
