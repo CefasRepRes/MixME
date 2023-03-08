@@ -121,6 +121,7 @@ runMixME <- function(om,
     # -------------------------------------------------------------------------#
     # Observation Error Module
     # -------------------------------------------------------------------------#
+    cat("OBSERVATION ERROR MODEL > ")
 
     ## if not available, generate null deviances in observation error model
     if(length(deviances(oem)$stk) == 0)
@@ -152,6 +153,7 @@ runMixME <- function(om,
     # -------------------------------------------------------------------------#
     # Stock Estimation Module
     # -------------------------------------------------------------------------#
+    cat("MP STOCK ESTIMATION > ")
 
     ## Extract arguments
     ctrl.est          <- mse::args(ctrl_obj$est)
@@ -179,6 +181,7 @@ runMixME <- function(om,
     # -------------------------------------------------------------------------#
     # Harvest Control Rule Module
     # -------------------------------------------------------------------------#
+    cat("MP HCR > ")
 
     ## if exists...
     if(!is.null(ctrl_obj$phcr)){
@@ -213,6 +216,7 @@ runMixME <- function(om,
     # -------------------------------------------------------------------------#
     # Implementation System
     # -------------------------------------------------------------------------#
+    cat("MP IMPLEMENTATION SYSTEM > ")
 
     ## Set up inputs to implementation system
     ctrl.is          <- mse::args(ctrl_obj$isys)
@@ -230,6 +234,7 @@ runMixME <- function(om,
     # -------------------------------------------------------------------------#
     # Forward projection
     # -------------------------------------------------------------------------#
+    cat("OPERATING MODEL > ")
 
     ## Set up inputs to forward projection module
     ctrl.fwd          <- mse::args(ctrl_obj$fwd)
@@ -242,6 +247,8 @@ runMixME <- function(om,
     out      <- do.call("fwdMixME", ctrl.fwd)
     om       <- out$om
     tracking <- out$tracking
+    
+    cat("\n")
   }
 
   # ===========================================================================#
