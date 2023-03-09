@@ -491,9 +491,9 @@ makeFLCatch <- function(SAMfit,        # fitted SAM object
 
   ## Insert catch variates if available (i.e. uncertainty == TRUE)
   if(!is.null(res_n)){
-    res_n_ages  <- dimnames(res_n)$age
-    res_n_years <- dimnames(res_n)$year
-    catch_qnt[res_n_ages,res_n_years,1,1,1,-1] <- res_n[,,catch_idx,]
+    res_n_ages  <- dimnames(res_n)[[1]]
+    res_n_years <- dimnames(res_n)[[2]]
+    catch_qnt[res_n_ages,res_n_years,1,1,1,-1] <- res_n[,,,catch_idx]
   }
 
   ## Calculate fisheries landings & discards
