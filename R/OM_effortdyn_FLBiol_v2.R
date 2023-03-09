@@ -654,11 +654,15 @@ effortBaranov <- function(omList,
       # ----------------------------------------------------------------#
       # (OPTIONAL) Re-run optimisation using updated choke stock vector
       # ----------------------------------------------------------------#
+      
+      if(stkLimMismatch == TRUE)
+        cat("\nChoke stock mis-match detected - rerunning optimisation \n")
+      mR <- maxRetry
 
       ## If mismatch, re-run optimisation
-      while(stkLimMismatch == TRUE & maxRetry > 0) {
+      while(stkLimMismatch == TRUE & mR > 0) {
         
-        cat("Choke stock mis-match detected - rerunning optimisation \n")
+        cat("\r", maxRetry - mR + 1)
         
         ## use last year effort or global optimisation output as initial values
         if(useEffortAsInit == TRUE){
@@ -748,9 +752,9 @@ effortBaranov <- function(omList,
         }
         
         ## incrementally decrease number of tries
-        maxRetry <- maxRetry - 1
+        mR <- mR - 1
       }
-
+      
       # -------------------------------------------------------------#
       # (Optional) Rescale effort down if residual overshoot remains
       # -------------------------------------------------------------#
