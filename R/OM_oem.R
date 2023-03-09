@@ -116,10 +116,20 @@ oemMixME <- function(x,
       
       ## calculate updated weighted mean discards weights based on operating model
       fltdiscardwts <- sapply(fltcatchesnames, function(y){
-        sweep(fltcatches[[y]]@discards.n, c(1:6), stk0discards, "/") * fltcatches[[y]]@discards.wt
+        
+        ## calculate the proportional fleet contribution to overall discards
+        fltdiscardprop <- sweep(fltcatches[[y]]@discards.n, 
+                                c(1:6), 
+                                stk0discards, 
+                                "/") 
+        ## handle cases where no fleets discard
+        fltdiscardprop[is.nan(fltdiscardprop)] <- 0
+        
+        ## calculate weighted contribution of fleet to discards weights
+        fltdiscardprop * fltcatches[[y]]@discards.wt
       }, simplify = "array")
       
-      stk0@discards.wt[] <- apply(fltdiscardwts, c(1:6), sum)
+      stk0@discards.wt[] <- apply(fltdiscardwts, c(1:6), sum, na.rm = TRUE)
       
       ## Find updated discards fraction
       stk0discfrac <- stk0discards / apply(fltcatchn, c(1:6), sum)
