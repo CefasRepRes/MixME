@@ -130,6 +130,9 @@ hcrMixME <- function(x,
     #out$tracking$advice[1,ac(args$ay),] <- out$ctrl@iters[,,][,"value"][1]
     out$tracking$stk["hcr.adv", ac(ay + mlag)] <- out$ctrl@iters[,,][,"value"][1]
   }
+  if("value" %in% names(out$ctrl@iters[,,])) { # ctrl structure from 1 iteration fixedF
+    out$tracking$stk["hcr.adv", ac(ay + mlag)] <- out$ctrl@iters[,,]["value"]
+  }
   
   ## return control object
   return(out)

@@ -107,11 +107,22 @@ estMixME <- function(x,
                          fitList[[x]],
                          fwdList[[x]]))
     
-    ## DO I WANT TO EXTRACT SOME GENERIC RECRUITMENT MODEL???
+    ## estimate final data year
+    dy <- dims(stk[[x]])$maxyear
     
-    #tracking["F.est", ac(ay)] <- fbar(stk0)[, ac(ay - 1)]
-    #tracking["B.est", ac(ay)] <- tail(ssb(stk0))
-    
+    ## Store estimated properties
+    if (dy %in% dimnames(stk_est$tracking$stk)$year) {
+      stk_est$tracking$stk["F.est", ac(dy)]  <- FLCore::fbar(stk_est$stk0)[,ac(dy)]
+      stk_est$tracking$stk["B.est", ac(dy)]  <- FLCore::stock(stk_est$stk0)[,ac(dy)]
+      stk_est$tracking$stk["SB.est", ac(dy)] <- FLCore::ssb(stk_est$stk0)[,ac(dy)]
+      
+      stk_est$tracking$stk["C.est", ac(dy)] <- FLCore::catch(stk_est$stk0)[,ac(dy)]
+      stk_est$tracking$stk["L.est", ac(dy)] <- FLCore::landings(stk_est$stk0)[,ac(dy)]
+      stk_est$tracking$stk["D.est", ac(dy)] <- FLCore::discards(stk_est$stk0)[,ac(dy)]
+      
+      stk_est$tracking$sel_est[,ac(dy)] <- sweep(FLCore::harvest(stk_est$stk0)[,ac(dy)], 
+                                                 c(2:6), fbar(stk_est$stk0)[,ac(dy)], "/")
+    }
   } else if(estmethod[[x]] == "perfectObs") {
   
   # ---------------------------------------------------------#
@@ -191,7 +202,12 @@ estMixME <- function(x,
       }
       
       ## extract stock recruitment information
-      sr0        <- FLCore::as.FLSR(stk0, model = om$stks[[x]]@rec@model)
+      # sr0        <- FLCore::as.FLSR(stk0, model = om$stks[[x]]@rec@model) 
+      ## throws error if stk0 recruitment time-series is too short
+      
+      sr0        <- FLCore::FLSR(model = om$stks[[x]]@rec@model)
+      sr0        <- FLCore::propagate(sr0, iter = dim(stk0)[6])
+      sr0        <- window(sr0, start = dims(stk0)$minyear, end = dims(stk0)$maxyear)
       sr0@rec    <- FLCore::rec(stk0)
       sr0@ssb    <- FLCore::ssb(stk0)
       sr0@params <- om$stks[[x]]@rec@params
@@ -210,21 +226,21 @@ estMixME <- function(x,
                     sr0  = sr0,
                     tracking = tracking[[x]])
     
-  }
-  
-  # -------------------------#
-  # Update tracking object
-  # -------------------------#
-  stk_est$tracking$stk["F.est", ac(iy:ay)]  <- FLCore::fbar(stk_est$stk0)[,ac(iy:ay)]
-  stk_est$tracking$stk["B.est", ac(iy:ay)]  <- FLCore::stock(stk_est$stk0)[,ac(iy:ay)]
-  stk_est$tracking$stk["SB.est", ac(iy:ay)] <- FLCore::ssb(stk_est$stk0)[,ac(iy:ay)]
-  
-  stk_est$tracking$stk["C.est", ac(iy:ay)] <- FLCore::catch(stk_est$stk0)[,ac(iy:ay)]
-  stk_est$tracking$stk["L.est", ac(iy:ay)] <- FLCore::landings(stk_est$stk0)[,ac(iy:ay)]
-  stk_est$tracking$stk["D.est", ac(iy:ay)] <- FLCore::discards(stk_est$stk0)[,ac(iy:ay)]
-  
-  stk_est$tracking$sel_est[,ac(ay)] <- sweep(FLCore::harvest(stk_est$stk0)[,ac(ay)], 
-                                             c(2:6), fbar(stk_est$stk0)[,ac(ay)], "/")
+    # -------------------------#
+    # Update tracking object
+    # -------------------------#
+    stk_est$tracking$stk["F.est", ac(ay)]  <- FLCore::fbar(stk_est$stk0)[,ac(ay)]
+    stk_est$tracking$stk["B.est", ac(ay)]  <- FLCore::stock(stk_est$stk0)[,ac(ay)]
+    stk_est$tracking$stk["SB.est", ac(ay)] <- FLCore::ssb(stk_est$stk0)[,ac(ay)]
+    
+    stk_est$tracking$stk["C.est", ac(ay)] <- FLCore::catch(stk_est$stk0)[,ac(ay)]
+    stk_est$tracking$stk["L.est", ac(ay)] <- FLCore::landings(stk_est$stk0)[,ac(ay)]
+    stk_est$tracking$stk["D.est", ac(ay)] <- FLCore::discards(stk_est$stk0)[,ac(ay)]
+    
+    stk_est$tracking$sel_est[,ac(ay)] <- sweep(FLCore::harvest(stk_est$stk0)[,ac(ay)], 
+                                               c(2:6), fbar(stk_est$stk0)[,ac(ay)], "/")
+    
+  } # END if "perfectObs"
   
   return(stk_est)
 }

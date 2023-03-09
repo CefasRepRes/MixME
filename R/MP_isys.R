@@ -150,8 +150,11 @@ isysMixME <- function(x,
   if("value" %in% rownames(ctrl0@iters[,,])) { # ctrl structure from hcrICES
     track0$advice[1,ac(ay + mlag),] <- ctrl0@iters[,,]["value",]
   }
-  if("value" %in% colnames(out$ctrl@iters[,,])) { # ctrl structure from fixedF
+  if("value" %in% colnames(ctrl0@iters[,,])) { # ctrl structure from fixedF
     track0$advice[1,ac(ay + mlag),] <- ctrl0@iters[,,][,"value"][1]
+  }
+  if("value" %in% names(ctrl0@iters[,,])) { # ctrl structure from 1 iter fixedF
+    track0$advice[1,ac(ay + mlag),] <- ctrl0@iters[,,]["value"]
   }
   
   return(list(ctrl     = ctrl0,
