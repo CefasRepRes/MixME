@@ -221,7 +221,7 @@ updateTrackingOM <- function(om, tracking, args, yr) {
     fltFage <- sapply(1:length(om$flts), function(y){
       
       if(!is.null(om$flts[[y]][[x]])) {
-        om$flts[[y]][[x]]@catch.q[1,] %*% 
+        om$flts[[y]][[x]]@catch.q[1,ac(yr)] %*% 
           om$flts[[y]]@effort[,ac(yr)] %*% 
           om$flts[[y]][[x]]@catch.sel[,ac(yr)]
       } else {

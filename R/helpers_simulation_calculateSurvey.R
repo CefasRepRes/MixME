@@ -129,7 +129,7 @@ calcSurveyIndex <- function(stk, flt, idx, use_q = TRUE, use_time = TRUE) {
     ## if fleet catches stock
     if(!is.null(flt[[f]][[stkname]])) {
       
-      attr(flt[[f]][[stkname]], "catchq")[, ac(years),,,, ac(iter)] %*% 
+      catch.q(flt[[f]][[stkname]])["alpha", ac(years), ac(iter)] %*% 
         flt[[f]]@effort[, ac(years),,,, ac(iter)] %*% 
         flt[[f]][[stkname]]@catch.sel[ac(ages), ac(years),,,, ac(iter)]
       

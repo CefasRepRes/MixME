@@ -301,7 +301,7 @@ summary_fbar_MixME <- function(object,
     flf <- op[["flts"]][[fn]]
     flc <- flf[[cn]]
     b <- op[["stks"]][[bn]]
-    f <- ((flc@catch.q[1, ] %*% quantSums(b@n * b@wt)^(-1 * flc@catch.q[2,])) %*% flf@effort) %*% flc@catch.sel
+    f <- ((flc@catch.q[1, ] * quantSums(b@n * b@wt)^(-1 * flc@catch.q[2,])) %*% flf@effort) %*% flc@catch.sel
     return(f)
   }
   
@@ -396,7 +396,7 @@ summary_f_MixME <- function(object,
     flf <- op[["flts"]][[fn]]
     flc <- flf[[cn]]
     b <- op[["stks"]][[bn]]
-    f <- ((flc@catch.q[1, ] %*% quantSums(b@n * b@wt)^(-1 * flc@catch.q[2,])) %*% flf@effort) %*% flc@catch.sel
+    f <- ((flc@catch.q[1, ] * quantSums(b@n * b@wt)^(-1 * flc@catch.q[2,])) %*% flf@effort) %*% flc@catch.sel
     return(f)
   }
   

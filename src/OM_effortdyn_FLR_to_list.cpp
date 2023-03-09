@@ -341,8 +341,13 @@ List flr_to_list(List om, List advice, int year, int nstock, int nfleet, int nit
           // --------------------------
 
           // Generate index for catch.q
+          // int idx_cq =
+          //   (cat_cq_Dims[0] * (it)) +
+          //   (0);
+          
           int idx_cq =
-            (cat_cq_Dims[0] * (it)) +
+            (cat_cq_Dims[1] * cat_cq_Dims[0] * (it)) +
+            (cat_cq_Dims[0] * (yr)) +
             (0);
 
           // Generate index for quotashare
