@@ -130,6 +130,8 @@ SAMassessment <- function(stk, idx, tracking,
     ### check class
     if (is(fit, "sam") | is(fit, "list")) {
       fit <- list(fit)
+      class(fit) <- "sam_list"
+      
     } else if (is(fit, "sam_list")) {
       ### do nothing
     } else {
