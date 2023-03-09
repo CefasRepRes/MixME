@@ -59,6 +59,7 @@ fwdMixME <- function(om,                       # FLBiols/FLFisheries
   yr   <- args$ay
   iy   <- args$iy
   mlag <- args$management_lag
+  fy   <- args$fy
   
   ## Extract basis of advice
   if(!is.null(args$adviceType)) {
@@ -116,7 +117,6 @@ fwdMixME <- function(om,                       # FLBiols/FLFisheries
                 tracking = tracking))
     
   }
-
   
   # ===========================================================================#
   # Process Advice
@@ -124,7 +124,9 @@ fwdMixME <- function(om,                       # FLBiols/FLFisheries
   
   ## extract advice from tracking object
   advice <- lapply(om$stks@names, function(x) {
-    c(tracking[[x]]$advice[1,ac(yr),])
+    adv_x <- c(tracking[[x]]$advice[1,ac(yr),])
+    adv_x[adv_x == 0] <- 0.01
+    return(adv_x)
   })
 
   ## process advice to a different format -- VERY HACKY
@@ -171,7 +173,8 @@ fwdMixME <- function(om,                       # FLBiols/FLFisheries
   }
   
   ## track previous instances of failed management procedure advice
-  tracking$iterfail[ac(yr), which(tracking$iterfail[ac(yr-1),] > 0)] <- 1
+  if(yr > iy)
+    tracking$iterfail[ac(yr), which(tracking$iterfail[ac(yr-1),] > 0)] <- 1
   
   
   # ===========================================================================#
@@ -249,6 +252,24 @@ fwdMixME <- function(om,                       # FLBiols/FLFisheries
     tracking$choke[,ac(yr),] <- sapply(1:ni, function(x){
       effOptimised[[x]]$stkLim
     })
+    
+    # -------------------------------------------------------------------------#
+    # Do not project if final projection year with zero management lag
+    # -------------------------------------------------------------------------#
+    #
+    # If management lag is zero, the simulation will proceed to the final year, but
+    # we don't actually want to project forward past the final year, so end here.
+    
+    if(yr == fy & mlag == 0) {
+      
+      ## update tracking object
+      tracking <- updateTrackingOM(om = om, tracking = tracking, args = args, yr = yr)
+      
+      ## return unprojected stock
+      return(list(om       = om,
+                  tracking = tracking))
+      
+    }
 
     # -------------------------------------------------------------------------#
     # Prepare forward control object
