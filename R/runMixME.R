@@ -39,7 +39,7 @@ runMixME <- function(om,
      stop("'om' must contain stock and fleet data in 'stks' and 'flts' respectively")
 
   ## stock names in "stks", "flts" must match
-  if(!all(names(om$stks) %in% unique(unlist(lapply(om1$flts, names)))))
+  if(!all(names(om$stks) %in% unique(unlist(lapply(om$flts, names)))))
     stop("stock names in 'stks' and catches names in 'flts' must match")
 
   ## args must contain critical elements
@@ -60,16 +60,37 @@ runMixME <- function(om,
   ## --- do I really want to hard code this procedure?? Maybe better to bundle
   ##     into implementation system?? 
 
-  ## Define discarding options if not already specified
-  overquotaDiscarding <- TRUE
-  sizeselectDiscarding <- TRUE
+  ## Define discarding options if not already specified -- PROBABLY DELETE (specify in fwd)
+  # overquotaDiscarding <- TRUE
+  # sizeselectDiscarding <- TRUE
+  
+  ## Check parallelisation
+  if (is.null(args$parallel)) args$parallel <- FALSE
+  if (args$parallel == TRUE) {
+    if (foreach::getDoParRegistered()) { # if parallel env already set-up
+      args$nworkers <- foreach::getDoParWorkers()
+    } else if (is.null(args$nworkers)) {  # if parallel env not set up - no workers specified
+      
+      args$nworkers <- parallel::detectCores() - 2
+      cl <- makeCluster(args$nworkers)
+      registerDoParallel(cl)
+      
+    } else if (args$nworkers > 1) {       # if parallel env not set up - workers specified
+      
+      cl <- makeCluster(args$nworkers)
+      registerDoParallel(cl)
+      
+    } else {
+      warning("'parallel' is TRUE but only 1 worker specified")
+    }
+  } # END if parallel = TRUE
 
   # ===========================================================================#
   # Set up objects
   # ===========================================================================#
 
   ## If FLStocks are provided, convert FLStocks into FLBiols
-  if(class(om$stks) == "FLStocks") {
+  if (class(om$stks) == "FLStocks") {
     om$stks <- FLCore::FLBiols(lapply(om$stks@names,
                               function(x) {
                                 biol <- as(om$stks[[x]],"FLBiol")
@@ -85,7 +106,7 @@ runMixME <- function(om,
   projyrs <- (args$iy):(args$fy - args$management_lag)
   
   ## if stock estimation methods are used, add metrics
-  if(is.function(ctrl_obj$est@args$estmethod)) {
+  if (is.function(ctrl_obj$est@args$estmethod)) {
     addmetrics <- c("conv.est") # assessment model fit convergence code
   } else {
     addmetrics <- NULL
@@ -99,7 +120,7 @@ runMixME <- function(om,
   # ===========================================================================#
 
   ## Run simulation loop
-  for(yr in projyrs) {
+  for (yr in projyrs) {
 
     ## Print current year
     cat("year: ",yr,"\n")
@@ -113,7 +134,7 @@ runMixME <- function(om,
     # Applies if fishery-stock dynamics are completed for this year (i.e. no
     # management this year).
     
-    if(yr == args$iy & args$management_lag > 0) {
+    if (yr == args$iy & args$management_lag > 0) {
       
       tracking <- updateTrackingOM(om = om, tracking = tracking, args = args, yr = yr)
     }
@@ -124,7 +145,7 @@ runMixME <- function(om,
     cat("OBSERVATION ERROR MODEL > ")
 
     ## if not available, generate null deviances in observation error model
-    if(length(deviances(oem)$stk) == 0)
+    if (length(deviances(oem)$stk) == 0)
       deviances(oem)$stk <- rep(list(NULL), length(observations(oem)$stk))
 
     ## Extract arguments
@@ -163,7 +184,7 @@ runMixME <- function(om,
     ctrl.est$tracking <- tracking
 
     ## Add OM data if perfect observation required
-    if(any(ctrl.est$estmethod == "perfectObs")) {
+    if (any(ctrl.est$estmethod == "perfectObs")) {
       ctrl.est$om <- om
     }
 
@@ -184,7 +205,7 @@ runMixME <- function(om,
     cat("MP HCR > ")
 
     ## if exists...
-    if(!is.null(ctrl_obj$phcr)){
+    if (!is.null(ctrl_obj$phcr)) {
 
       ## Set up inputs to parameterise harvest control rule
       ctrl.phcr          <- mse::args(ctrl_obj$phcr)
@@ -254,6 +275,13 @@ runMixME <- function(om,
   # ===========================================================================#
   # Output results
   # ===========================================================================#
+  
+  ## if processing in parallel, shut down workers
+  # if (foreach::getDoParRegistered()) {
+  #   stopCluster(cl)
+  #   
+  # }
+  
 
   return(list(om       = om,
               tracking = tracking,
