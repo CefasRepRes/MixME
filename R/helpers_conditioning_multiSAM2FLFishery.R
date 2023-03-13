@@ -358,7 +358,7 @@ makeFLCatch <- function(SAMfit,        # fitted SAM object
   years      <- SAMfit$data$years
   niter      <- dims(qnt)$iter
 
-  # -------------------------------------#
+  # -----------------------------------------------------#
   # 1. Catch retained-at-age
   # 2. Landings numbers-at-age
   #    Discards numbers-at-age
@@ -367,7 +367,8 @@ makeFLCatch <- function(SAMfit,        # fitted SAM object
   # 4. Partial fishing mortality-at-age
   #    Catch selection at-age
   # 5. (Optional) expand year range
-  # -------------------------------------#
+  # 6. (Optional) catch observation standard deviation
+  # -----------------------------------------------------#
 
   # Note that uncertainty is handled within each subsection rather than in a
   # single step.
@@ -578,6 +579,34 @@ makeFLCatch <- function(SAMfit,        # fitted SAM object
   if (!is.null(yearRange)) {
     fleetstk_x <- FLCore::expand(fleetstk_x, year = yearRange[1]:yearRange[2])
   }
+  
+  # ------------------------------------------------------------#
+  # SECTION 6: Catch observation standard deviation
+  # ------------------------------------------------------------#
+  #
+  # This is the time-invariant standard deviation of catch
+  # observations
+  
+  ## template
+  catch_sd <- FLQuant(dimnames = list(age  = dimnames(qnt)$age, 
+                                      year = "all",
+                                      iter = 1:niter))
+  
+  ## index for catch sd (some ages are linked)
+  idxObs <- SAMfit$conf$keyVarObs[fishing_idx, ] + 1
+  SdLogObs_idx <- idxObs[idxObs > 0]
+  
+  ## Insert maximum likelihood values
+  catch_sd[,,,,,1]  <- exp(SAMfit$pl$logSdLogObs)[SdLogObs_idx]
+  
+  ## (Optional) insert sampled values
+  if(!is.null(variates)) {
+    catch_sd[,,,,,-1] <- 
+      exp(t(variates[, colnames(variates) == "logSdLogObs", drop = FALSE][, SdLogObs_idx]))
+  }
+  
+  ## attach values as attribute
+  attr(fleetstk_x, "catch_sd") <- catch_sd
 
   return(fleetstk_x)
 }

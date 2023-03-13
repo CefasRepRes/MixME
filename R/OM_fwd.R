@@ -31,13 +31,13 @@
 #'
 #' @export
 
-fwdMixME <- function(om,                       # FLBiols/FLFisheries
-                     ctrl,                     # Control object
-                     args,                     # Additional arguments
-                     tracking,                 # Tracking object
-                     sr_residuals_mult = TRUE, # are stock recruitment residuals multiplicative?
-                     effort_max = 100,         # maximum allowed fishing effort
-                     proc_res = NULL,          # where is process error noise stored?
+fwdMixME <- function(om,                  # FLBiols/FLFisheries
+                     ctrl,                # Control object
+                     args,                # Additional arguments
+                     tracking,            # Tracking object
+                     sr_residuals = NULL, # list or FLQuants of recruitment residuals
+                     proc_res     = NULL, # where is process error noise stored?
+                     effort_max = 100,    # maximum allowed fishing effort
                      ...) {
 
   # CURRENTLY ASSUMES THAT PROJECTION IS A SINGLE YEAR... PROBABLY UNAVOIDABLE
@@ -95,6 +95,11 @@ fwdMixME <- function(om,                       # FLBiols/FLFisheries
   } else {
     useEffortAsInit <- FALSE
   }
+  
+  ## use stock recruitment residuals
+  if(!is.null(sr_residuals))
+    if(is.list(sr_residuals))
+      sr_residuals <- FLQuants(sr_residuals)
   
   # ===========================================================================#
   # Do not project if initial projection year with management lag
@@ -326,7 +331,16 @@ fwdMixME <- function(om,                       # FLBiols/FLFisheries
   om_fwd <- FLasher::fwd(object = om$stks,
                          fishery  = om$flts,
                          control  = flasher_ctrl,
+                         deviances = sr_residuals,
                          effort_max = effort_max)
+  
+  ## add process error if supplied
+  if(!is.null(proc_res)) {
+    for(s in names(proc_res)){
+      ## implement process error
+      FLCore::n(om_fwd[[s]])[,ac(yr+1)] <- FLCore::n(om_fwd[[s]])[,ac(yr+1)] * proc_res[, ac(yr+1)]
+    }
+  }
 
   # ===========================================================================#
   # Update Operating Model slots

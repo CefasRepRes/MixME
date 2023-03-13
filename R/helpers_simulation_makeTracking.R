@@ -64,7 +64,7 @@ makeTracking <- function(om,
   ni <- dims(om$stks[[1]])$iter
 
   ## Generate tracker for optimisation and warnings
-  tracking <- lapply(om1$stks@names, function(x){
+  tracking <- lapply(om$stks@names, function(x){
 
     ## track stock advice (as implemented)
     track_advice_stk <- array(NA, dim = c(1,ny, ni),

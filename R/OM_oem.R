@@ -159,11 +159,11 @@ oemMixME <- function(x,
       # The catch residuals are assumed to be available for each fleet
       # in the form of a 7-dimensional matrix [age, year, ..., iter, fleet]
       
-      if(dim(deviances$stk[[x]]$catch.dev) != 7)
+      if(length(dim(deviances$stk[[x]])) != 7)
         stop(paste0("In 'oemMixME': For stock ",x,", catch residuals must be a 7-D array with the dimensions: age, year, unit, season, area, iter, and fleet"))
       
       ## Implement catch numbers-at-age uncertainty
-      flt0catchn <- fltcatchn %*% deviances$stk[[x]]$catch.dev
+      flt0catchn <- fltcatchn * deviances$stk[[x]]
       
       ## Calculate landings fraction
       flt0landfrac <- sweep(fltlandings, c(1:7), fltcatchn, "/")
@@ -177,8 +177,8 @@ oemMixME <- function(x,
       stk0discards <- apply(flt0discards, c(1:6), sum)
       
       ## update landings, discards and catch numbers in observed stock object
-      landings.n(stk0) <- stk0landings
-      discards.n(stk0) <- stk0discards
+      landings.n(stk0)[] <- stk0landings
+      discards.n(stk0)[] <- stk0discards
       stk0@catch.n      <- stk0@landings.n + stk0@discards.n
       
     }

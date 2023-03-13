@@ -101,6 +101,8 @@ multiSAM2FLStock <- function(SAMfit,
   # 7.3 ... Insert sampled fishing mortality-at-age
   # 7.4 ... Insert sampled catch numbers
   #
+  # 8.  (Optional) extract process error (logSdLogN)
+  #
   # ----------------------------------#
 
   ## stop if number of iterations are not provided
@@ -595,6 +597,32 @@ multiSAM2FLStock <- function(SAMfit,
     FLCore::landings(stk) <- FLCore::computeLandings(stk)
     FLCore::discards(stk) <- FLCore::computeDiscards(stk)
   }
+  
+  # ==================================================================#
+  # SECTION 8: extract process error (SdLogN)
+  # ==================================================================#
+  #
+  # NOTE: methods taken from S. Fischer - FLfse package
+  
+  ## get index for ages
+  idx_SdLogN <- SAMfit$conf$keyVarLogN + 1
+  
+  ## FLQuant template
+  SdLogN <- FLQuant(NA, dimnames = list(age  = dimnames(stk)$age, 
+                                        year = "all",
+                                        iter = 1:niter))
+  
+  ## insert maximum-likelihood values
+  SdLogN[,,,,,1]  <- exp(SAMfit$pl$logSdLogN)[idx_SdLogN]
+  
+  ## (Optional) insert sampled values
+  if(uncertainty == TRUE & niter > 1) {
+    SdLogN[,,,,,-1] <- 
+      exp(t(variates[, colnames(variates) == "logSdLogN", drop = FALSE][, idx_SdLogN]))
+  }
+  
+  ## attach as attribute
+  attr(stk, "SdLogN") <- SdLogN
 
   return(stk)
 }
