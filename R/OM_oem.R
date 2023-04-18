@@ -167,6 +167,7 @@ oemMixME <- function(x,
       
       ## Calculate landings fraction
       flt0landfrac <- sweep(fltlandings, c(1:7), fltcatchn, "/")
+      flt0landfrac[fltcatchn == 0] <- 0
       
       ### split catch into discards and landings, based on landing fraction
       flt0landings <- sweep(flt0catchn, c(1:7), flt0landfrac, "*")

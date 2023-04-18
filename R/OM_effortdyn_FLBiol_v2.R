@@ -286,7 +286,7 @@ catchBaranov <- function(par, dat, adviceType, islog = FALSE) {
                      })
 
   ## Overall Stock fishing mortality
-  Fm   <- rowSums(dat$partF, na.rm = TRUE)
+  # Fm   <- rowSums(dat$partF, na.rm = TRUE)
 
   ## Overall Stock fishing mortality-at-age
   Fage <- sapply(1:length(partFage),

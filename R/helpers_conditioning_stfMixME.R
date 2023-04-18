@@ -238,7 +238,7 @@ stfMixME <- function(om,
             return(c(catch.q(stkflt_ext)["alpha", sel_samples[xx], x]))
           })
           catchq_new <- unlist(catchq_new)
-          catch.q(stkflt_ext)["alpha", ] <- catchq_new
+          catch.q(stkflt_ext)["alpha", year_proj] <- catchq_new
           
         } # END if "resample"
         

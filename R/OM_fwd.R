@@ -326,19 +326,25 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
 
   ## extend max effort for each stock
   effort_max <- rep(effort_max, length(om$flts))
+  
+  ## combine arguments
+  fwdArgs <- list(object = om$stks,
+                  fishery  = om$flts,
+                  control  = flasher_ctrl,
+                  effort_max = effort_max)
+  
+  if (!is.null(sr_residuals)) {
+    fwdArgs$deviances <- sr_residuals
+  }
 
   ## carry out projection
-  om_fwd <- FLasher::fwd(object = om$stks,
-                         fishery  = om$flts,
-                         control  = flasher_ctrl,
-                         deviances = sr_residuals,
-                         effort_max = effort_max)
+  om_fwd <- do.call(FLasher::fwd, fwdArgs)
   
   ## add process error if supplied
   if(!is.null(proc_res)) {
     for(s in names(proc_res)){
       ## implement process error
-      FLCore::n(om_fwd[[s]])[,ac(yr+1)] <- FLCore::n(om_fwd[[s]])[,ac(yr+1)] * proc_res[, ac(yr+1)]
+      FLCore::n(om_fwd$biols[[s]])[,ac(yr+1)] <- FLCore::n(om_fwd$biols[[s]])[,ac(yr+1)] * proc_res[[s]][, ac(yr+1)]
     }
   }
 

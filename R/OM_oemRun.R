@@ -89,22 +89,30 @@ oemRun <- function(om,
   # -----------------------------------#
   
   ## Process logical arguments if required
-  if(length(use_stk_oem) == 1 & is.logical(use_stk_oem)) {
+  if(length(use_stk_oem) == 1 & 
+     is.null(names(use_stk_oem)) &
+     is.logical(use_stk_oem)) {
     use_stk_oem <- sapply(observations$stk@names, 
                           function(x) use_stk_oem,
                           USE.NAMES = TRUE)
   }
-  if(length(use_catch_residuals) == 1 & is.logical(use_catch_residuals)) {
+  if(length(use_catch_residuals) == 1 & 
+     is.null(names(use_catch_residuals)) &
+     is.logical(use_catch_residuals)) {
     use_catch_residuals <- sapply(observations$stk@names, 
                                   function(x) use_catch_residuals,
                                   USE.NAMES = TRUE)
   }
-  if(length(use_idx_residuals) == 1 & is.logical(use_idx_residuals)) {
+  if(length(use_idx_residuals) == 1 & 
+     is.null(names(use_idx_residuals)) &
+     is.logical(use_idx_residuals)) {
     use_idx_residuals <- sapply(observations$stk@names, 
                                 function(x) use_idx_residuals,
                                 USE.NAMES = TRUE)
   }
-  if(length(use_om_weights) == 1 & is.logical(use_om_weights)) {
+  if(length(use_om_weights) == 1 & 
+     is.null(names(use_om_weights)) &
+     is.logical(use_om_weights)) {
     use_om_weights <- sapply(observations$stk@names, 
                              function(x) use_om_weights,
                              USE.NAMES = TRUE)
