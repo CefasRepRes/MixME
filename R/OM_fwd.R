@@ -213,6 +213,11 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
 
     ## Extract effort parameters for each fleet
     pars <- sapply(1:ni, function(x) { effOptimised[[x]]$par})
+    
+    ## If pars are not a matrix, coerce
+    if(!is.matrix(pars)){
+      pars <- matrix(pars, nrow = length(om$flts), ncol = ni)
+    }
 
     # -------------------------------------------------------------------------#
     # TRACKING
@@ -642,7 +647,7 @@ makeFCB <- function(biols, flts){
   fcb <- do.call(rbind, nums)
   
   ## remove rows with missing biols 
-  fcb <- fcb[fcb[,3] > 0,]
+  fcb <- fcb[fcb[,3] > 0,,drop = FALSE]
   
   ## Define row and column names
   dimnames(fcb) <- list(1:nrow(fcb), c("F", "C", "B"))
