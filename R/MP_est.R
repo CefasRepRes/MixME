@@ -163,7 +163,7 @@ estMixME <- function(x,
       ## insert fishing mortality
       fltFage <- sapply(fltnames,
                         function(y){
-                          Fage <- attr(om$flts[[y]][[x]],"catchq")[,ac(yrs_oem)] %*%
+                          Fage <- catch.q(om$flts[[y]][[x]])["alpha", ac(yrs_oem)] *
                             om$flts[[y]]@effort[,ac(yrs_oem)] %*%
                             om$flts[[y]][[x]]@catch.sel[,ac(yrs_oem)]
                           
