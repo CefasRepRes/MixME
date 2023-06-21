@@ -102,28 +102,6 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
       sr_residuals <- FLQuants(sr_residuals)
   
   # ===========================================================================#
-  # Do not project if initial projection year with management lag
-  # ===========================================================================#
-  #
-  # If it is the initial year and there is a management lag, we expect that there 
-  # is already catch for the year and stock information for the next year provide
-  # as part of the operating model conditioning. What is needed is the advice for
-  # the next year and this has already been prepared in the previous modules.
-  
-  # Therefore, do not project the system. 
-  
-  if(yr == iy & mlag > 0) {
-    
-    ## update tracking object
-    tracking <- updateTrackingOM(om = om, tracking = tracking, args = args, yr = yr)
-    
-    ## return unprojected stock
-    return(list(om       = om,
-                tracking = tracking))
-    
-  }
-  
-  # ===========================================================================#
   # Process Advice
   # ===========================================================================#
   
