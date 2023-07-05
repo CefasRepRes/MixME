@@ -331,10 +331,17 @@ oemMixME <- function(x,
         index(idx_tmp) <- index(idx_tmp) * deviances$idx[[x]][[idx_i]]
         return(idx_tmp)
       }))
+      names(idx0) <- names(observations$idx[[x]])
     }
     
+    ### Check if the fix below causes problems during stock estimation
+    
     ## Trim index to match stock object
-    idx0 <- window(idx0, end = ay + max(max(idx_timing[[x]]), max(catch_timing[[x]])))
+    idx0 <- FLCore::FLIndices(lapply(seq_along(idx0), function(y) {
+      window(idx0[[y]], end = ay + idx_timing[[x]][y])
+    }))
+    
+    # idx0 <- window(idx0, end = ay + max(max(idx_timing[[x]]), max(catch_timing[[x]])))
     
   } else {
     
