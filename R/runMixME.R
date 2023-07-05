@@ -122,6 +122,9 @@ runMixME <- function(om,
       tracking[[i]]$advice[,ac(args$iy),] <- args$adviceInit[[i]]
     }
   }
+  
+  ## Set random number seed if provided
+  if(!is.null(args$seed)) set.seed(args$seed)
 
   # ===========================================================================#
   # Run mp
