@@ -219,8 +219,8 @@ SAMassessment <- function(stk, idx, tracking,
     
     ## SAM forecasts consider year 1 to be the final datayear, so account for this
     ## in forecast targets
-    fscale   <- c(1,  fscale)
-    catchval <- c(NA, catchval)
+    # fscale   <- c(1,  fscale)
+    # catchval <- c(NA, catchval)
     
     ## recycle target if necessary
     if (fwd_yrs > length(fwd_trgt)) {
@@ -235,7 +235,7 @@ SAMassessment <- function(stk, idx, tracking,
     if (args$iy == ay) {
       
       ## in first year of simulation, use value from OM saved earlier in ay
-      TAC_last <- tracking$stk["C.om", ac(ay)]
+      TAC_last <- tracking$stk["C.om", ac(ay - 1)]
     } else {
       
       ## in following years, use TAC advised the year before

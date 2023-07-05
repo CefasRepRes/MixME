@@ -58,7 +58,7 @@
 #'
 #' @export
 
-FLBiols2List <- function(om, year, advice, useCpp = TRUE) {
+FLBiols2List <- function(om, year, advice, useCpp = TRUE, process_residuals = NULL) {
 
   # NOTE! CURRENTLY ASSUMES THAT CATCH.Q IS FLPAR... MIGHT WANT TO CHANGE THIS...
   # NOTE! R version CURRENTLY ASSUMES THAT ALL FLEETS CATCH ALL STOCKS ... FIX THIS!
@@ -92,6 +92,45 @@ FLBiols2List <- function(om, year, advice, useCpp = TRUE) {
   if(length(dimnames(om$stks[[1]])$unit) > 1 |
      length(dimnames(om$stks[[1]])$season) > 1|
      length(dimnames(om$stks[[1]])$area) >1) stop("Multiple unit, season and area divisions not yet supported")
+  
+  # -----------------------------#
+  # Correct for process deviates
+  # -----------------------------#
+  #
+  # FLasher::fwd recalculates stock numbers at the beginning of the year. To be
+  # consistent, calculate the numbers that FLasher will use. This puts a 1-year
+  # lag on process error.
+  
+  if(!is.null(process_residuals)) {
+    
+    ## Generate FCB matrix
+    fcb <- makeFCB(biols = om$stks, flts = om$flts)
+    
+    ## Generate fwd control - effort value is not important
+    ctrlArgs <- lapply(seq_along(om$flts), function(x) {
+      list(year = year,
+           quant = "effort",
+           fishery = names(om$flts)[x],
+           value = 1)
+    })
+    ctrlArgs$FCB <- fcb
+    
+    ## Generate effort-based FLasher::fwd forecast control
+    flasher_ctrl <- do.call(FLasher::fwdControl, ctrlArgs)
+    
+    ## combine arguments
+    fwdArgs <- list(object = om$stks,
+                    fishery  = om$flts,
+                    control  = flasher_ctrl)
+    
+    ## carry out projection
+    om_fwd <- do.call(FLasher::fwd, fwdArgs)
+    
+    ## Extract recalculated stock numbers
+    for(i in 1:length(om$stks)) {
+      FLCore::n(om$stks[[i]])[-1,ac(year)] <- FLCore::n(om_fwd$biols[[i]])[-1,ac(year)]
+    }
+  }
 
   # ---------------------------#
   # Run Calculations using C++

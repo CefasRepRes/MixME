@@ -50,6 +50,8 @@ runMixME <- function(om,
   
   if(is.null(args$management_lag)) args$management_lag <- 1 # default management lag to 1
   if(is.null(args$frq)) args$frq <- 1                       # default advice frequency to 1
+  
+  if(args$management_lag > 0 & is.null(args$adviceInit)) stop("'adviceInit' missing in 'args'")
 
   ## Check that there are no NAs in critical slots
   
@@ -114,6 +116,15 @@ runMixME <- function(om,
 
   ## Generate tracker for optimisation and warnings
   tracking <- makeTracking(om = om, projyrs = (args$iy):(args$fy), addmetrics = addmetrics)
+  
+  if(!is.null(args$adviceInit)) {
+    for(i in names(om$stks)) {
+      tracking[[i]]$advice[,ac(args$iy),] <- args$adviceInit[[i]]
+    }
+  }
+  
+  ## Set random number seed if provided
+  if(!is.null(args$seed)) set.seed(args$seed)
 
   # ===========================================================================#
   # Run mp
