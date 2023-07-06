@@ -140,14 +140,28 @@ runMixME <- function(om,
     args$ay <- yr
     
     # -------------------------------------------------------------------------#
-    # Track OM in initial projection year
+    # Forward projection (if management lag > 0)
     # -------------------------------------------------------------------------#
-    # Applies if fishery-stock dynamics are completed for this year (i.e. no
-    # management this year).
+    # Some stock assessment models make use of catch or survey indices from the
+    # assessment year (data lag = 0). To handle these cases, we need to project
+    # the stock based on management advice generated in a previous time-step to
+    # get fishing mortality values.
     
-    if (yr == args$iy & args$management_lag > 0) {
+    if (args$management_lag > 0) {
       
-      tracking <- updateTrackingOM(om = om, tracking = tracking, args = args, yr = yr)
+      cat("OPERATING MODEL > ")
+      
+      ## Set up inputs to forward projection module
+      ctrl.fwd          <- mse::args(ctrl_obj$fwd)
+      ctrl.fwd$om       <- om
+      ctrl.fwd$args     <- args
+      ctrl.fwd$tracking <- tracking
+      
+      ## Run forward projection
+      out      <- do.call("fwdMixME", ctrl.fwd)
+      om       <- out$om
+      tracking <- out$tracking
+
     }
 
     # -------------------------------------------------------------------------#
@@ -264,21 +278,22 @@ runMixME <- function(om,
     tracking <- out$tracking
 
     # -------------------------------------------------------------------------#
-    # Forward projection
+    # Forward projection (if management lag == 0)
     # -------------------------------------------------------------------------#
-    cat("OPERATING MODEL > ")
-
-    ## Set up inputs to forward projection module
-    ctrl.fwd          <- mse::args(ctrl_obj$fwd)
-    ctrl.fwd$om       <- om
-    ctrl.fwd$ctrl     <- ctrl
-    ctrl.fwd$args     <- args
-    ctrl.fwd$tracking <- tracking
-
-    ## Run forward projection
-    out      <- do.call("fwdMixME", ctrl.fwd)
-    om       <- out$om
-    tracking <- out$tracking
+    if (args$management_lag == 0) {
+      cat("OPERATING MODEL > ")
+      
+      ## Set up inputs to forward projection module
+      ctrl.fwd          <- mse::args(ctrl_obj$fwd)
+      ctrl.fwd$om       <- om
+      ctrl.fwd$args     <- args
+      ctrl.fwd$tracking <- tracking
+      
+      ## Run forward projection
+      out      <- do.call("fwdMixME", ctrl.fwd)
+      om       <- out$om
+      tracking <- out$tracking
+    }
     
     cat("\n")
   }

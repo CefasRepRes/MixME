@@ -66,7 +66,7 @@ SAMimplementation <- function(stk, tracking, ctrl,
   if (args$iy == ay) {
     
     ## in first year of simulation, use value from OM saved earlier in ay
-    TAC_last <- tracking$stk["C.om", ac(ay - 1)]
+    TAC_last <- tracking$stk["C.om", ac(ay)]
   } else {
     
     ## in following years, use TAC advised the year before

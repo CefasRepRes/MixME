@@ -12,10 +12,9 @@
 #'
 #' @param om A list of \code{FLBiols} and \code{FLFisheries} containing the relevant
 #'           stock and fleet information in the Operating Model.
-#' @param ctrl Control object.
 #' @param args     list of additional arguments
 #' @param tracking a named list of tracking objects to monitor emergent dynamic
-#'                 properties
+#'                 properties. Contains catch advice for each stock.
 #' @param sr_residuals_mult (Optional) Logical. Are stock recruitment residuals
 #'                          multiplicative? Defaults to \code{TRUE}.
 #' @param effort_max (Optional) Numeric value indicating the maximum allowed
@@ -32,9 +31,8 @@
 #' @export
 
 fwdMixME <- function(om,                  # FLBiols/FLFisheries
-                     ctrl,                # Control object
                      args,                # Additional arguments
-                     tracking,            # Tracking object
+                     tracking,            # Tracking object containing advice
                      sr_residuals = NULL, # list or FLQuants of recruitment residuals
                      proc_res     = NULL, # where is process error noise stored?
                      effort_max = 100,    # maximum allowed fishing effort
@@ -111,25 +109,6 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
     adv_x[adv_x == 0] <- 0.01 # impute small catch target to help convergence
     return(adv_x)
   })
-
-  ## process advice to a different format -- VERY HACKY
-  # advice <- lapply(om$stks@names, function(x) {
-  # 
-  #   ## if control object contains more than 1 iteration, extract vector
-  #   if(dim(ctrl[[x]]@iters)[3] > 1){
-  #     ctrl[[x]]@iters[,,]["value",]
-  # 
-  #     ## Otherwise repeat elements to generate vector
-  #   } else {
-  # 
-  #     ## HAVE A SMARTER WAY OF HANDLING MULTIPLE YEARS
-  #     if (length(ctrl[[x]]@iters[,"value",]) > 1) {
-  #       rep(tail(ctrl[[x]]@iters[,"value",],1), ni)
-  #     } else {
-  #       rep(ctrl[[x]]@iters[,"value",], ni)
-  #     }
-  #   }
-  # })
   names(advice) <- om$stks@names
   
   # ===========================================================================#
