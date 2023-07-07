@@ -326,11 +326,13 @@ oemMixME <- function(x,
     if(use_idx_residuals[x] == TRUE) {
       
       ## loop over each survey index
-      idx0 <- FLCore::FLIndices(lapply(seq_along(idx0), function(idx_i) {
+      idx0 <- lapply(seq_along(idx0), function(idx_i) {
         idx_tmp <- idx0[[idx_i]]
         index(idx_tmp) <- index(idx_tmp) * deviances$idx[[x]][[idx_i]]
         return(idx_tmp)
-      }))
+      })
+      
+      idx0 <- FLCore::FLIndices(idx0)
       names(idx0) <- names(observations$idx[[x]])
     }
     
