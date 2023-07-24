@@ -451,3 +451,63 @@ summary_f_MixME <- function(object,
   return(res)
   
 }
+
+#' Generate summaries of Operating Model risk
+#' 
+#' Function takes an Operating model as input and generate a summary dataframe
+#' of risk (the annual probability of SSB falling below Blim) for one or more stocks
+#' 
+#' @export
+
+summary_risk_MixME <- function(object, 
+                               minyr = NULL,
+                               maxyr = NULL,
+                               stknames = NULL,
+                               Refpts) {
+  
+  # ----------------
+  # extract elements
+  # ----------------
+  
+  ## extract object elements
+  om       <- object$om
+  tracking <- object$tracking
+  
+  ## handle null cases
+  if(is.null(minyr)) minyr <- max(unlist(lapply(om$stks, function(x) dims(x)$minyear)))
+  if(is.null(maxyr)) maxyr <- min(unlist(lapply(om$stks, function(x) dims(x)$maxyear)))
+  
+  # -------------------------------------------------
+  # calculate summary quantity and correct dimensions
+  # -------------------------------------------------
+  
+  ## Calculate summary array
+  res <- sapply(names(om$stks), function(x){
+    ssb(om$stks[[x]])[,ac(minyr:maxyr), drop = FALSE] < Refpts[Refpts$stk == x,"Blim"]
+  }, simplify = "array")
+  
+  ## define dimension names
+  names(dimnames(res))[7] <- "stk"
+  dimnames(res)$stk       <- names(om$stks)
+  
+  ## transform array to dataframe
+  res <- as.data.frame.table(res)
+  names(res)[names(res) == "Freq"] <- "risk"
+  
+  ## (optional) filter for specific stocks
+  if(!is.null(stknames)) {
+    res <- res[res$stk %in% stknames,]
+  }
+  
+  ## coerce "year" and "iter" to numeric
+  res$year <- as.numeric(as.character(res$year))
+  res$iter <- as.numeric(as.character(res$iter))
+  
+  ## summarise to a single value
+  temp  <- aggregate(res, risk ~ age + year + unit + season + area + stk, FUN = "sum")
+  temp2 <- aggregate(res, risk ~ age + year + unit + season + area + stk, FUN = "length")
+  temp[,"risk"] <- temp[,"risk"]/temp2[,"risk"]
+  
+  return(temp)
+  
+}

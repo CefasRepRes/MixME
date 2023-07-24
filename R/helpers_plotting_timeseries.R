@@ -106,6 +106,17 @@ plot_timeseries_MixME <- function(object,
                            fltnames = stknames)
   }
   
+  if(quantity == "risk") {
+    if(is.null(Refpts)) stop("No reference points are available")
+    
+    res <- summary_risk_MixME(object = object, minyr = minyr, maxyr = maxyr,
+                              Refpts = Refpts,
+                              stknames = stknames)
+    
+    out <- plot_risk_MixME(res = res, iy = iy)
+    
+  }
+  
   
   return(out)
 }
@@ -156,7 +167,7 @@ plot_ssb_MixME <- function(res,
   plot_out <- ggplot2::ggplot(data = summary_ssb,
                               aes(x = year)) +
     facet_wrap(~stk, scales = "free_y") +
-    scale_y_continuous("Spawning stock biomass (tonnes)") +
+    scale_y_continuous("SSB (tonnes)") +
     theme_bw()
   
   ## add quantiles
@@ -538,6 +549,34 @@ plot_fbar_MixME <- function(res,
   ## Assemble final plot
   plot_out <- plot_out +
     geom_line(aes(y = fbar))
+  
+  return(plot_out)
+  
+}
+
+# ----------------------
+# Risk
+# ----------------------
+
+plot_risk_MixME <- function(res, 
+                            iy = NULL) {
+  
+  ## build plot
+  plot_out <- ggplot2::ggplot(data = res,
+                              aes(x = year)) +
+    facet_wrap(~stk, scales = "free_y") +
+    scale_y_continuous("Risk (P(SSB < Blim))", limits = c(0,NA)) +
+    theme_bw()
+  
+  ## (Optional) Add start line
+  if(!is.null(iy)){
+    plot_out <- plot_out +
+      geom_vline(aes(xintercept = iy), linetype = 2)
+  }
+  
+  plot_out <- plot_out +
+    geom_line(aes(y = risk)) +
+    geom_hline(aes(yintercept = 0.05), linetype = 2)
   
   return(plot_out)
   
