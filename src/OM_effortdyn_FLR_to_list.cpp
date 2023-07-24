@@ -204,6 +204,7 @@ List flr_to_list(List om, List advice, int year, int nstock, int nfleet, int nit
           NumericVector cat_lw = catS4.slot("landings.wt");
           NumericVector cat_dw = catS4.slot("discards.wt");
           NumericVector cat_lf = catS4.slot("landings.n");
+          NumericVector cat_df = catS4.slot("discards.n");
           NumericVector cat_sl = catS4.slot("catch.sel");
 
           // --------------------------
@@ -232,7 +233,7 @@ List flr_to_list(List om, List advice, int year, int nstock, int nfleet, int nit
             // Insert value into matrix
             lw_stAgeFlt(a,fl) = cat_lw[idx];
             dw_stAgeFlt(a,fl) = cat_dw[idx];
-            lf_stAgeFlt(a,fl) = cat_lf[idx];
+            lf_stAgeFlt(a,fl) = cat_lf[idx] / (cat_lf[idx] + cat_df[idx]); // recalculate landings fraction
             sl_stAgeFlt(a,fl) = cat_sl[idx];
             
             // if weights are NA, use zero
