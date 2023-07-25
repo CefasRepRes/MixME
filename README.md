@@ -1,4 +1,4 @@
-# MixME (Mixed-fishery Multi-stock Evaluation)
+# MixME (*Mix*ed-fishery *M*ulti-stock *E*valuation)
 An R package for mixed fisheries Management Strategy Evaluation (MSE) using multi-stock and multi-fleet Operating Models.
 
 - can carry out full MSE to evaluate the performance of Management Procedures.
