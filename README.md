@@ -22,3 +22,8 @@ MixME can be installed using the 'devtools' package
 install.packages("devtools")
 devtools::install_github("CefasRepRes/MixME")
 ```
+
+## Licence
+The Open Government Licence (OGL) Version 3
+
+This source code is licensed under the Open Government Licence v3.0. To view this licence, visit www.nationalarchives.gov.uk/doc/open-government-licence/version/3 or write to the Information Policy Team, The National Archives, Kew, Richmond, Surrey, TW9 4DU.
