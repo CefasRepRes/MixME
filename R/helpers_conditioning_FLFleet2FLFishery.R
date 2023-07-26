@@ -244,10 +244,14 @@ FLFleet2FLFishery <- function(fleets, na_replace = 0, verbose = TRUE) {
                                     discards.wt = Dw,
                                     price = Price,
                                     catch.sel = Cs,
-                                    catch.q = FLPar(alpha = FLCore::yearMeans(Cq), beta = 0))
+                                    catch.q = FLPar(0, 
+                                                    dimnames=list(params=c('alpha','beta'), 
+                                                                  year = dimnames(Cq)$year, 
+                                                                  iter = dimnames(Cq)$iter),
+                                                    units='NA'))
       
-      ## Attach full catchability as attribute
-      attr(catch_y, "catchq")   <- Cq
+      ## Insert full catchability time-series
+      catch_y@catch.q["alpha",] <- Cq
       
       return(catch_y)
 
