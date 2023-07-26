@@ -233,7 +233,14 @@ List flr_to_list(List om, List advice, int year, int nstock, int nfleet, int nit
             // Insert value into matrix
             lw_stAgeFlt(a,fl) = cat_lw[idx];
             dw_stAgeFlt(a,fl) = cat_dw[idx];
-            lf_stAgeFlt(a,fl) = cat_lf[idx] / (cat_lf[idx] + cat_df[idx]); // recalculate landings fraction
+            
+            // avoid divide by zero problems
+            int cn = (cat_lf[idx] + cat_df[idx]);
+            if (cn == 0) {
+              cn = 1;
+            }
+            
+            lf_stAgeFlt(a,fl) = cat_lf[idx] / cn; // recalculate landings fraction
             sl_stAgeFlt(a,fl) = cat_sl[idx];
             
             // if weights are NA, use zero
