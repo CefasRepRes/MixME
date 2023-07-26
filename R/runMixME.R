@@ -54,9 +54,10 @@ runMixME <- function(om,
   if(args$management_lag > 0 & is.null(args$adviceInit)) stop("'adviceInit' missing in 'args'")
 
   ## Check that there are no NAs in critical slots
-  
-  ## If management lag or data lag > 0, first projection year must be the 
-  ## intermediate year and OM must contain catch.
+  if(!is.null(ctrl_obj$phcr))
+    if(all(is.na(unlist(ctrl_obj$phcr@args$hcrpars))))
+      stop("'hcrpars' elements are all NA in 'ctrl_obj'")
+       
   
   ## If banking and borrowing is used make sure forecast extends to TACyr+1 
   ## --- do I really want to hard code this procedure?? Maybe better to bundle
@@ -69,18 +70,23 @@ runMixME <- function(om,
   ## Check parallelisation
   if (is.null(args$parallel)) args$parallel <- FALSE
   if (args$parallel == TRUE) {
-    if (foreach::getDoParRegistered()) { # if parallel env already set-up
-      args$nworkers <- foreach::getDoParWorkers()
-    } else if (is.null(args$nworkers)) {  # if parallel env not set up - no workers specified
+    
+    # if no workers specified
+    if (is.null(args$nworkers)) {  
+      args$nworkers <- parallel::detectCores()-1 
+    } 
+    
+    # if multiple workers available
+    if (args$nworkers > 1) {
       
-      args$nworkers <- parallel::detectCores() - 2
-      cl <- makeCluster(args$nworkers)
-      registerDoParallel(cl)
+      ## set up parallel environment
+      cl <- beginParallel(args$nworkers)
       
-    } else if (args$nworkers > 1) {       # if parallel env not set up - workers specified
-      
-      cl <- makeCluster(args$nworkers)
-      registerDoParallel(cl)
+      ## stop cluster on exit
+      on.exit({
+        parallel::stopCluster(cl)
+        foreach::registerDoSEQ()
+      }, add = TRUE)
       
     } else {
       warning("'parallel' is TRUE but only 1 worker specified")
