@@ -1,3 +1,15 @@
+# ---
+# title: 'Functions to assemble MixME objects'
+# author: 'Matthew Pace'
+# date: 'August 2023'
+# ---
+#
+#' Function to assemble inputs to a MixME simulation. Outputs a list with correct
+#' arguments for the specified simulation. Object slots may require updating.
+#' 
+#' 
+#' @export
+
 makeMixME <- function(om,
                       catch_obs = NULL,
                       index_obs = NULL,
@@ -207,6 +219,9 @@ makeMixME <- function(om,
     use_stk_oem <- FALSE
     
     if(management_lag > 0) {
+      
+      ## No stock observations
+      stk_obs <- NULL
       
       ## If no stock observations assume - 1
       catch_timing <- sapply(om$stks@names, function(x) -1,
