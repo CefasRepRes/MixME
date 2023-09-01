@@ -6,11 +6,13 @@
 \usage{
 stfMixME(
   om,
+  method = "yearMeans",
   nyears = 3,
   wts.nyears = 3,
   sel.nyears = 3,
   qs.nyears = 3,
-  verbose = TRUE
+  verbose = TRUE,
+  seed = NULL
 )
 }
 \description{

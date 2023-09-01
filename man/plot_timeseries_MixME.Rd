@@ -12,7 +12,8 @@ plot_timeseries_MixME(
   stknames = NULL,
   fltnames = NULL,
   trajectories = NULL,
-  quantiles = c(0.05, 0.25, 0.75, 0.95)
+  quantiles = c(0.05, 0.25, 0.75, 0.95),
+  addRefpts = TRUE
 )
 }
 \description{

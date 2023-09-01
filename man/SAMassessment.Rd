@@ -14,6 +14,8 @@ SAMassessment(
   par_ini = NULL,
   track_ini = FALSE,
   forecast = FALSE,
+  newtonsteps = 0,
+  rel.tol = 0.001,
   fwd_trgt = "fsq",
   fwd_yrs = 1,
   fwd_yrs_average = -3:-1,
