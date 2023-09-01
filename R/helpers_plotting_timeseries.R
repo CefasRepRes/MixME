@@ -48,7 +48,7 @@ plot_timeseries_MixME <- function(object,
   }
   
   ## starting projection year
-  iy <- res$args$iy
+  iy <- object$args$iy
   
   # -------------------------------------
   # calculate requested quantity

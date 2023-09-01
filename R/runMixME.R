@@ -145,6 +145,7 @@ runMixME <- function(om,
   if (args$parallel & (args$nworkers > 1)) {
     
     simList <- foreach(it = iter_assignment,
+                       .export = c("iterOM","iterTracking","simMixME"),
                        .errorhandling = "remove") %dopar% {
       
       ## subset operating model
