@@ -30,11 +30,16 @@ simMixME <- function (om,
   ## define projection years
   projyrs <- (args$iy):(args$fy - args$management_lag)
   
+  ## some arguments to handle progress messages
+  filearg <- ifelse(args$parallel, paste0(paste0(dimnames(om)$iter,collapse = ""),".txt",collapse = ""), "")
+  apparg  <- ifelse(args$parallel, TRUE, FALSE)
+  
   ## Run simulation loop
   for (yr in projyrs) {
     
     ## Print current year
-    cat("year: ",yr,"\n")
+    if(args$verbose)
+      cat("year: ",yr,"\n", file = filearg, append = apparg)
     
     ## Update current (assessment) year in args
     args$ay <- yr
@@ -49,7 +54,8 @@ simMixME <- function (om,
     
     if (args$management_lag > 0) {
       
-      cat("OPERATING MODEL > ")
+      if(args$verbose)
+        cat("OPERATING MODEL > ", file = filearg, append = apparg)
       
       ## Set up inputs to forward projection module
       ctrl.fwd          <- mse::args(ctrl_obj$fwd)
@@ -67,7 +73,8 @@ simMixME <- function (om,
     # -------------------------------------------------------------------------#
     # Observation Error Module
     # -------------------------------------------------------------------------#
-    cat("OBSERVATION ERROR MODEL > ")
+    if (args$verbose)
+      cat("OBSERVATION ERROR MODEL > ", file = filearg, append = apparg)
     
     ## if not available, generate null deviances in observation error model
     if (length(mse::deviances(oem)$stk) == 0)
@@ -99,7 +106,8 @@ simMixME <- function (om,
     # -------------------------------------------------------------------------#
     # Stock Estimation Module
     # -------------------------------------------------------------------------#
-    cat("MP STOCK ESTIMATION > ")
+    if(args$verbose)
+      cat("MP STOCK ESTIMATION > ", file = filearg, append = apparg)
     
     ## Extract arguments
     ctrl.est          <- mse::args(ctrl_obj$est)
@@ -127,7 +135,8 @@ simMixME <- function (om,
     # -------------------------------------------------------------------------#
     # Harvest Control Rule Module
     # -------------------------------------------------------------------------#
-    cat("MP HCR > ")
+    if(args$verbose)
+      cat("MP HCR > ", file = filearg, append = apparg)
     
     ## if exists...
     if (!is.null(ctrl_obj$phcr)) {
@@ -162,7 +171,8 @@ simMixME <- function (om,
     # -------------------------------------------------------------------------#
     # Implementation System
     # -------------------------------------------------------------------------#
-    cat("MP IMPLEMENTATION SYSTEM > ")
+    if(args$verbose)
+      cat("MP IMPLEMENTATION SYSTEM > ", file = filearg, append = apparg)
     
     ## Set up inputs to implementation system
     ctrl.is          <- mse::args(ctrl_obj$isys)
@@ -181,7 +191,8 @@ simMixME <- function (om,
     # Forward projection (if management lag == 0)
     # -------------------------------------------------------------------------#
     if (args$management_lag == 0) {
-      cat("OPERATING MODEL > ")
+      if(args$verbose)
+        cat("OPERATING MODEL > ", file = filearg, append = apparg)
       
       ## Set up inputs to forward projection module
       ctrl.fwd          <- mse::args(ctrl_obj$fwd)
@@ -195,7 +206,8 @@ simMixME <- function (om,
       tracking <- out$tracking
     }
     
-    cat("\n")
+    if(args$verbose)
+      cat("\n", file = filearg, append = apparg)
   }
   
   ## return updated operating model and tracking objects

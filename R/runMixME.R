@@ -58,6 +58,9 @@ runMixME <- function(om,
     if(all(is.na(unlist(ctrl_obj$phcr@args$hcrpars))))
       stop("'hcrpars' elements are all NA in 'ctrl_obj'")
   
+  ## Infer some simulation arguments if these are not provided
+  if(is.null(args$verbose))
+    args$verbose <- FALSE
   
   ## If banking and borrowing is used make sure forecast extends to TACyr+1 
   ## --- do I really want to hard code this procedure?? Maybe better to bundle
@@ -146,7 +149,8 @@ runMixME <- function(om,
     
     simList <- foreach(it = iter_assignment,
                        .export = c("iterOM","iterTracking","simMixME"),
-                       .errorhandling = "remove") %dopar% {
+                       .errorhandling = "remove",
+                       .inorder = TRUE) %dopar% {
       
       ## subset operating model
       om0 <- iterOM(om, it)
