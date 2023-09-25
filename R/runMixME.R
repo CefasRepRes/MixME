@@ -150,7 +150,7 @@ runMixME <- function(om,
     simList <- foreach(it = iter_assignment,
                        .export = c("iterOM","iterTracking","simMixME"),
                        .errorhandling = "remove",
-                       .inorder = TRUE) %dopar% {
+                       .inorder = TRUE) %dorng% {
       
       ## subset operating model
       om0 <- iterOM(om, it)

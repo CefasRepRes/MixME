@@ -30,7 +30,8 @@ beginParallel <- function(parallel) {
   ## Check that parallel, doParallel and foreach are available
   if (!all(requireNamespace("parallel", quietly = TRUE),
            requireNamespace("doParallel", quietly = TRUE),
-           requireNamespace("foreach", quietly = TRUE))) {
+           requireNamespace("foreach", quietly = TRUE),
+           requireNamespace("doRNG", quietly = TRUE))) {
     stop("packages 'parallel', 'doParallel' and 'foreach' are needed for parallelisation")
   }
   
