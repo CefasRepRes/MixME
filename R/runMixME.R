@@ -29,19 +29,19 @@ runMixME <- function(om,
                      ctrl_obj,
                      args,
                      ...) {
-
+  
   # ===========================================================================#
   # Run check on inputs
   # ===========================================================================#
-
+  
   ## om must contain "stks" and "flts"
   if(!any(names(om) == "stks") | !any(names(om) == "flts")) 
-     stop("'om' must contain stock and fleet data in 'stks' and 'flts' respectively")
-
+    stop("'om' must contain stock and fleet data in 'stks' and 'flts' respectively")
+  
   ## stock names in "stks", "flts" must match
   if(!all(names(om$stks) %in% unique(unlist(lapply(om$flts, names)))))
     stop("stock names in 'stks' and catches names in 'flts' must match")
-
+  
   ## args must contain critical elements
   if(!any(names(args) == c("adviceType"))) stop("'adviceType' missing in 'args'.")
   if(!any(names(args) == c("iy"))) stop("Intermediate year 'iy' missing in 'args'.")
@@ -52,20 +52,63 @@ runMixME <- function(om,
   if(is.null(args$frq)) args$frq <- 1                       # default advice frequency to 1
   
   if(args$management_lag > 0 & is.null(args$adviceInit)) stop("'adviceInit' missing in 'args'")
-
+  
   ## Check that there are no NAs in critical slots
   if(!is.null(ctrl_obj$phcr))
     if(all(is.na(unlist(ctrl_obj$phcr@args$hcrpars))))
       stop("'hcrpars' elements are all NA in 'ctrl_obj'")
-       
+  
+  ## Infer some simulation arguments if these are not provided
+  if(is.null(args$verbose))
+    args$verbose <- FALSE
   
   ## If banking and borrowing is used make sure forecast extends to TACyr+1 
   ## --- do I really want to hard code this procedure?? Maybe better to bundle
   ##     into implementation system?? 
-
+  
   ## Define discarding options if not already specified -- PROBABLY DELETE (specify in fwd)
   # overquotaDiscarding <- TRUE
   # sizeselectDiscarding <- TRUE
+  
+  # ===========================================================================#
+  # Set up objects
+  # ===========================================================================#
+  
+  ## If FLStocks are provided, convert FLStocks into FLBiols
+  if (class(om$stks) == "FLStocks") {
+    om$stks <- FLCore::FLBiols(lapply(om$stks@names,
+                                      function(x) {
+                                        biol <- as(om$stks[[x]],"FLBiol")
+                                        
+                                        biol@rec@params <- sr_list[[x]]@params
+                                        biol@rec@model  <- sr_list[[x]]@model
+                                        biol@rec$rec    <- NULL
+                                        return(biol)
+                                      }))
+  }
+  
+  ## if stock estimation methods are used, add metrics
+  if (is.function(ctrl_obj$est@args$estmethod)) {
+    addmetrics <- c("conv.est") # assessment model fit convergence code
+  } else {
+    addmetrics <- NULL
+  }
+  
+  ## Generate tracker for optimisation and warnings
+  tracking <- makeTracking(om = om, projyrs = (args$iy):(args$fy), addmetrics = addmetrics)
+  
+  if (!is.null(args$adviceInit)) {
+    for (i in names(om$stks)) {
+      tracking[[i]]$advice[,ac(args$iy),] <- args$adviceInit[[i]]
+    }
+  }
+  
+  ## Set random number seed if provided
+  if (!is.null(args$seed)) set.seed(args$seed)
+  
+  # ===========================================================================#
+  # If parallelising - split model objects into a number of blocks
+  # ===========================================================================#
   
   ## Check parallelisation
   if (is.null(args$parallel)) args$parallel <- FALSE
@@ -78,6 +121,11 @@ runMixME <- function(om,
     
     # if multiple workers available
     if (args$nworkers > 1) {
+      
+      ## Distribution iterations across workers
+      ## - code from FLR mse because it's much nicer than my solution!
+      iter_assignment <- split(seq(dims(om$stks[[1]])$iter), 
+                               sort(seq(dims(om$stks[[1]])$iter) %% args$nworkers))
       
       ## set up parallel environment
       cl <- beginParallel(args$nworkers)
@@ -92,228 +140,76 @@ runMixME <- function(om,
       warning("'parallel' is TRUE but only 1 worker specified")
     }
   } # END if parallel = TRUE
-
-  # ===========================================================================#
-  # Set up objects
-  # ===========================================================================#
-
-  ## If FLStocks are provided, convert FLStocks into FLBiols
-  if (class(om$stks) == "FLStocks") {
-    om$stks <- FLCore::FLBiols(lapply(om$stks@names,
-                              function(x) {
-                                biol <- as(om$stks[[x]],"FLBiol")
-
-                                biol@rec@params <- sr_list[[x]]@params
-                                biol@rec@model  <- sr_list[[x]]@model
-                                biol@rec$rec    <- NULL
-                                return(biol)
-                              }))
-  }
-
-  ## define projection years
-  projyrs <- (args$iy):(args$fy - args$management_lag)
   
-  ## if stock estimation methods are used, add metrics
-  if (is.function(ctrl_obj$est@args$estmethod)) {
-    addmetrics <- c("conv.est") # assessment model fit convergence code
-  } else {
-    addmetrics <- NULL
-  }
-
-  ## Generate tracker for optimisation and warnings
-  tracking <- makeTracking(om = om, projyrs = (args$iy):(args$fy), addmetrics = addmetrics)
-  
-  if(!is.null(args$adviceInit)) {
-    for(i in names(om$stks)) {
-      tracking[[i]]$advice[,ac(args$iy),] <- args$adviceInit[[i]]
-    }
-  }
-  
-  ## Set random number seed if provided
-  if(!is.null(args$seed)) set.seed(args$seed)
-
   # ===========================================================================#
   # Run mp
   # ===========================================================================#
-
-  ## Run simulation loop
-  for (yr in projyrs) {
-
-    ## Print current year
-    cat("year: ",yr,"\n")
-
-    ## Update current (assessment) year in args
-    args$ay <- yr
+  
+  if (args$parallel & (args$nworkers > 1)) {
     
-    # -------------------------------------------------------------------------#
-    # Forward projection (if management lag > 0)
-    # -------------------------------------------------------------------------#
-    # Some stock assessment models make use of catch or survey indices from the
-    # assessment year (data lag = 0). To handle these cases, we need to project
-    # the stock based on management advice generated in a previous time-step to
-    # get fishing mortality values.
-    
-    if (args$management_lag > 0) {
+    simList <- foreach(it = iter_assignment,
+                       .export = c("iterOM","iterTracking","simMixME"),
+                       .errorhandling = "remove",
+                       .inorder = TRUE) %dorng% {
       
-      cat("OPERATING MODEL > ")
+      ## subset operating model
+      om0 <- iterOM(om, it)
       
-      ## Set up inputs to forward projection module
-      ctrl.fwd          <- mse::args(ctrl_obj$fwd)
-      ctrl.fwd$om       <- om
-      ctrl.fwd$args     <- args
-      ctrl.fwd$tracking <- tracking
+      ## subset tracking object
+      tracking0 <- iterTracking(tracking, it)
       
-      ## Run forward projection
-      out      <- do.call("fwdMixME", ctrl.fwd)
-      om       <- out$om
-      tracking <- out$tracking
+      ## subset observation error model
+      oem0 <- oem
+      if (!is.null(oem0@observations$stk))
+        oem0@observations$stk <- iter(oem0@observations$stk, it)
+      if (!is.null(oem0@observations$idx))
+        oem0@observations$idx <- lapply(oem0@observations$idx, function(x) iter(x, it))
+      if (!is.null(oem0@deviances$stk))
+        oem0@deviances$stk <- lapply(oem0@deviances$stk, function(x) x[,,,,,it,,drop = FALSE])
+      if (!is.null(oem0@deviances$idx))
+        oem0@deviances$idx <- lapply(oem0@deviances$idx, function(x) iter(x, it))
 
-    }
-
-    # -------------------------------------------------------------------------#
-    # Observation Error Module
-    # -------------------------------------------------------------------------#
-    cat("OBSERVATION ERROR MODEL > ")
-
-    ## if not available, generate null deviances in observation error model
-    if (length(deviances(oem)$stk) == 0)
-      deviances(oem)$stk <- rep(list(NULL), length(observations(oem)$stk))
-
-    ## Extract arguments
-    ctrl.oem        <- mse::args(oem)
-    ctrl.oem$om     <- om
-    ctrl.oem$args   <- args
-    ctrl.oem$observations <- mse::observations(oem)
-    ctrl.oem$deviances    <- mse::deviances(oem)
-    ctrl.oem$tracking     <- tracking
-
-    ## Apply observation error model to each stock
-    out <- do.call("oemRun", ctrl.oem)
-
-    # I'M CURRENTLY FORCING THE OBSERVED STOCKS TO BE FLSTOCKS... I PROBABLY WANT
-    # TO ALLOW FOR FLBIOLS AND FLFLEETS TOO...
-
-    ## Extract results
-    stk0     <- out$stk
-    flt0     <- out$flt
-    idx0     <- out$idx
-    tracking <- out$tracking
-
-    ## observations(oem) <- lapply(out, "[[", "observations")
-    observations(oem) <- out$observations
-
-    # -------------------------------------------------------------------------#
-    # Stock Estimation Module
-    # -------------------------------------------------------------------------#
-    cat("MP STOCK ESTIMATION > ")
-
-    ## Extract arguments
-    ctrl.est          <- mse::args(ctrl_obj$est)
-    ctrl.est$stk      <- stk0
-    ctrl.est$idx      <- idx0
-    ctrl.est$args     <- args
-    ctrl.est$tracking <- tracking
-
-    ## Add OM data if perfect observation required
-    if (any(ctrl.est$estmethod == "perfectObs")) {
-      ctrl.est$om <- om
-    }
-
-    ## Run the estimation module
-    out      <- do.call("estRun", ctrl.est)
-
-    ## Extract results
-    stk0 <- out$stk
-    flt0 <- out$flt
-    sr0  <- out$sr
-
-    # ctrl     <- out$ctrl
-    tracking <- out$tracking
-
-    # -------------------------------------------------------------------------#
-    # Harvest Control Rule Module
-    # -------------------------------------------------------------------------#
-    cat("MP HCR > ")
-
-    ## if exists...
-    if (!is.null(ctrl_obj$phcr)) {
-
-      ## Set up inputs to parameterise harvest control rule
-      ctrl.phcr          <- mse::args(ctrl_obj$phcr)
-      ctrl.phcr$stk      <- stk0
-      ctrl.phcr$args     <- args
-      ctrl.phcr$tracking <- tracking
-
-      ## Run pHCR module
-      out      <- do.call("phcrMixME", ctrl.phcr)
-      hcrpars  <- out$hcrpars
-
-    }
-
-    ## Set up inputs to HCR
-    ctrl.hcr          <- mse::args(ctrl_obj$hcr)
-    ctrl.hcr$stk      <- stk0
-    ctrl.hcr$args     <- args
-    ctrl.hcr$tracking <- tracking
-
-    if(exists("hcrpars")){
-      ctrl.hcr$hcrpars <- hcrpars
-    }
-
-    ## Run HCR module
-    out      <- do.call("hcrRun", ctrl.hcr)
-    ctrl     <- out$ctrl
-    tracking <- out$tracking
-
-    # -------------------------------------------------------------------------#
-    # Implementation System
-    # -------------------------------------------------------------------------#
-    cat("MP IMPLEMENTATION SYSTEM > ")
-
-    ## Set up inputs to implementation system
-    ctrl.is          <- mse::args(ctrl_obj$isys)
-    ctrl.is$ctrl     <- ctrl
-    ctrl.is$stk      <- stk0
-    ctrl.is$sr       <- sr0
-    ctrl.is$args     <- args
-    ctrl.is$tracking <- tracking
-
-    ## Run implementation system
-    out      <- do.call("isysRun", ctrl.is)
-    ctrl     <- out$ctrl
-    tracking <- out$tracking
-
-    # -------------------------------------------------------------------------#
-    # Forward projection (if management lag == 0)
-    # -------------------------------------------------------------------------#
-    if (args$management_lag == 0) {
-      cat("OPERATING MODEL > ")
+      ## subset parts of MP control and global arguments
+      ctrl_obj0 <- ctrl_obj
+      if (!is.null(ctrl_obj$fwd@args$sr_residuals)) {
+        ctrl_obj0$fwd@args$sr_residuals <- lapply(ctrl_obj$fwd@args$sr_residuals, function(x) iter(x, it))
+      }
+      if (!is.null(ctrl_obj$fwd@args$proc_res)) {
+        ctrl_obj0$fwd@args$proc_res <- lapply(ctrl_obj$fwd@args$proc_res, function(x) iter(x, it))
+      }
       
-      ## Set up inputs to forward projection module
-      ctrl.fwd          <- mse::args(ctrl_obj$fwd)
-      ctrl.fwd$om       <- om
-      ctrl.fwd$args     <- args
-      ctrl.fwd$tracking <- tracking
+      args0 <- args
+      args0$adviceInit <- lapply(args$adviceInit, function(x) x[,it])
       
-      ## Run forward projection
-      out      <- do.call("fwdMixME", ctrl.fwd)
-      om       <- out$om
-      tracking <- out$tracking
+      ## run simulation
+      return(simMixME(om0,
+               oem0,
+               tracking0,
+               ctrl_obj0,
+               args0))
     }
     
-    cat("\n")
+    ## combine outputs
+    om       <- Reduce("combineOM", lapply(simList, "[[","om"))
+    tracking <- Reduce("combineTracking", lapply(simList, "[[","tracking"))
+    
+  } else {
+    
+    ## run simulation
+    simList <- simMixME(om,
+                        oem,
+                        tracking,
+                        ctrl_obj,
+                        args)
+    ## extract objects
+    om <- simList$om
+    tracking <- simList$tracking
+    
   }
-
+  
   # ===========================================================================#
   # Output results
   # ===========================================================================#
-  
-  ## if processing in parallel, shut down workers
-  # if (foreach::getDoParRegistered()) {
-  #   stopCluster(cl)
-  #   
-  # }
-  
 
   return(list(om       = om,
               tracking = tracking,

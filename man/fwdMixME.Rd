@@ -6,12 +6,11 @@
 \usage{
 fwdMixME(
   om,
-  ctrl,
   args,
   tracking,
-  sr_residuals_mult = TRUE,
-  effort_max = 100,
+  sr_residuals = NULL,
   proc_res = NULL,
+  effort_max = 100,
   ...
 )
 }
@@ -19,23 +18,21 @@ fwdMixME(
 \item{om}{A list of \code{FLBiols} and \code{FLFisheries} containing the relevant
 stock and fleet information in the Operating Model.}
 
-\item{ctrl}{Control object.}
-
 \item{args}{list of additional arguments}
 
 \item{tracking}{a named list of tracking objects to monitor emergent dynamic
-properties}
+properties. Contains catch advice for each stock.}
 
-\item{sr_residuals_mult}{(Optional) Logical. Are stock recruitment residuals
-multiplicative? Defaults to \code{TRUE}.}
+\item{proc_res}{(Optional) Character. Where is process error noise stored?
+If \code{NULL}, no process error is applied to stock numbers.
+Defaults to \code{NULL}.}
 
 \item{effort_max}{(Optional) Numeric value indicating the maximum allowed
 fishing effort for any fleet. Defaults to 100 and
 cannot be \code{NULL}.}
 
-\item{proc_res}{(Optional) Character. Where is process error noise stored?
-If \code{NULL}, no process error is applied to stock numbers.
-Defaults to \code{NULL}.}
+\item{sr_residuals_mult}{(Optional) Logical. Are stock recruitment residuals
+multiplicative? Defaults to \code{TRUE}.}
 }
 \value{
 A list containing the \code{FLBiols} and \code{FLFisheries} objects

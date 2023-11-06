@@ -341,7 +341,8 @@ makeMixME <- function(om,
                testfwd    = FALSE,  # FALSE == use c++ to update fleets
                maxRetry   = 10,     # number of times to attempt to identify choke-stocks
                useTMB     = TRUE,   # TRUE == use TMB to generate objective function
-               seed       = NULL)   # seed for Random Number Generator
+               seed       = NULL,   # seed for Random Number Generator
+               verbose    = TRUE)   # TRUE == print simulation progress to console or file
   
   
   ## update print message

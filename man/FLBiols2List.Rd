@@ -4,7 +4,7 @@
 \alias{FLBiols2List}
 \title{Convert object into simple nested list structure}
 \usage{
-FLBiols2List(om, year, advice, useCpp = TRUE)
+FLBiols2List(om, year, advice, useCpp = TRUE, process_residuals = NULL)
 }
 \arguments{
 \item{om}{A list of \code{FLBiols} and \code{FLFisheries} containing the relevant
