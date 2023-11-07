@@ -13,10 +13,12 @@ plot_timeseries_MixME(
   fltnames = NULL,
   trajectories = NULL,
   quantiles = c(0.05, 0.25, 0.75, 0.95),
-  addRefpts = TRUE
+  addRefpts = TRUE,
+  keepFailedIters = TRUE
 )
 }
 \description{
 Function takes an Operating model as input and plots a time-series of
-a specified property for one or more stocks.
+a specified property for one or more stocks or fleets. Annual distributions
+are summarised to the median and up to two user-specified quantile intervals.
 }

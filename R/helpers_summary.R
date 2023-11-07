@@ -85,7 +85,7 @@ summary_effort_MixME <- function(object,
   # calculate summary quantity and correct dimensions
   # -------------------------------------------------
   
-  res <- sapply(om$flts@names, function(x) {
+  res <- sapply(names(om$flts), function(x) {
     effort(om$flts[[x]])[,ac(minyr:maxyr), drop = FALSE]
   }, simplify = "array")
   
