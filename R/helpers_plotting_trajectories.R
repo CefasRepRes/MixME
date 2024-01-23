@@ -109,6 +109,10 @@ plot_trajectories_MixME <- function(object,
     res3 <- res3[!duplicated(res3[,c("iter","stk")]),]
   }
   
+  ## ensure continuous scale x-axis
+  res2$year <- as.numeric(res2$year)
+  res3$year <- as.numeric(res3$year)
+  
   # ------------------------------#
   # highlight failed trajectories
   # ------------------------------#

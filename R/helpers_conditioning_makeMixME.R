@@ -216,12 +216,12 @@ makeMixME <- function(om,
   
   ## Process stock observation and catch timing
   if (is.null(catch_obs)) {
+    
+    ## No stock observations
     use_stk_oem <- FALSE
+    stk_obs <- NULL
     
     if(management_lag > 0) {
-      
-      ## No stock observations
-      stk_obs <- NULL
       
       ## If no stock observations assume - 1
       catch_timing <- sapply(om$stks@names, function(x) -1,

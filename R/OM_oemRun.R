@@ -64,17 +64,25 @@ oemRun <- function(om,
     stop("In 'oemMixME': 'Deviances' must be a named list. Names may be 'stk', 'flt' or 'idx'")
   
   ## Check that the correct object classes are supplied
-  if(!(class(observations$stk) %in% c("FLStocks","FLBiols")))
-    stop("In 'oemMixME': observations 'stk' must be of class FLStocks or FLBiols")
+  if(!is.null(observations$stk)) {
+    if(!(class(observations$stk) %in% c("FLStocks","FLBiols")))
+      stop("In 'oemMixME': observations 'stk' must be of class FLStocks or FLBiols")
+  }
   
   if(!is.null(observations$flt)) {
     if(class(observations$flt) != "FLFisheries")
       stop("In 'oemMixME': observations 'flt' must be of class FLFisheries")
   }
   
-  if(class(observations$stk) == "FLBiols" & is.null(observations$flt)) {
-    stop("In 'oemMixME': If observations 'stk' is of class FLBiols, 'flt' cannot be NULL")
+  if(!is.null(observations$stk)) {
+    if(class(observations$stk) == "FLBiols" & is.null(observations$flt)) {
+      stop("In 'oemMixME': If observations 'stk' is of class FLBiols, 'flt' cannot be NULL")
+    }
   }
+  
+  ## Throw an error if 'observations$stk' and 'catch_timing' are both NULL
+  if(is.null(observations$stk) & is.null(catch_timing))
+    stop("In 'oemMixME': Observations 'stk' and 'catch_timing' cannot both be NULL")
   
   ## Check that options are logical
   if(any(use_catch_residuals == TRUE) & is.null(deviances$stk)) {
@@ -88,44 +96,56 @@ oemRun <- function(om,
   # Process global arguments
   # -----------------------------------#
   
+  ## Get vector of stock names
+  if(!is.null(observations$stk)) {
+    stknames <- observations$stk@names
+  } else {
+    stknames <- names(catch_timing)
+  }
+  
   ## Process logical arguments if required
   if(length(use_stk_oem) == 1 & 
      is.null(names(use_stk_oem)) &
      is.logical(use_stk_oem)) {
-    use_stk_oem <- sapply(observations$stk@names, 
+    use_stk_oem <- sapply(stknames, 
                           function(x) use_stk_oem,
                           USE.NAMES = TRUE)
   }
   if(length(use_catch_residuals) == 1 & 
      is.null(names(use_catch_residuals)) &
      is.logical(use_catch_residuals)) {
-    use_catch_residuals <- sapply(observations$stk@names, 
+    use_catch_residuals <- sapply(stknames, 
                                   function(x) use_catch_residuals,
                                   USE.NAMES = TRUE)
   }
   if(length(use_idx_residuals) == 1 & 
      is.null(names(use_idx_residuals)) &
      is.logical(use_idx_residuals)) {
-    use_idx_residuals <- sapply(observations$stk@names, 
+    use_idx_residuals <- sapply(stknames, 
                                 function(x) use_idx_residuals,
                                 USE.NAMES = TRUE)
   }
   if(length(use_om_weights) == 1 & 
      is.null(names(use_om_weights)) &
      is.logical(use_om_weights)) {
-    use_om_weights <- sapply(observations$stk@names, 
+    use_om_weights <- sapply(stknames, 
                              function(x) use_om_weights,
                              USE.NAMES = TRUE)
   }
   
   ## Process catch and index timings
   if(is.null(catch_timing)) {
-    catch_timing <- sapply(observations$stk@names, function(x) 0,
+    catch_timing <- sapply(stknames, function(x) 0,
                            USE.NAMES = TRUE, simplify = FALSE)
   }
   
-  if(is.null(idx_timing)) {
-    idx_timing <- sapply(observations$stk@names, function(x) 0,
+  if(is.null(idx_timing) & !is.null(observations$idx)) {
+    idx_timing <- sapply(observations$idx@names, function(x) 0,
+                         USE.NAMES = TRUE, simplify = FALSE)
+  }
+  
+  if(is.null(idx_timing) & is.null(observations$idx)) {
+    idx_timing <- sapply(stknames, function(x) 0,
                          USE.NAMES = TRUE, simplify = FALSE)
   }
   
@@ -134,7 +154,7 @@ oemRun <- function(om,
   # -----------------------------------#
   
   ## Loop over each observed stock
-  oemList <- lapply(observations$stk@names, 
+  oemList <- lapply(stknames, 
                     oemMixME,
                     om           = om,
                     deviances    = deviances,
@@ -153,18 +173,22 @@ oemRun <- function(om,
   # -------------------------------------#
   
   ## Add names to list
-  names(oemList) <- observations$stk@names
+  names(oemList) <- stknames
   
   ## Extract list elements
-  for(x in observations$stk@names) {
+  for(x in stknames) {
     tracking[[x]]$stk <- oemList[[x]]$tracking
   }
-  stk <- FLStocks(lapply(oemList, "[[", "stk"))
+  
+  ## Handle FLStocks and FLBiols
+  stkList <- lapply(oemList, "[[", "stk")
+  stk <- if(class(stkList[[1]]) == "FLStock") FLStocks(stkList) else FLBiols(stkList)
+  flt <- lapply(oemList, "[[", "flt")
   idx <- lapply(oemList, "[[", "idx")
   
-  
-  ### return observations
+  ## Return observations
   return(list(stk          = stk,
+              flt          = flt,
               idx          = idx,
               observations = observations,
               tracking     = tracking))

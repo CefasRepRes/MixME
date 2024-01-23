@@ -48,6 +48,7 @@ runMixME <- function(om,
   
   if(args$iy > args$fy) stop("Final year 'fy' must be greater than intermediate year 'iy'")
   
+  ## handle missing arguments
   if(is.null(args$management_lag)) args$management_lag <- 1 # default management lag to 1
   if(is.null(args$frq)) args$frq <- 1                       # default advice frequency to 1
   

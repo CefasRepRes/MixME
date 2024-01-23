@@ -67,6 +67,7 @@
 
 estMixME <- function(x,
                      stk,
+                     flt,
                      idx,
                      ctrl = NULL, ## DO I REALLY NEED THIS OR CAN I GENERATE IN FUNCTION?
                      om   = NULL,
@@ -140,14 +141,50 @@ estMixME <- function(x,
     ## If FLBiols
     if(class(stk[[x]]) == "FLBiol") {
       
-      stop("Stock estimation using FLBiol class no yet supported!")
-      
       ## insert stock numbers
       FLCore::n(stk0)[,ac(yrs_oem)] <- FLCore::n(om$stks[[x]])[,ac(yrs_oem)]
+      
+      ## insert stock recruitment data (currently redundant - but good to keep)
+      stk0@rec@params <- om$stks[[x]]@rec@params
+      stk0@rec@model  <- om$stks[[x]]@rec@model
       
       ## insert stock recruitment information
       sr0 <- NULL
       
+      ## extract vector of fleets catching stocks
+      flt0 <- flt[[x]]
+      fltnames <- sapply(flt0, function(xx) x %in% names(xx))
+      
+      ## insert parameters/variables to calculate fishing mortality
+      for(i in names(flt0)[fltnames]) {
+        effort(flt0[[i]])[, ac(yrs_oem)]              <- om$flts[[i]]@effort[, ac(yrs_oem)]
+        catch.q(flt0[[i]][[x]])["alpha", ac(yrs_oem)] <- catch.q(om$flts[[i]][[x]])["alpha", ac(yrs_oem)]
+      }
+      
+      ## Calculate fishing mortality at age
+      fltFage <- sapply(fltnames,
+                        function(y){
+                          Fage <- catch.q(flt0[[y]][[x]])["alpha", ac(ay)] *
+                            flt0[[y]]@effort[,ac(ay)] %*%
+                            flt0[[y]][[x]]@catch.sel[,ac(ay)]
+                          
+                          Fage#[drop = TRUE]
+                        }, simplify = "array")
+      
+      totFage <- apply(fltFage, c(1:6), sum)
+      totFbar <- apply(totFage[ac(args$frange[[x]][1]:args$frange[[x]][2]),,,,,,drop = FALSE], c(2:6), mean)
+      
+      ## Update tracking object
+      tracking[[x]]$stk["F.est", ac(ay)]  <- totFbar
+      tracking[[x]]$stk["B.est", ac(ay)]  <- FLCore::tsb(stk0)[,ac(ay)]
+      tracking[[x]]$stk["SB.est", ac(ay)] <- FLCore::ssb(stk0)[,ac(ay)]
+      
+      tracking[[x]]$stk["C.est", ac(ay)] <- Reduce("+",lapply(FLCore::catch(flt0, sum = FALSE), "[[", x))[,ac(ay)]
+      tracking[[x]]$stk["L.est", ac(ay)] <- Reduce("+",lapply(FLCore::landings(flt0, sum = FALSE), "[[", x))[,ac(ay)]
+      tracking[[x]]$stk["D.est", ac(ay)] <- Reduce("+",lapply(FLCore::discards(flt0, sum = FALSE), "[[", x))[,ac(ay)]
+      
+      tracking[[x]]$sel_est[,ac(ay)] <- sweep(totFage, c(2:6), totFbar, "/")
+
     } # END if FLBiol
     
     ## If FLStock
@@ -212,6 +249,21 @@ estMixME <- function(x,
       sr0@ssb    <- FLCore::ssb(stk0)
       sr0@params <- om$stks[[x]]@rec@params
       
+      ## create a null object for fleets
+      flt0 <- NULL
+      
+      ## Update tracking object
+      tracking[[x]]$stk["F.est", ac(ay)]  <- FLCore::fbar(stk0)[,ac(ay)]
+      tracking[[x]]$stk["B.est", ac(ay)]  <- FLCore::stock(stk0)[,ac(ay)]
+      tracking[[x]]$stk["SB.est", ac(ay)] <- FLCore::ssb(stk0)[,ac(ay)]
+      
+      tracking[[x]]$stk["C.est", ac(ay)] <- FLCore::catch(stk0)[,ac(ay)]
+      tracking[[x]]$stk["L.est", ac(ay)] <- FLCore::landings(stk0)[,ac(ay)]
+      tracking[[x]]$stk["D.est", ac(ay)] <- FLCore::discards(stk0)[,ac(ay)]
+      
+      tracking[[x]]$sel_est[,ac(ay)] <- sweep(FLCore::harvest(stk0)[,ac(ay)], 
+                                                 c(2:6), fbar(stk0)[,ac(ay)], "/")
+      
     } # END if FLStock
     
     # ---------------------------------------------------------------------#
@@ -223,22 +275,9 @@ estMixME <- function(x,
     
     ## Combine outputs into list
     stk_est <- list(stk0 = stk0,
+                    flt0 = flt0,
                     sr0  = sr0,
                     tracking = tracking[[x]])
-    
-    # -------------------------#
-    # Update tracking object
-    # -------------------------#
-    stk_est$tracking$stk["F.est", ac(ay)]  <- FLCore::fbar(stk_est$stk0)[,ac(ay)]
-    stk_est$tracking$stk["B.est", ac(ay)]  <- FLCore::stock(stk_est$stk0)[,ac(ay)]
-    stk_est$tracking$stk["SB.est", ac(ay)] <- FLCore::ssb(stk_est$stk0)[,ac(ay)]
-    
-    stk_est$tracking$stk["C.est", ac(ay)] <- FLCore::catch(stk_est$stk0)[,ac(ay)]
-    stk_est$tracking$stk["L.est", ac(ay)] <- FLCore::landings(stk_est$stk0)[,ac(ay)]
-    stk_est$tracking$stk["D.est", ac(ay)] <- FLCore::discards(stk_est$stk0)[,ac(ay)]
-    
-    stk_est$tracking$sel_est[,ac(ay)] <- sweep(FLCore::harvest(stk_est$stk0)[,ac(ay)], 
-                                               c(2:6), fbar(stk_est$stk0)[,ac(ay)], "/")
     
   } # END if "perfectObs"
   

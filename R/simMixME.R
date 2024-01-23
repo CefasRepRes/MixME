@@ -112,6 +112,7 @@ simMixME <- function (om,
     ## Extract arguments
     ctrl.est          <- mse::args(ctrl_obj$est)
     ctrl.est$stk      <- stk0
+    ctrl.est$flt      <- flt0
     ctrl.est$idx      <- idx0
     ctrl.est$args     <- args
     ctrl.est$tracking <- tracking

@@ -1,7 +1,7 @@
 # ---
 # title: 'Operating Model - Observation error model'
 # author: 'Matthew Pace'
-# date: 'September 2022'
+# date: 'September 2022 (modified January 2024)'
 # ---
 #
 #' Implementation of stock observation methods
@@ -64,6 +64,7 @@ oemMixME <- function(x,
   #     ......... If observations with uncertainty
   #  II ...... Use oem observation structure (FLBiol & FLFishery)
   # III ...... Use OM structure (FLStock)
+  #  IV ...... Use OM structure (FLBiols & FLFisheries)
   # 2.2 ... Trim to data period
   # 2.3 ... Observed survey indices
   # --------------------------------#
@@ -224,88 +225,92 @@ oemMixME <- function(x,
   # then I will return an FLStock for each stock supplied - this should be
   # valid for 99% of users
   
+  ## N.B. MixME does not allow stk to be FLStocks. Only FLBiols allowed
+  ## N.B. Option III is now replaced by Option IV
+  
+  # if(use_stk_oem[x] == FALSE) {
+  #   stop("In 'oemMixME': Automatic definition of stock structure not yet implemented")
+  # 
+  #   if(class(om$stks[[x]]) == "FLStock") {
+  # 
+  #     stk0 <- om$stks[[x]]
+  #     flt0 <- om$flts
+  # 
+  #   } else if(class(om$stks[[x]]) == "FLBiol") {
+  # 
+  #     ## coerce to FLStock
+  #     stk0 <- as(om$stks[[x]],"FLStock")
+  # 
+  #     ## populate missing slots with data from stock object in tracking
+  #     units(stk0) <- units(tracking[[x]][["stk"]])
+  # 
+  #     ## Fill missing slots
+  #     stk0@landings.n  <- tracking[[x]][["stk"]]@landings.n
+  #     stk0@landings.wt <- tracking[[x]][["stk"]]@landings.wt
+  #     stk0@discards.n  <- tracking[[x]][["stk"]]@discards.n
+  #     stk0@discards.wt <- tracking[[x]][["stk"]]@discards.wt
+  #     stk0@catch.n  <- tracking[[x]][["stk"]]@catch.n
+  #     stk0@catch.wt <- tracking[[x]][["stk"]]@catch.wt
+  #     stk0@harvest  <- tracking[[x]][["stk"]]@harvest
+  # 
+  #     ## update Fbar range
+  #     range(stk0)["minfbar"] <- range(tracking[[x]][["stk"]])["minfbar"]
+  #     range(stk0)["maxfbar"] <- range(tracking[[x]][["stk"]])["maxfbar"]
+  # 
+  #     ## compute properties
+  #     stock(stk0)    <- computeStock(stk0)
+  #     landings(stk0) <- computeLandings(stk0)
+  #     discards(stk0) <- computeDiscards(stk0)
+  #     catch(stk0)    <- computeCatch(stk0)
+  # 
+  #     ## truncate to min data year
+  #     minyr <- dims(stk0@stock[!is.na(stk0@stock)])$minyear # min year where data exists
+  #     stk0  <- window(stk0, start = minyr)
+  # 
+  #     ## Generate SR of correct dimensions
+  #     sr0        <- as.FLSR(stk0, model = om1$stks[[x]]@rec@model)
+  #     sr0@rec    <- rec(stk0)
+  #     sr0@ssb    <- ssb(stk0)
+  #     sr0@params <- om1$stks[[x]]@rec@params
+  #   }
+  # }
+  
+  # -----------------------------------------------------#
+  # (OPTION IV) Use OM structure (FLBiols & FLFisheries) #
+  # -----------------------------------------------------#
+  
+  # This replaces Option III. If an observation error model structure is not
+  # supplied, then I return an FLBiols and FLFisheries. This allows for much better
+  # flexibility when evaluating mixed fisheries management. It is then up to the
+  # user to define functions that handle these objects.
+  
   if(use_stk_oem[x] == FALSE) {
-    stop("In 'oemMixME': Automatic definition of stock structure not yet implemented")
     
-    if(class(om$stks[[x]]) == "FLStock") {
-      
-      stk0 <- om$stks[[x]]
-      flt0 <- om$flts
-      
-    } else if(class(om$stks[[x]]) == "FLBiol") {
-      
-      # I DON'T WANT TO COERCE TO FLSTOCK... I SHOULD USE FLBIOLS AND FLFISHERIES
-      # INSTEAD
-      
-      ## coerce to FLStock
-      stk0 <- as(om$stks[[x]],"FLStock")
-      
-      ## populate missing slots with data from stock object in tracking
-      units(stk0) <- units(tracking[[x]][["stk"]])
-      
-      ## Fill missing slots
-      stk0@landings.n  <- tracking[[x]][["stk"]]@landings.n
-      stk0@landings.wt <- tracking[[x]][["stk"]]@landings.wt
-      stk0@discards.n  <- tracking[[x]][["stk"]]@discards.n
-      stk0@discards.wt <- tracking[[x]][["stk"]]@discards.wt
-      stk0@catch.n  <- tracking[[x]][["stk"]]@catch.n
-      stk0@catch.wt <- tracking[[x]][["stk"]]@catch.wt
-      stk0@harvest  <- tracking[[x]][["stk"]]@harvest
-      
-      ## update Fbar range
-      range(stk0)["minfbar"] <- range(tracking[[x]][["stk"]])["minfbar"]
-      range(stk0)["maxfbar"] <- range(tracking[[x]][["stk"]])["maxfbar"]
-      
-      ## compute properties
-      stock(stk0)    <- computeStock(stk0)
-      landings(stk0) <- computeLandings(stk0)
-      discards(stk0) <- computeDiscards(stk0)
-      catch(stk0)    <- computeCatch(stk0)
-      
-      ## truncate to min data year
-      minyr <- dims(stk0@stock[!is.na(stk0@stock)])$minyear # min year where data exists
-      stk0  <- window(stk0, start = minyr)
-      
-      ## Generate SR of correct dimensions
-      sr0        <- as.FLSR(stk0, model = om1$stks[[x]]@rec@model)
-      sr0@rec    <- rec(stk0)
-      sr0@ssb    <- ssb(stk0)
-      sr0@params <- om1$stks[[x]]@rec@params
-    }
+    stk0 <- om$stks[[x]]
+    flt0 <- om$flts
+    
   }
   
   # ---------------------------------#
   # SECTION 2.2: Trim to data period #
   # ---------------------------------#
   
-  ## We probably want to remove years preceding the data period - find mimumum data year
-  checkCatch <- iterSums(catch(stk0) > 0)
-  checkCatch[is.na(checkCatch)] <- 0
-  mindatayr <- dims(stk0[,checkCatch > 0])$minyear
+  # In this next section, we trim the data objects to the period for which we have
+  # catch or survey data. This is important because subsequent modules will take
+  # the final year in the object to mean the latest data year.
   
-  ## If survey data is more recent than catch data, then trim to survey year
-  if(max(idx_timing[[x]]) > max(catch_timing[[x]])) {
-    
-    ## Trim stock object
-    stk0 <- window(stk0, start = mindatayr, end = ay + max(idx_timing[[x]]))
-    
-    ## Remove data in years where no catch data is available
-    yrs_remove <- (ay + catch_timing[[x]] + 1):ay
-    
-    catch(stk0)[, ac(yrs_remove)]       <- NA
-    catch.n(stk0)[, ac(yrs_remove)]     <- NA
-    catch.wt(stk0)[, ac(yrs_remove)]    <- NA
-    landings(stk0)[, ac(yrs_remove)]    <- NA
-    landings.n(stk0)[, ac(yrs_remove)]  <- NA
-    landings.wt(stk0)[, ac(yrs_remove)] <- NA
-    discards(stk0)[, ac(yrs_remove)]    <- NA
-    discards.n(stk0)[, ac(yrs_remove)]  <- NA
-    discards.wt(stk0)[, ac(yrs_remove)] <- NA
-    
-  } else {
-    
-    stk0 <- window(stk0, start = mindatayr, end = ay + max(catch_timing[[x]]))
-    
+  # We need to separate the methods applied to (1) FLStock and (2) FLBiol and FLFisheries.
+  # For simplicity, I define separate functions that handle these two approaches.
+  
+  if(class(stk0) == "FLStock") {
+    stk0 <- oemTrimFLStock(stk0, x, ay, idx_timing, catch_timing)
+    flt0 <- NULL
+  }
+  
+  if(class(stk0) == "FLBiol") {
+    stkflt0 <- oemTrimFLBiol(stk0, flt0, x, ay, idx_timing, catch_timing)
+    stk0 <- stkflt0$stk
+    flt0 <- stkflt0$flt
   }
   
   # -------------------------------------#
@@ -351,6 +356,7 @@ oemMixME <- function(x,
   }
   
   return(list(stk = stk0,
+              flt = flt0,
               idx = idx0,
               tracking = tracking[[x]]$stk))
 }

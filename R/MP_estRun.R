@@ -62,6 +62,7 @@
 #' @export
 
 estRun <- function(stk,
+                   flt,
                    idx,
                    ctrl = NULL, ## DO I REALLY NEED THIS OR CAN I GENERATE IN FUNCTION?
                    om   = NULL,
@@ -92,6 +93,7 @@ estRun <- function(stk,
     est_list <- lapply(stk@names, 
                        estMixME,
                        stk = stk,
+                       flt = flt,
                        idx = idx,
                        ctrl = ctrl,
                        om   = om,
@@ -109,13 +111,15 @@ estRun <- function(stk,
       tracking[[x]] <- est_list[[x]]$tracking
     }
     
-    stk0 <- FLStocks(lapply(est_list, "[[", "stk0"))
+    ## Handle FLStocks and FLBiols
+    stkList <- lapply(est_list, "[[", "stk0")
+    stk0 <- if(class(stkList[[1]]) == "FLStock") FLStocks(stkList) else FLBiols(stkList)
+    flt0 <- lapply(est_list, "[[", "flt0")
     sr0  <- lapply(est_list, "[[", "sr0")
   }
   
   return(list(stk      = stk0,
+              flt      = flt0,
               sr       = sr0,
               tracking = tracking))
-  
-  
 }
