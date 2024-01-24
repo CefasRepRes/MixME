@@ -279,8 +279,9 @@ multiSAM2FLStock <- function(SAMfit,
 
     }
   }
-
-  FLCore::catch.wt(stk)[FLCore::ac(ages), FLCore::ac(years)] <- catchwt
+  
+  ## Some cases where year dimensions might differ
+  FLCore::catch.wt(stk)[FLCore::ac(rownames(catchwt)), FLCore::ac(colnames(catchwt))] <- catchwt
 
   # ------------------------------------#
   # SECTION 3.3: Landings numbers-at-age
@@ -306,6 +307,11 @@ multiSAM2FLStock <- function(SAMfit,
       ## drop redundant third dimension and transpose
       lf <- t(lf[,,,drop = TRUE])
 
+    } else {
+      
+      ## Otherwise just transpose...
+      lf <- t(lf)
+      
     }
 
     # Use the FLquant template to create a landings fraction FLquant
@@ -353,8 +359,9 @@ multiSAM2FLStock <- function(SAMfit,
       landwt <- t(landwt)
     }
   }
-
-  FLCore::landings.wt(stk)[FLCore::ac(ages), FLCore::ac(years)] <- landwt
+  
+  ## Some cases where year dimensions might differ
+  FLCore::landings.wt(stk)[FLCore::ac(rownames(landwt)), FLCore::ac(colnames(landwt))] <- landwt
 
   # ------------------------------------#
   # SECTION 3.5: Discards numbers-at-age
@@ -396,7 +403,8 @@ multiSAM2FLStock <- function(SAMfit,
     }
   }
 
-  FLCore::discards.wt(stk)[FLCore::ac(ages), FLCore::ac(years)] <- discwt
+  ## Some cases where year dimensions might differ
+  FLCore::discards.wt(stk)[FLCore::ac(rownames(discwt)), FLCore::ac(colnames(discwt))] <- discwt
 
   # ------------------------------------#
   # SECTION 3.7: Fishing mortality-at-age
@@ -434,18 +442,22 @@ multiSAM2FLStock <- function(SAMfit,
     idx <- (SAMfit$conf$keyLogFsta + 1)[1,]
     Ftotal <- exp(SAMfit$pl$logF)[idx,]
   }
+  
+  # There are some cases (such as North Sea cod) where catch data extends to yr - 1
+  # (as might be expected) but the stock dimensions extend to yr because we have
+  # survey data from the current year. In these cases, SAM will predict F-at-age
+  # for yr... but we don't want to retain this prediction (because it is not
+  # constrained by catch data)
 
   ## Fill fishing mortality-at-age
   FLCore::harvest(stk)[] <- 0
-  FLCore::harvest(stk)[rownames(Cmatrix), colnames(Cmatrix)] <- Ftotal
-
+  FLCore::harvest(stk)[rownames(Cmatrix), colnames(Cmatrix)] <- Ftotal[seq(rownames(Cmatrix)), seq(colnames(Cmatrix))]
 
   # -----------------------------------------------------#
   # SECTION 4:   Proportions of mortality before spawning
   # -----------------------------------------------------#
   # We need the proportion of mortality before spawning to
   # calculate SSB
-
 
   ## Extract proportion fishing mortality before spawning
   Fspwn <- SAMfit$data$propF
