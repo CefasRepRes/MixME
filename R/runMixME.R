@@ -35,36 +35,47 @@ runMixME <- function(om,
   # ===========================================================================#
   
   ## om must contain "stks" and "flts"
-  if(!any(names(om) == "stks") | !any(names(om) == "flts")) 
+  if (!any(names(om) == "stks") | !any(names(om) == "flts")) 
     stop("'om' must contain stock and fleet data in 'stks' and 'flts' respectively")
   
   ## stock names in "stks", "flts" must match
-  if(!all(names(om$stks) %in% unique(unlist(lapply(om$flts, names)))))
+  if (!all(names(om$stks) %in% unique(unlist(lapply(om$flts, names)))))
     stop("stock names in 'stks' and catches names in 'flts' must match")
   
   ## args must contain critical elements
-  if(!any(names(args) == c("adviceType"))) stop("'adviceType' missing in 'args'.")
-  if(!any(names(args) == c("effortType"))) stop("'effortType' missing in 'args'.")
-  if(!any(names(args) == c("iy"))) stop("Intermediate year 'iy' missing in 'args'.")
+  if (!any(names(ctrl_obj$fwd@args) == c("adviceType"))) stop("'adviceType' missing in 'ctrl_obj$fwd@args'.")
+  if (!any(names(ctrl_obj$fwd@args) == c("effortType"))) stop("'effortType' missing in 'ctrl_obj$fwd@args'.")
+  if (!any(names(args) == c("iy"))) stop("Intermediate year 'iy' missing in 'args'.")
   
   ## check values of critical elements
-  if(!(args$adviceType %in% c("landings","catch"))) stop("'adviceType' must be 'landings' or 'catch'")
-  if(!(args$effortType %in% c("min","max","sqE")))  stop("'effortType' must be 'min','max' or 'sqE'")
-  if(args$iy > args$fy) stop("Final year 'fy' must be greater than intermediate year 'iy'")
+  if (!(ctrl_obj$fwd@args$adviceType %in% c("landings","catch"))) stop("'adviceType' must be 'landings' or 'catch'")
+  if (!(ctrl_obj$fwd@args$effortType %in% c("min","max","sqE")))  stop("'effortType' must be 'min','max' or 'sqE'")
+  if (args$iy > args$fy) stop("Final year 'fy' must be greater than intermediate year 'iy'")
   
   ## handle missing arguments
-  if(is.null(args$management_lag)) args$management_lag <- 1 # default management lag to 1
-  if(is.null(args$frq)) args$frq <- 1                       # default advice frequency to 1
+  if (is.null(args$management_lag)) args$management_lag <- 1 # default management lag to 1
+  if (is.null(args$frq)) args$frq <- 1                       # default advice frequency to 1
   
-  if(args$management_lag > 0 & is.null(args$adviceInit)) stop("'adviceInit' missing in 'args'")
+  if (args$management_lag > 0 & is.null(args$adviceInit)) stop("'adviceInit' missing in 'args'")
+  
+  ## handle exceptions and multiplier inputs
+  if (is.null(ctrl_obj$fwd@args$exceptions)) ctrl_obj$fwd@args$exceptions <- matrix(1, nrow = length(om$stks), ncol = length(om$flts), dimnames = list(names(om$stks),names(om$flts)))
+  if (is.null(ctrl_obj$fwd@args$multiplier)) ctrl_obj$fwd@args$multiplier <- matrix(1, nrow = length(om$stks), ncol = length(om$flts), dimnames = list(names(om$stks),names(om$flts))) 
+  
+  if(!all(c(ctrl_obj$fwd@args$exceptions) %in% c(0,1))) stop("'exceptions' must contain only 0 or 1 values") # make sure that 'exceptions' are 1 or 0
+  if(any(c(ctrl_obj$fwd@args$multiplier) < 0)) stop("'multiplier' must contain positive values only")
+  if(all(c(ctrl_obj$fwd@args$multiplier) == 0)) stop("'multiplier' cannot all be zero!")
+  
+  if (any(apply(ctrl_obj$fwd@args$exceptions, 2, "max") == 0)) 
+    stop("'exceptions' must contain at least one '1' for each fleet")
   
   ## Check that there are no NAs in critical slots
-  if(!is.null(ctrl_obj$phcr))
+  if (!is.null(ctrl_obj$phcr))
     if(all(is.na(unlist(ctrl_obj$phcr@args$hcrpars))))
       stop("'hcrpars' elements are all NA in 'ctrl_obj'")
   
   ## Infer some simulation arguments if these are not provided
-  if(is.null(args$verbose))
+  if (is.null(args$verbose))
     args$verbose <- FALSE
   
   ## If banking and borrowing is used make sure forecast extends to TACyr+1 

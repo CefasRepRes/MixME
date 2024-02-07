@@ -38,6 +38,9 @@ makeMixME <- function(om,
   if (any(names(om) != c("stks","flts")))
     stop("om must be a named list with elements 'stks' and 'flts'")
   
+  if (!all(sapply(om$flts, function(x) all(names(x) %in% names(om$stks)))))
+    stop("all fleet catch names must match om stock names")
+  
   if (!is.null(catch_obs)) {
     if (!is.list(catch_obs) | is.null(names(catch_obs)))
       stop("catch_obs must be a named list of stocks")
@@ -320,7 +323,11 @@ makeMixME <- function(om,
                           hcr  = hcr,
                           isys = isys,
                           fwd  = mseCtrl(args   = list(sr_residuals = NULL,
-                                                       proc_res     = NULL))))
+                                                       proc_res     = NULL,
+                                                       adviceType = "catch",
+                                                       effortType = effort_type,
+                                                       exceptions = matrix(1, nrow = length(om$stks), ncol = length(om$flts), dimnames = list(names(om$stks),names(om$flts))),
+                                                       multiplier = matrix(1, nrow = length(om$stks), ncol = length(om$flts), dimnames = list(names(om$stks),names(om$flts)))))))
   
   ## Make simulation arguments
   args <- list(fy = fy, # final simulation year
@@ -334,8 +341,6 @@ makeMixME <- function(om,
                                function(x) c(NA, NA),
                                USE.NAMES = TRUE, 
                                simplify = FALSE),
-               adviceType = "catch",
-               effortType = effort_type,
                adviceInit = sapply(om$stks@names, 
                                    function(x) matrix(NA, nrow = 1, ncol = dims(om$stks[[1]])$iter),
                                    USE.NAMES = TRUE, 

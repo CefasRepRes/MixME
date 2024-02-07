@@ -35,6 +35,10 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
                      tracking,            # Tracking object containing advice
                      sr_residuals = NULL, # list or FLQuants of recruitment residuals
                      proc_res     = NULL, # where is process error noise stored?
+                     adviceType,
+                     effortType,
+                     exceptions,
+                     multiplier,
                      effort_max = 100,    # maximum allowed fishing effort
                      ...) {
 
@@ -58,20 +62,6 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
   iy   <- args$iy
   mlag <- args$management_lag
   fy   <- args$fy
-  
-  ## Extract basis of advice - this should be a mandatory input
-  if(!is.null(args$adviceType)) {
-    adviceType <- args$adviceType
-  } else {
-    adviceType <- "catch"
-  }
-  
-  ## Extract basis of effort optimisation - this should be a mandatory input
-  if(!is.null(args$effortType)) {
-    effortType <- args$effortType
-  } else {
-    effortType <- "min"
-  }
   
   ## How many times to retry if effort optimization does not identify choke-stocks?
   if(!is.null(args$maxRetry)) {
@@ -172,6 +162,8 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
     effOptimised <- effortBaranov(omList       = omList,
                                   adviceType   = adviceType,
                                   effortType   = effortType,
+                                  exceptions   = exceptions,
+                                  multiplier   = multiplier,
                                   maxRetry     = maxRetry,
                                   useEffortAsInit = useEffortAsInit,
                                   useTMB       = useTMB,

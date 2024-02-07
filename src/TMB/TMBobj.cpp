@@ -91,6 +91,8 @@ Type objective_function<Type>::operator()(){
   DATA_STRUCT(n, listVector);         // list: nstocks (vector: nages)
   DATA_STRING(adviceType); // "catch" or "landings"
   DATA_STRING(objType);    // "globalMin", "globalMax" or "choke"
+  DATA_ARRAY(exceptions);  // matrix: rows nstocks, cols nfleets
+  DATA_ARRAY(multiplier);  // matrix: rows nstocks, cols nfleets
   DATA_IVECTOR(stkLim);    // vector: nfleets
   
   PARAMETER_VECTOR(logE);
@@ -205,8 +207,11 @@ Type objective_function<Type>::operator()(){
         Cfleet(s,f) = sum(partLWage);
       }
       
-      // calculate residual quota
-      quotaResid(s, f) = quota(s, f) - Cfleet(s, f);
+      // inflate quota by multipier to caricature i.u.u. fishing
+      quota(s, f) = quota(s, f) * multiplier(s, f);
+      
+      // calculate residual quota - ('knock out' stocks that are not effort-limiting)
+      quotaResid(s, f) = (quota(s, f) - Cfleet(s, f)) * exceptions(s, f);
       
       // if globally optimising effort to find most limiting-stock (minimise overall over- and under-shoot)
       if(objType == "globalMin"){

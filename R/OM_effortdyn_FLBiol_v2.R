@@ -420,8 +420,12 @@ catchBaranov <- function(par, dat, adviceType, islog = FALSE) {
 #'                   whether inputted advice values correspond to catch or
 #'                   landings. Defaults to 'catch'.
 #' @param effortType Character. Values may be 'min' or 'max'. Determines whether
-#'                   effort optimisation should find the most-limiting or the
-#'                   least-limiting stock.
+#'                   effort optimisation should find the most-limiting (min) or the
+#'                   least-limiting stock (max).
+#' @param exceptions Numeric matrix (stocks, fleets). A matrix of effort-limiting 
+#'                   (1) and non-effort-limiting (0) stocks for each fleet
+#' @param multiplier Numeric matrix (stocks, fleets). A matrix of quota-multipliers
+#'                   for each combination of stock and fleet.
 #' @param par (Optional) Numeric vector. A vector of fleet effort on a log-scale.
 #' @param method (Optional) Character. Determines the optimisation algorithm that is used.
 #'               Values may be 'nlminb' or 'Nelder-Mead'. Default is 'nlminb'.
@@ -447,6 +451,8 @@ catchBaranov <- function(par, dat, adviceType, islog = FALSE) {
 effortBaranov <- function(omList,
                           adviceType = "catch",
                           effortType = "min",
+                          exceptions,
+                          multiplier,
                           par = NULL,
                           maxRetry = 1,
                           useEffortAsInit = FALSE,
@@ -486,13 +492,13 @@ effortBaranov <- function(omList,
     # Define a function to globally optimise effort
     # ------------------------------------------------------#
     
-    Gobj <- function(par, dat, adviceType, objType) {
+    Gobj <- function(par, dat, adviceType, objType, exceptions, multiplier) {
       
       ## Calculate Catch given effort
       Cfleet <- catchBaranov(par = par, dat = dat, adviceType = adviceType, islog = TRUE)
       
       ## Check that fleet catches are within quota limits
-      overundershoot <- dat$quota - Cfleet
+      overundershoot <- ((dat$quota * multiplier) - Cfleet) * exceptions
       
       ## Add an extra penalty to the overshoot
       overshoot <- overundershoot[which(overundershoot < 0)]
@@ -512,13 +518,13 @@ effortBaranov <- function(omList,
     # Define a function to optimise effort for selected stocks
     # ------------------------------------------------------#
     
-    Fobj <- function(par, dat, adviceType) {
+    Fobj <- function(par, dat, adviceType, exceptions, multiplier) {
       
       ## Calculate Catch given effort
       Cfleet <- catchBaranov(par = par, dat = dat, adviceType = adviceType, islog = TRUE)
       
       # extract discrepancy between fleet catches and quota
-      quotaResid <- dat$quota - Cfleet
+      quotaResid <- ((dat$quota * multiplier) - Cfleet) * exceptions
       
       ## replace NAs with 0 (cases where no catchability)
       quotaResid[is.na(quotaResid)] <- 0
@@ -561,24 +567,29 @@ effortBaranov <- function(omList,
       
       if(useTMB == FALSE){
         
-        eff <- nlminb(start = par, objective = Gobj, dat = omList[[it]],
+        eff <- nlminb(start = par, objective = Gobj, 
+                      dat = omList[[it]],
                       adviceType = adviceType,
                       objType    = objType,
+                      exceptions = exceptions,
+                      multiplier = multiplier,
                       control = list("iter.max" = 1000,
                                      "eval.max" = 1000))
         
         ## Calculate resulting stock catches for each fleet and find choke stocks
-        stkEff <- omList[[it]]$quota - catchBaranov(par = exp(eff$par),
-                                                    dat = omList[[it]],
-                                                    adviceType = adviceType)
+        stkEff <- (omList[[it]]$quota * multiplier) - catchBaranov(par = exp(eff$par),
+                                                                   dat = omList[[it]],
+                                                                   adviceType = adviceType)
         
         ## Find (most or least) effort-limiting stock for each fleet
         ## NOTE: I apply over fleets (cols)
         ## NOTE: we need to select from only stocks the fleet has catching power for!
+        ## NOTE: we need to select from only stock that are effort-limiting!
         ## NOTE: most-limiting (min), least-limiting (max)
         stkLim <- sapply(1:ncol(stkEff), function(x) { 
           xx <- stkEff[,x]
           xx[omList[[it]]$catchq[,x] == 0] <- NA
+          xx[exceptions[,x] == 0] <- NA
           if(effortType == "min") return(which.min(xx))
           if(effortType == "max") return(which.max(xx))
         })
@@ -601,6 +612,8 @@ effortBaranov <- function(omList,
         ## add advice type to data
         omList[[it]]$adviceType <- adviceType
         omList[[it]]$objType    <- objType
+        omList[[it]]$exceptions <- exceptions
+        omList[[it]]$multiplier <- multiplier
         omList[[it]]$stkLim     <- rep(1, nflt)
         
         Gobj <- TMB::MakeADFun(data = omList[[it]],
@@ -613,7 +626,7 @@ effortBaranov <- function(omList,
                                      "eval.max" = 10000))
         
         ## Calculate resulting stock catches for each fleet and find choke stocks
-        stkEff <- omList[[it]]$quota - Gobj$report()$Cfleet
+        stkEff <- (omList[[it]]$quota * multiplier) - Gobj$report()$Cfleet
         
         ## Find (most or least) effort-limiting stock for each fleet
         ## NOTE: I apply over fleets (cols)
@@ -622,6 +635,7 @@ effortBaranov <- function(omList,
         stkLim <- sapply(1:ncol(stkEff), function(x) { 
           xx <- stkEff[,x]
           xx[omList[[it]]$catchq[,x] == 0] <- NA
+          xx[exceptions[,x] == 0] <- NA
           if(effortType == "min") return(which.min(xx))
           if(effortType == "max") return(which.max(xx))
         })
@@ -650,19 +664,23 @@ effortBaranov <- function(omList,
       if(useTMB == FALSE) {
         
         out <- nlminb(start = par, objective = Fobj,
-                      dat = omList[[it]], adviceType = adviceType,
+                      dat = omList[[it]], 
+                      adviceType = adviceType,
+                      exceptions = exceptions,
+                      multiplier = multiplier,
                       control = list("iter.max" = 1000,
                                      "eval.max" = 1000))
         
         ## Calculate resulting stock catches for each fleet and find choke stocks
-        stkEff <- omList[[it]]$quota - catchBaranov(par = exp(out$par),
-                                                    dat = omList[[it]],
-                                                    adviceType = adviceType)
+        stkEff <- (omList[[it]]$quota * multiplier) - catchBaranov(par = exp(out$par),
+                                                                   dat = omList[[it]],
+                                                                   adviceType = adviceType)
         
         ## Check for mismatch in choke stocks
         stkLimMismatch <- !all(omList[[it]]$stkLim == sapply(1:ncol(stkEff), function(x) {
           xx <- stkEff[,x]
           xx[omList[[it]]$catchq[,x] == 0] <- NA
+          xx[exceptions[,x] == 0] <- NA
           if(effortType == "min") return(which.min(xx))
           if(effortType == "max") return(which.max(xx))
         }))
@@ -693,12 +711,13 @@ effortBaranov <- function(omList,
                                      "eval.max" = 10000))
         
         ## Calculate resulting stock catches for each fleet and find choke stocks
-        stkEff <- omList[[it]]$quota - Fobj$report()$Cfleet
+        stkEff <- (omList[[it]]$quota * multiplier) - Fobj$report()$Cfleet
         
         ## Check for mismatch in choke stocks
         stkLimMismatch <- !all(omList[[it]]$stkLim == sapply(1:ncol(stkEff), function(x) {
           xx <- stkEff[,x]
           xx[omList[[it]]$catchq[,x] == 0] <- NA
+          xx[exceptions[,x] == 0] <- NA
           if(effortType == "min") return(which.min(xx)-1)
           if(effortType == "max") return(which.max(xx)-1)
         }))
@@ -744,6 +763,7 @@ effortBaranov <- function(omList,
           omList[[it]]$stkLim <- sapply(1:ncol(stkEff), function(x) { 
             xx <- stkEff[,x]
             xx[omList[[it]]$catchq[,x] == 0] <- NA
+            xx[exceptions[,x] == 0] <- NA
             if(effortType == "min") return(which.min(xx))
             if(effortType == "max") return(which.max(xx))
           })
@@ -752,18 +772,21 @@ effortBaranov <- function(omList,
           out <- nlminb(start = par, objective = Fobj,
                         dat = omList[[it]],
                         adviceType = adviceType,
+                        exceptions = exceptions,
+                        multiplier = multiplier,
                         control = list("iter.max" = 1000,
                                        "eval.max" = 1000))
           
           ## recalculate stock overshoots
-          stkEff <- omList[[it]]$quota - catchBaranov(par = exp(out$par),
-                                                      dat = omList[[it]],
-                                                      adviceType = adviceType)
+          stkEff <- (omList[[it]]$quota * multiplier) - catchBaranov(par = exp(out$par),
+                                                                     dat = omList[[it]],
+                                                                     adviceType = adviceType)
           
           ## Check for mismatch in choke stocks
           stkLimMismatch <- !all(omList[[it]]$stkLim == sapply(1:ncol(stkEff), function(x) { 
             xx <- stkEff[,x]
             xx[omList[[it]]$catchq[,x] == 0] <- NA
+            xx[exceptions[,x] == 0] <- NA
             if(effortType == "min") return(which.min(xx))
             if(effortType == "max") return(which.max(xx))
           }))
@@ -778,6 +801,7 @@ effortBaranov <- function(omList,
           omList[[it]]$stkLim <- sapply(1:ncol(stkEff), function(x) { 
             xx <- stkEff[,x]
             xx[omList[[it]]$catchq[,x] == 0] <- NA
+            xx[exceptions[,x] == 0] <- NA
             if(effortType == "min") return(which.min(xx)-1)
             if(effortType == "max") return(which.max(xx)-1)
           })
@@ -796,12 +820,13 @@ effortBaranov <- function(omList,
                                        "eval.max" = 10000))
           
           ## recalculate stock overshoots
-          stkEff <- omList[[it]]$quota - Fobj$report()$Cfleet
+          stkEff <- (omList[[it]]$quota * multiplier) - Fobj$report()$Cfleet
           
           ## Check for mismatch in choke stocks
           stkLimMismatch <- !all(omList[[it]]$stkLim == sapply(1:ncol(stkEff), function(x) { 
             xx <- stkEff[,x]
             xx[omList[[it]]$catchq[,x] == 0] <- NA
+            xx[exceptions[,x] == 0] <- NA
             if(effortType == "min") return(which.min(xx)-1)
             if(effortType == "max") return(which.max(xx)-1)
           }))
