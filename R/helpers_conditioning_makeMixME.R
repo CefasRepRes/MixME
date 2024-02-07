@@ -17,6 +17,7 @@ makeMixME <- function(om,
                       index_dev = NULL,
                       management_lag  = 1,
                       management_type = "HCR",
+                      effort_type     = "min",
                       parallel = FALSE) {
   
   # Catch errors
@@ -334,6 +335,7 @@ makeMixME <- function(om,
                                USE.NAMES = TRUE, 
                                simplify = FALSE),
                adviceType = "catch",
+               effortType = effort_type,
                adviceInit = sapply(om$stks@names, 
                                    function(x) matrix(NA, nrow = 1, ncol = dims(om$stks[[1]])$iter),
                                    USE.NAMES = TRUE, 

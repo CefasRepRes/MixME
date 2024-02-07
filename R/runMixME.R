@@ -44,8 +44,12 @@ runMixME <- function(om,
   
   ## args must contain critical elements
   if(!any(names(args) == c("adviceType"))) stop("'adviceType' missing in 'args'.")
+  if(!any(names(args) == c("effortType"))) stop("'effortType' missing in 'args'.")
   if(!any(names(args) == c("iy"))) stop("Intermediate year 'iy' missing in 'args'.")
   
+  ## check values of critical elements
+  if(!(args$adviceType %in% c("landings","catch"))) stop("'adviceType' must be 'landings' or 'catch'")
+  if(!(args$effortType %in% c("min","max","sqE")))  stop("'effortType' must be 'min','max' or 'sqE'")
   if(args$iy > args$fy) stop("Final year 'fy' must be greater than intermediate year 'iy'")
   
   ## handle missing arguments

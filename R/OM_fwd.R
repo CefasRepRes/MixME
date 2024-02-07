@@ -59,11 +59,18 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
   mlag <- args$management_lag
   fy   <- args$fy
   
-  ## Extract basis of advice
+  ## Extract basis of advice - this should be a mandatory input
   if(!is.null(args$adviceType)) {
     adviceType <- args$adviceType
   } else {
     adviceType <- "catch"
+  }
+  
+  ## Extract basis of effort optimisation - this should be a mandatory input
+  if(!is.null(args$effortType)) {
+    effortType <- args$effortType
+  } else {
+    effortType <- "min"
   }
   
   ## How many times to retry if effort optimization does not identify choke-stocks?
@@ -164,6 +171,7 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
     ## optimise effort
     effOptimised <- effortBaranov(omList       = omList,
                                   adviceType   = adviceType,
+                                  effortType   = effortType,
                                   maxRetry     = maxRetry,
                                   useEffortAsInit = useEffortAsInit,
                                   useTMB       = useTMB,
