@@ -252,17 +252,22 @@ estMixME <- function(x,
       ## create a null object for fleets
       flt0 <- NULL
       
+      ## estimate final data year
+      dy <- dims(stk0)$maxyear
+      
       ## Update tracking object
-      tracking[[x]]$stk["F.est", ac(ay)]  <- FLCore::fbar(stk0)[,ac(ay)]
-      tracking[[x]]$stk["B.est", ac(ay)]  <- FLCore::stock(stk0)[,ac(ay)]
-      tracking[[x]]$stk["SB.est", ac(ay)] <- FLCore::ssb(stk0)[,ac(ay)]
-      
-      tracking[[x]]$stk["C.est", ac(ay)] <- FLCore::catch(stk0)[,ac(ay)]
-      tracking[[x]]$stk["L.est", ac(ay)] <- FLCore::landings(stk0)[,ac(ay)]
-      tracking[[x]]$stk["D.est", ac(ay)] <- FLCore::discards(stk0)[,ac(ay)]
-      
-      tracking[[x]]$sel_est[,ac(ay)] <- sweep(FLCore::harvest(stk0)[,ac(ay)], 
-                                                 c(2:6), fbar(stk0)[,ac(ay)], "/")
+      if(dy %in% dimnames(tracking[[x]]$stk)$year) {
+        tracking[[x]]$stk["F.est", ac(dy)]  <- FLCore::fbar(stk0)[,ac(dy)]
+        tracking[[x]]$stk["B.est", ac(dy)]  <- FLCore::stock(stk0)[,ac(dy)]
+        tracking[[x]]$stk["SB.est", ac(dy)] <- FLCore::ssb(stk0)[,ac(dy)]
+        
+        tracking[[x]]$stk["C.est", ac(dy)] <- FLCore::catch(stk0)[,ac(dy)]
+        tracking[[x]]$stk["L.est", ac(dy)] <- FLCore::landings(stk0)[,ac(dy)]
+        tracking[[x]]$stk["D.est", ac(dy)] <- FLCore::discards(stk0)[,ac(dy)]
+        
+        tracking[[x]]$sel_est[,ac(dy)] <- sweep(FLCore::harvest(stk0)[,ac(dy)], 
+                                                c(2:6), fbar(stk0)[,ac(dy)], "/")
+      }
       
     } # END if FLStock
     
