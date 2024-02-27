@@ -228,16 +228,16 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
     # If management lag is zero, the simulation will proceed to the final year, but
     # we don't actually want to project forward past the final year, so end here.
     
-    if(yr == fy & mlag == 0) {
-      
-      ## update tracking object
-      tracking <- updateTrackingOM(om = om, tracking = tracking, args = args, yr = yr)
-      
-      ## return unprojected stock
-      return(list(om       = om,
-                  tracking = tracking))
-      
-    }
+    # if(yr == fy & mlag == 0) {
+    #   
+    #   ## update tracking object
+    #   tracking <- updateTrackingOM(om = om, tracking = tracking, args = args, yr = yr)
+    #   
+    #   ## return unprojected stock
+    #   return(list(om       = om,
+    #               tracking = tracking))
+    #   
+    # }
 
     # -------------------------------------------------------------------------#
     # Prepare forward control object
@@ -259,7 +259,7 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
       list(year = yr:maxyr,
            quant = "effort",
            fishery = names(om$flts)[x],
-           value = rep(exp(pars[x,]), each = 2))
+           value = rep(exp(pars[x,]), each = length(yr:maxyr)))
     })
     ctrlArgs$FCB <- fcb
 
