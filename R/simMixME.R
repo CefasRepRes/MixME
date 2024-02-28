@@ -161,6 +161,8 @@ simMixME <- function (om,
       ## Set up inputs to HCR
       ctrl.hcr          <- mse::args(ctrl_obj$hcr)
       ctrl.hcr$stk      <- stk0
+      ctrl.hcr$flt      <- flt0
+      ctrl.hcr$idx      <- idx0
       ctrl.hcr$args     <- args
       ctrl.hcr$tracking <- tracking
       
