@@ -7,6 +7,7 @@
 estMixME(
   x,
   stk,
+  flt,
   idx,
   ctrl = NULL,
   om = NULL,

@@ -6,6 +6,8 @@
 \usage{
 hcrRun(
   stk,
+  flt,
+  idx,
   args,
   hcrpars = NULL,
   hcrmethod = NULL,

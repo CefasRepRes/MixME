@@ -13,6 +13,7 @@ makeMixME(
   index_dev = NULL,
   management_lag = 1,
   management_type = "HCR",
+  effort_type = "min",
   parallel = FALSE
 )
 }

@@ -63,6 +63,8 @@ phcrMixME <- function(stk, args, hcrpars, tracking) {
 
 hcrMixME <- function(x,
                      stk,
+                     flt,
+                     idx,
                     args,
                     hcrpars = NULL,
                     hcrmethod = NULL,
@@ -80,11 +82,21 @@ hcrMixME <- function(x,
   ## Run user-supplied method (if provided)
   if(is.function(hcrmethod[[x]])){
     
+    ## generate list of input arguments
+    argslist <- list(stk      = stk0,
+                     args     = args,
+                     hcrpars  = hcrpars[[x]],
+                     tracking = tracking[[x]])
+    
+    ## generate vector of input arguments
+    argsnames <- formalArgs(hcrmethod[[x]])
+
+    ## conditionally add flt, idx info
+    if("flt" %in% argsnames) argslist$flt <- flt[[x]]
+    if("idx" %in% argsnames) argslist$idx <- idx[[x]]
+    
     out <- do.call(hcrmethod[[x]],
-                   list(stk      = stk0,
-                        args     = args,
-                        hcrpars  = hcrpars[[x]],
-                        tracking = tracking[[x]]))
+                   argslist)
     
     ## Run ICES Harvest control Rule
   } else if (hcrmethod[[x]] == "hcrICES"){

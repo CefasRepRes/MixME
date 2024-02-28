@@ -35,6 +35,10 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
                      tracking,            # Tracking object containing advice
                      sr_residuals = NULL, # list or FLQuants of recruitment residuals
                      proc_res     = NULL, # where is process error noise stored?
+                     adviceType,
+                     effortType,
+                     exceptions,
+                     multiplier,
                      effort_max = 100,    # maximum allowed fishing effort
                      ...) {
 
@@ -58,13 +62,6 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
   iy   <- args$iy
   mlag <- args$management_lag
   fy   <- args$fy
-  
-  ## Extract basis of advice
-  if(!is.null(args$adviceType)) {
-    adviceType <- args$adviceType
-  } else {
-    adviceType <- "catch"
-  }
   
   ## How many times to retry if effort optimization does not identify choke-stocks?
   if(!is.null(args$maxRetry)) {
@@ -164,6 +161,9 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
     ## optimise effort
     effOptimised <- effortBaranov(omList       = omList,
                                   adviceType   = adviceType,
+                                  effortType   = effortType,
+                                  exceptions   = exceptions,
+                                  multiplier   = multiplier,
                                   maxRetry     = maxRetry,
                                   useEffortAsInit = useEffortAsInit,
                                   useTMB       = useTMB,
@@ -228,16 +228,16 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
     # If management lag is zero, the simulation will proceed to the final year, but
     # we don't actually want to project forward past the final year, so end here.
     
-    if(yr == fy & mlag == 0) {
-      
-      ## update tracking object
-      tracking <- updateTrackingOM(om = om, tracking = tracking, args = args, yr = yr)
-      
-      ## return unprojected stock
-      return(list(om       = om,
-                  tracking = tracking))
-      
-    }
+    # if(yr == fy & mlag == 0) {
+    #   
+    #   ## update tracking object
+    #   tracking <- updateTrackingOM(om = om, tracking = tracking, args = args, yr = yr)
+    #   
+    #   ## return unprojected stock
+    #   return(list(om       = om,
+    #               tracking = tracking))
+    #   
+    # }
 
     # -------------------------------------------------------------------------#
     # Prepare forward control object
@@ -259,7 +259,7 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
       list(year = yr:maxyr,
            quant = "effort",
            fishery = names(om$flts)[x],
-           value = rep(exp(pars[x,]), each = 2))
+           value = rep(exp(pars[x,]), each = length(yr:maxyr)))
     })
     ctrlArgs$FCB <- fcb
 

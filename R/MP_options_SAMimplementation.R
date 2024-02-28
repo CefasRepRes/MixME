@@ -15,6 +15,8 @@
 #'            information including commercial catch data, individual mean 
 #'            weights and biological parameters.
 #' @param tracking Tracking object
+#' @param ctrl A `FLasher` forward control object containing the outputs from the
+#'             Harvest Control Module.
 #' @param args Additional arguments
 #' @param forecast Logical. Should a short-term forecast be carried out? Defaults
 #'                 to \code{TRUE}
@@ -32,7 +34,8 @@
 #' @param fwd_yrs_lf_remove Integer Vector. ... Defaults to -2:-1.
 #' @param fwd_splitLD Logical. Defaults to \code{TRUE}
 #' 
-#' @return 
+#' @returns A named `list` containing the updated forward control object and the
+#'          updated tracking object for the stock.
 #' 
 #' @export
 

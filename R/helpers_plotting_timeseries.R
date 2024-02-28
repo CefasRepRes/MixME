@@ -10,7 +10,47 @@
 #' a specified property for one or more stocks or fleets. Annual distributions 
 #' are summarised to the median and up to two user-specified quantile intervals.
 #' 
+#' @param object The output from a `MixME` simulation.
+#' @param quantity `Character`. The operating model property to be visualised.
+#'                 Options are "ssb", "effort", "catch", "uptake","fbar", and "f". 
+#' @param minyr (Optional) `numeric`. The minimum year to be plotted.
+#' @param maxyr (Optional) `numeric`. The maximum year to be plotted.
+#' @param stknames (Optional) `character` vector. The names of stocks to be included
+#'                 in the plot. Applies to "ssb", "catch", "uptake", "fbar" and "f".
+#' @param fltnames (Optional) `character` vector. The names of fleets to be included
+#'                 in the plot. Applies to "effort" only. 
+#' @param trajectories (Optional)`numeric`. The number of randomly selected trajectories
+#'                     to be plotted. Defaults to \code{NULL}.
+#' @param quantiles `Numeric` vector. The summary quantiles to be calculated for 
+#'                  the operating model quantity. The argument must be a vector of 
+#'                  either 2 or 4 values between 0 and 1. 
+#'                  Defaults to 5%, 25%, 75% and 95% quantiles.
+#' @param addRefpts `Logical`. Should biological and fishing mortality reference points
+#'                  be included in the plot? Defaults to \code{TRUE}
+#' @param keepFailedIters `Logical`. Should trajectories, also known as iterations or
+#'                        replicates, containing instances of failed advice generation
+#'                        be retained in the plot. Defaults to \code{TRUE}.
+#'                        
+#' @returns A `ggplot` object
+#' 
 #' @export
+#' @examples
+#' \donttest{
+#' ## load example data
+#' data("mixedfishery_MixME_input")
+#'
+#' ## run MixME simulation
+#' res <- runMixME(om  = mixedfishery_MixME_input$om, 
+#'                 oem = mixedfishery_MixME_input$oem,
+#'                 ctrl_obj = mixedfishery_MixME_input$ctrl_obj,
+#'                 args     = mixedfishery_MixME_input$args)
+#' 
+#' ## plot individual simulation trajectories
+#' plot_timeseries_MixME(res, quantity = "ssb")
+#' plot_timeseries_MixME(res, quantity = "fbar")
+#' plot_timeseries_MixME(res, quantity = "catch")
+#' plot_timeseries_MixME(res, quantity = "uptake")
+#' }
 
 plot_timeseries_MixME <- function(object,
                                   quantity,
@@ -38,7 +78,7 @@ plot_timeseries_MixME <- function(object,
   ## define min and max year if null
   SSBmaxyr <- maxyr
   if(is.null(maxyr)) {
-    maxyr    <- object$args$fy - object$args$management_lag
+    maxyr    <- object$args$fy
     SSBmaxyr <- object$args$fy
   }
   

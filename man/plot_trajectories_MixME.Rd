@@ -15,8 +15,62 @@ plot_trajectories_MixME(
   failedIters = "highlight"
 )
 }
+\arguments{
+\item{object}{The output from a \code{MixME} simulation}
+
+\item{quantity}{\code{Character}. The operating model property to be visualised.
+Options are "ssb", "effort", "catch", "uptake","fbar", and "f".}
+
+\item{minyr}{\code{Numeric}. The minimum year to be plotted.}
+
+\item{maxyr}{\code{Numeric}. The maximum year to be plotted.}
+
+\item{stknames}{(Optional) \code{character} vector. The names of stocks to be included
+in the plot. Applies to "ssb", "catch", "uptake", "fbar" and "f".}
+
+\item{fltnames}{(Optional) \code{character} vector. The names of fleets to be included
+in the plot. Applies to "effort" only.}
+
+\item{addRefpts}{\code{Logical}. Should biological and fishing mortality reference points
+be included in the plot? Defaults to \code{TRUE}}
+
+\item{failedIters}{\code{Character}. How should trajectories contained instances of
+failed advice generation? Options are:
+"highlight" (successful trajectories shown in blue, failed trajectories shown in grey pre-failure and red post failure),
+"partial" (successful trajectories shown in blue, failed trajectories shown in red pre-failure and removed post-failure),
+"exclude" (failed trajectories removed), and
+"only" (only failed trajectories are shown).
+Defaults to "highlight".}
+}
+\value{
+A \code{ggplot} object
+}
 \description{
 Function takes an Operating model as input and plots a time-series of
-a specified property for one or more stocks. Individual trajectories are
-plotted and failed trajectories are optionally highlighted or removed
+a specified property for one or more stocks. Individual trajectories, also
+known as replicates, are plotted and failed trajectories are optionally
+highlighted or removed.
+}
+\details{
+When failed trajectories are included in the plot, the instance of failed
+advice generation is plotted as a point and the pre-failure and post-failure
+parts of the trajectory are visually distinguished from one another.
+}
+\examples{
+\donttest{
+## load example data
+data("mixedfishery_MixME_input")
+
+## run MixME simulation
+res <- runMixME(om  = mixedfishery_MixME_input$om, 
+                oem = mixedfishery_MixME_input$oem,
+                ctrl_obj = mixedfishery_MixME_input$ctrl_obj,
+                args     = mixedfishery_MixME_input$args)
+
+## plot individual simulation trajectories
+plot_trajectories_MixME(res, quantity = "ssb")
+plot_trajectories_MixME(res, quantity = "fbar")
+plot_trajectories_MixME(res, quantity = "catch")
+plot_trajectories_MixME(res, quantity = "uptake")
+}
 }

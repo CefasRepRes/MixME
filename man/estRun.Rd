@@ -6,6 +6,7 @@
 \usage{
 estRun(
   stk,
+  flt,
   idx,
   ctrl = NULL,
   om = NULL,

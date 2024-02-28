@@ -4,9 +4,36 @@
 # date: 'December 2022'
 # ---
 #
-#' Estimate stock quota-share from historic landings-share
+#' Estimate stock quota-share from historical landings-share
+#' 
+#' This function calculate the historical share of stock landings (by weight) for
+#' each fleet and uses this as a proxy for the historical share of stock quota.
+#' These data are attached as an `FLQuant` attribute to each `FLCatch` in each
+#' `FLFishery`.
+#' 
+#' @param stks An object of class `FLStocks` or `FLBiols`. 
+#'             This is a required input but is not currently used in the function.
+#' @param flts An object of class `FLFisheries`.
+#' @param verbose `Logical`. Should progress be printed to console? Defaults to `TRUE`.
+#' @param useCpp `Logical`. Should a C++ helper function be used to speed up 
+#'               attachment of outputs. Defaults to `TRUE` - THIS IS HIGHLY RECOMMENDED.
+#' 
+#' @returns A named `list` containing the updated stocks and fleets
 #' 
 #' @export
+#' @examples
+#' \donttest{
+#' ## load example data
+#' data("singlestock_MixME_om")
+#' 
+#' ## calculate quota-share from landings share
+#' out <- calculateQuotashare(stks = singlestock_MixME_om$stks, 
+#'                            flts = singlestock_MixME_om$flts, verbose = FALSE)
+#'                            
+#' ## Overwrite with updated objects
+#' singlestock_MixME_om$stks <- out$stks
+#' singlestock_MixME_om$flts <- out$flts
+#' }
 
 calculateQuotashare <- function(stks,             # Not currently used
                                 flts,             # FLFisheries

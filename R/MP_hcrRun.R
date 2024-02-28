@@ -25,6 +25,8 @@
 #' @export
 
 hcrRun <- function(stk,
+                   flt,
+                   idx,
                    args,
                    hcrpars = NULL,
                    hcrmethod = NULL,
@@ -44,6 +46,8 @@ hcrRun <- function(stk,
   ctrlList <- lapply(names(stk), 
                      hcrMixME,
                      stk       = stk,
+                     flt       = flt,
+                     idx       = idx,
                      args      = args,
                      hcrpars   = hcrpars,
                      hcrmethod = hcrmethod,

@@ -11,14 +11,15 @@ runMixME(om, oem, ctrl_obj, args, ...)
 
 \item{oem}{observation error model (OEM)}
 
-\item{args}{named list. Additional MSE simulation arguments.}
+\item{ctrl_obj}{management procedure (MP)}
 
-\item{mp}{management procedure (MP)}
+\item{args}{named list. Additional MSE simulation arguments.}
 }
 \value{
-A named list containing the projected operating model and a tracking
+A named list containing the projected operating model, a tracking
 object containing summary metrics for observed, estimated and true
-stock and fishery properties and simulation performance statistics.
+stock and fishery properties and simulation performance statistics,
+and the unaltered \code{ctrl_obj} and \code{args} objects.
 }
 \description{
 This function carries out a single run for a set of one or more management
@@ -27,4 +28,22 @@ interactions. Function uses a conditioned operating model (OM) to simulate
 true system dynamics, whereas the observation error model (OEM), MP and
 additional arguments drive the imperfect evaluation of stock status and the
 generation of management advice.
+}
+\examples{
+\donttest{
+## load example data
+data("mixedfishery_MixME_input")
+
+## run MixME simulation
+res <- runMixME(om  = mixedfishery_MixME_input$om, 
+                oem = mixedfishery_MixME_input$oem,
+                ctrl_obj = mixedfishery_MixME_input$ctrl_obj,
+                args     = mixedfishery_MixME_input$args)
+
+## plot summary time-series
+plot_timeseries_MixME(res, quantity = "ssb")
+plot_timeseries_MixME(res, quantity = "fbar")
+plot_timeseries_MixME(res, quantity = "catch")
+plot_timeseries_MixME(res, quantity = "uptake")
+}
 }

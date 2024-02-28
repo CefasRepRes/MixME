@@ -10,12 +10,34 @@
 #' object containing the observed survey index values and the fitted
 #' stock catchability.
 #'
-#' @param SAMfit
-#' @param yearRange
+#' @param SAMfit A fitted SAM model of class `sam`. 
+#' @param yearRange Defaults to \code{NULL}.
+#' @param uncertainty `Logical`. Should replicates be stochastically sampled from
+#'                    the joint likelihood? Defaults to \code{FALSE}.
+#' @param niter `Integer`. The number of replicates to be sampled if `uncertainty`
+#'              is \code{TRUE}. Defaults to 1000.
+#' @param samVariates (Optional) Pre-sampled replicates. If supplied, these values
+#'                    are used instead of re-sampling from the joint likelihood.
+#'                    This is useful for generating `FLStock`, `FLFishery` and
+#'                    `FLIndex` objects with consistent replicate values.
+#' @param seed (Optional) `numeric`. A random seed for reproducibility when 
+#'             sampling replicates.
 #'
 #' @return an \code{FLIndices} object
 #'
 #' @export
+#' @examples
+#' ## download stock assessment data
+#' library(stockassessment)
+#' had <- fitfromweb("HAD7bk_2020_Assessment")
+#' 
+#' ## Extract indices (without uncertainty)
+#' hadIdx <- multiSAM2FLIndex(had, uncertainty = FALSE)
+#' 
+#' \donttest{
+#' ## Extract indices (with uncertainty)
+#' hadIdx <- multiSAM2FLIndex(had, uncertainty = TRUE, niter = 1000)
+#' }
 
 multiSAM2FLIndex <- function(SAMfit,
                              yearRange   = NULL,

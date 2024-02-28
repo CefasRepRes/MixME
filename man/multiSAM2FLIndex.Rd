@@ -14,7 +14,23 @@ multiSAM2FLIndex(
 )
 }
 \arguments{
-\item{yearRange}{}
+\item{SAMfit}{A fitted SAM model of class \code{sam}.}
+
+\item{yearRange}{Defaults to \code{NULL}.}
+
+\item{uncertainty}{\code{Logical}. Should replicates be stochastically sampled from
+the joint likelihood? Defaults to \code{FALSE}.}
+
+\item{niter}{\code{Integer}. The number of replicates to be sampled if \code{uncertainty}
+is \code{TRUE}. Defaults to 1000.}
+
+\item{samVariates}{(Optional) Pre-sampled replicates. If supplied, these values
+are used instead of re-sampling from the joint likelihood.
+This is useful for generating \code{FLStock}, \code{FLFishery} and
+\code{FLIndex} objects with consistent replicate values.}
+
+\item{seed}{(Optional) \code{numeric}. A random seed for reproducibility when
+sampling replicates.}
 }
 \value{
 an \code{FLIndices} object
@@ -23,4 +39,17 @@ an \code{FLIndices} object
 Function takes a fitted SAM object as input and returns an \code{FLIndices}
 object containing the observed survey index values and the fitted
 stock catchability.
+}
+\examples{
+## download stock assessment data
+library(stockassessment)
+had <- fitfromweb("HAD7bk_2020_Assessment")
+
+## Extract indices (without uncertainty)
+hadIdx <- multiSAM2FLIndex(had, uncertainty = FALSE)
+
+\donttest{
+## Extract indices (with uncertainty)
+hadIdx <- multiSAM2FLIndex(had, uncertainty = TRUE, niter = 1000)
+}
 }

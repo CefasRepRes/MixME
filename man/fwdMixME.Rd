@@ -10,6 +10,10 @@ fwdMixME(
   tracking,
   sr_residuals = NULL,
   proc_res = NULL,
+  adviceType,
+  effortType,
+  exceptions,
+  multiplier,
   effort_max = 100,
   ...
 )
