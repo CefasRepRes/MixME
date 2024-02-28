@@ -15,14 +15,32 @@
 #'
 #' @param om operating model (OM)
 #' @param oem observation error model (OEM)
-#' @param mp management procedure (MP)
+#' @param ctrl_obj management procedure (MP)
 #' @param args named list. Additional MSE simulation arguments.
 #'
-#' @return A named list containing the projected operating model and a tracking
+#' @return A named list containing the projected operating model, a tracking
 #'         object containing summary metrics for observed, estimated and true
-#'         stock and fishery properties and simulation performance statistics.
+#'         stock and fishery properties and simulation performance statistics,
+#'         and the unaltered \code{ctrl_obj} and \code{args} objects.
 #'
 #' @export
+#' @examples
+#' \donttest{
+#' ## load example data
+#' data("mixedfishery_MixME_input")
+#'
+#' ## run MixME simulation
+#' res <- runMixME(om  = mixedfishery_MixME_input$om, 
+#'                 oem = mixedfishery_MixME_input$oem,
+#'                 ctrl_obj = mixedfishery_MixME_input$ctrl_obj,
+#'                 args     = mixedfishery_MixME_input$args)
+#' 
+#' ## plot summary time-series
+#' plot_timeseries_MixME(res, quantity = "ssb")
+#' plot_timeseries_MixME(res, quantity = "fbar")
+#' plot_timeseries_MixME(res, quantity = "catch")
+#' plot_timeseries_MixME(res, quantity = "uptake")
+#' }
 
 runMixME <- function(om,
                      oem,

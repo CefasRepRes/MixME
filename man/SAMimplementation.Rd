@@ -25,6 +25,9 @@ weights and biological parameters.}
 
 \item{tracking}{Tracking object}
 
+\item{ctrl}{A \code{FLasher} forward control object containing the outputs from the
+Harvest Control Module.}
+
 \item{args}{Additional arguments}
 
 \item{fwd_trgt}{Character. Catch or effort target to use during forecast.
@@ -49,6 +52,10 @@ Defaults to -3:-1.}
 
 \item{forecast}{Logical. Should a short-term forecast be carried out? Defaults
 to \code{TRUE}}
+}
+\value{
+A named \code{list} containing the updated forward control object and the
+updated tracking object for the stock.
 }
 \description{
 Carry out a short-term forecast using the SAM state-space assessment model

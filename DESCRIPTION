@@ -1,13 +1,22 @@
 Package: MixME
-Title: What the Package Does (One Line, Title Case)
-Version: 0.0.0.9006
+Title: Mixed-fishery Multi-stock Evaluation
+Version: 0.0.0.9007
 Authors@R: 
-    person(given = "First",
-           family = "Last",
-           role = c("aut", "cre"),
-           email = "first.last@example.com",
-           comment = c(ORCID = "YOUR-ORCID-ID"))
-Description: What the package does (one paragraph).
+    c(person(given = "Matthew C.",
+             family = "Pace",
+             role = c("aut", "cre"),
+             email = "matthew.pace@cefas.gov.uk",
+             comment = c(ORCID = "0000-0003-1621-4057")),
+      person(given = "José A. A.",
+             family = "de Oliveira",
+             role = c("aut")),
+      person(given = "Simon H.",
+             family = "Fischer",
+             role = c("aut")),
+      person(given = "Paul J.",
+             family = "Dolder",
+             role = c("aut")))
+Description: An R package for mixed fisheries Management Strategy Evaluation (MSE) using multi-stock and multi-fleet Operating Models.
 License: OGL v3.0 (Open Government Licence)
 LinkingTo: 
   Rcpp, 

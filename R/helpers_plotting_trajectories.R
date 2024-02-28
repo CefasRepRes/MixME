@@ -7,10 +7,53 @@
 #' Plot individual trajectories of Operating Model properties
 #' 
 #' Function takes an Operating model as input and plots a time-series of
-#' a specified property for one or more stocks. Individual trajectories are 
-#' plotted and failed trajectories are optionally highlighted or removed 
+#' a specified property for one or more stocks. Individual trajectories, also
+#' known as replicates, are plotted and failed trajectories are optionally 
+#' highlighted or removed.
+#' 
+#' When failed trajectories are included in the plot, the instance of failed
+#' advice generation is plotted as a point and the pre-failure and post-failure
+#' parts of the trajectory are visually distinguished from one another.
+#' 
+#' @param object The output from a `MixME` simulation
+#' @param quantity `Character`. The operating model property to be visualised.
+#'                 Options are "ssb", "effort", "catch", "uptake","fbar", and "f". 
+#' @param minyr `Numeric`. The minimum year to be plotted.
+#' @param maxyr `Numeric`. The maximum year to be plotted.
+#' @param stknames (Optional) `character` vector. The names of stocks to be included
+#'                 in the plot. Applies to "ssb", "catch", "uptake", "fbar" and "f".
+#' @param fltnames (Optional) `character` vector. The names of fleets to be included
+#'                 in the plot. Applies to "effort" only. 
+#' @param addRefpts `Logical`. Should biological and fishing mortality reference points
+#'                  be included in the plot? Defaults to \code{TRUE}
+#' @param failedIters `Character`. How should trajectories contained instances of
+#'                    failed advice generation? Options are: 
+#'                    "highlight" (successful trajectories shown in blue, failed trajectories shown in grey pre-failure and red post failure), 
+#'                    "partial" (successful trajectories shown in blue, failed trajectories shown in red pre-failure and removed post-failure), 
+#'                    "exclude" (failed trajectories removed), and 
+#'                    "only" (only failed trajectories are shown). 
+#'                    Defaults to "highlight". 
+#'                    
+#' @returns A `ggplot` object
 #' 
 #' @export
+#' @examples
+#' \donttest{
+#' ## load example data
+#' data("mixedfishery_MixME_input")
+#'
+#' ## run MixME simulation
+#' res <- runMixME(om  = mixedfishery_MixME_input$om, 
+#'                 oem = mixedfishery_MixME_input$oem,
+#'                 ctrl_obj = mixedfishery_MixME_input$ctrl_obj,
+#'                 args     = mixedfishery_MixME_input$args)
+#' 
+#' ## plot individual simulation trajectories
+#' plot_trajectories_MixME(res, quantity = "ssb")
+#' plot_trajectories_MixME(res, quantity = "fbar")
+#' plot_trajectories_MixME(res, quantity = "catch")
+#' plot_trajectories_MixME(res, quantity = "uptake")
+#' }
 
 plot_trajectories_MixME <- function(object,
                                     quantity,

@@ -7,6 +7,9 @@
 effortBaranov(
   omList,
   adviceType = "catch",
+  effortType = "min",
+  exceptions,
+  multiplier,
   par = NULL,
   maxRetry = 1,
   useEffortAsInit = FALSE,
@@ -25,6 +28,16 @@ and quota-share for each combination of stock and fleet.}
 \item{adviceType}{Character. Values may be 'catch' or 'landings'. Determines
 whether inputted advice values correspond to catch or
 landings. Defaults to 'catch'.}
+
+\item{effortType}{Character. Values may be 'min' or 'max'. Determines whether
+effort optimisation should find the most-limiting (min) or the
+least-limiting stock (max).}
+
+\item{exceptions}{Numeric matrix (stocks, fleets). A matrix of effort-limiting
+(1) and non-effort-limiting (0) stocks for each fleet}
+
+\item{multiplier}{Numeric matrix (stocks, fleets). A matrix of quota-multipliers
+for each combination of stock and fleet.}
 
 \item{par}{(Optional) Numeric vector. A vector of fleet effort on a log-scale.}
 

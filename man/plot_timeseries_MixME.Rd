@@ -17,8 +17,60 @@ plot_timeseries_MixME(
   keepFailedIters = TRUE
 )
 }
+\arguments{
+\item{object}{The output from a \code{MixME} simulation.}
+
+\item{quantity}{\code{Character}. The operating model property to be visualised.
+Options are "ssb", "effort", "catch", "uptake","fbar", and "f".}
+
+\item{minyr}{(Optional) \code{numeric}. The minimum year to be plotted.}
+
+\item{maxyr}{(Optional) \code{numeric}. The maximum year to be plotted.}
+
+\item{stknames}{(Optional) \code{character} vector. The names of stocks to be included
+in the plot. Applies to "ssb", "catch", "uptake", "fbar" and "f".}
+
+\item{fltnames}{(Optional) \code{character} vector. The names of fleets to be included
+in the plot. Applies to "effort" only.}
+
+\item{trajectories}{(Optional)\code{numeric}. The number of randomly selected trajectories
+to be plotted. Defaults to \code{NULL}.}
+
+\item{quantiles}{\code{Numeric} vector. The summary quantiles to be calculated for
+the operating model quantity. The argument must be a vector of
+either 2 or 4 values between 0 and 1.
+Defaults to 5\%, 25\%, 75\% and 95\% quantiles.}
+
+\item{addRefpts}{\code{Logical}. Should biological and fishing mortality reference points
+be included in the plot? Defaults to \code{TRUE}}
+
+\item{keepFailedIters}{\code{Logical}. Should trajectories, also known as iterations or
+replicates, containing instances of failed advice generation
+be retained in the plot. Defaults to \code{TRUE}.}
+}
+\value{
+A \code{ggplot} object
+}
 \description{
 Function takes an Operating model as input and plots a time-series of
 a specified property for one or more stocks or fleets. Annual distributions
 are summarised to the median and up to two user-specified quantile intervals.
+}
+\examples{
+\donttest{
+## load example data
+data("mixedfishery_MixME_input")
+
+## run MixME simulation
+res <- runMixME(om  = mixedfishery_MixME_input$om, 
+                oem = mixedfishery_MixME_input$oem,
+                ctrl_obj = mixedfishery_MixME_input$ctrl_obj,
+                args     = mixedfishery_MixME_input$args)
+
+## plot individual simulation trajectories
+plot_timeseries_MixME(res, quantity = "ssb")
+plot_timeseries_MixME(res, quantity = "fbar")
+plot_timeseries_MixME(res, quantity = "catch")
+plot_timeseries_MixME(res, quantity = "uptake")
+}
 }
