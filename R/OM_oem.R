@@ -347,6 +347,7 @@ oemMixME <- function(x,
     idx0 <- FLCore::FLIndices(lapply(seq_along(idx0), function(y) {
       window(idx0[[y]], end = ay + idx_timing[[x]][y])
     }))
+    names(idx0) <- names(observations$idx[[x]])
     
     # idx0 <- window(idx0, end = ay + max(max(idx_timing[[x]]), max(catch_timing[[x]])))
     

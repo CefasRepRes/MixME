@@ -56,6 +56,15 @@ runMixME <- function(om,
   if (!any(names(om) == "stks") | !any(names(om) == "flts")) 
     stop("'om' must contain stock and fleet data in 'stks' and 'flts' respectively")
   
+  ## "stks" must be "FLBiol" or "FLStocks"
+  if (!(class(om$stks) %in% c("FLBiols","FLStocks")))
+    stop("'stks' must be class 'FLBiols' or 'FLStocks'")
+  
+  ## stocks in "stks" must be named
+  if (is.na(names(om$stks))) stop("stocks in 'stks' must be named")
+  if (sapply(om$stks, function(x) x@name) %in% "") stop("stock FLR objects must be named")
+  if (is.na(names(om$flts))) stop("fleets in 'flts' must be named")
+  
   ## stock names in "stks", "flts" must match
   if (!all(names(om$stks) %in% unique(unlist(lapply(om$flts, names)))))
     stop("stock names in 'stks' and catches names in 'flts' must match")

@@ -95,9 +95,6 @@ simMixME <- function (om,
       ## Apply observation error model to each stock
       out <- do.call("oemRun", ctrl.oem)
       
-      # I'M CURRENTLY FORCING THE OBSERVED STOCKS TO BE FLSTOCKS... I PROBABLY WANT
-      # TO ALLOW FOR FLBIOLS AND FLFLEETS TOO...
-      
       ## Extract results
       stk0     <- out$stk
       flt0     <- out$flt
