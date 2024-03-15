@@ -27,12 +27,14 @@ Imports:
   TMB, 
   foreach
 Suggests: 
-  stockassessment (>= 0.12.0), 
-  doParallel, 
-  doRNG
+    stockassessment (>= 0.12.0),
+    doParallel,
+    doRNG,
+    testthat (>= 3.0.0)
 Encoding: UTF-8
 LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.2.3
 Depends: 
     R (>= 2.10)
+Config/testthat/edition: 3
