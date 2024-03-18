@@ -93,7 +93,7 @@ oemTrimFLBiol <- function(stk0,
     
     ## Trim stock object
     stk0 <- window(stk0, start = mindatayr, end = ay + max(idx_timing[[x]]))
-    flt0 <- window(flt0, start = mindatayr, end = ay + max(idx_timing[[x]]))
+    flt0 <- oemTrimFLFisheries(flt0, minyr = mindatayr, maxyr = ay + max(idx_timing[[x]]))
     
     ## Remove data in years where no catch data is available
     yrs_remove <- (ay + catch_timing[[x]] + 1):ay
@@ -109,11 +109,57 @@ oemTrimFLBiol <- function(stk0,
   } else {
     
     stk0 <- window(stk0, start = mindatayr, end = ay + max(catch_timing[[x]]))
-    flt0 <- window(flt0, start = mindatayr, end = ay + max(catch_timing[[x]]))
+    flt0 <- oemTrimFLFisheries(flt0, minyr = mindatayr, maxyr = ay + max(catch_timing[[x]]))
     
   }
   
   ## return result
   return(list(stk = stk0,
               flt = flt0))
+}
+
+#' Trim FLFisheries to data period
+#' 
+#' Function takes fisheries observations in the form of \code{FLFisheries}
+#' and trims the year dimension to the period for which we have data.
+#' 
+#' @param object An observed \code{FLFisheries}
+#' @param maxyr Numeric. The final data year.
+#' 
+#' @return A truncated \code{FLFisheries} object.
+
+oemTrimFLFisheries <- function(object, minyr, maxyr) {
+  
+  for(x in names(object)) {
+    fishery <- object[[x]]
+    stknames <- names(fishery)
+    object[[x]] <- FLFishery::FLFishery(
+      lapply(names(fishery), function(y){
+        
+        ## trim FLCatch
+        catchobj <- window(fishery[[y]], start = as.character(minyr), end = as.character(maxyr))
+        
+        ## trim catch.q
+        catchobj@catch.q <- fishery[[y]]@catch.q[, as.character(minyr:maxyr)]
+        
+        ## trim quota shares
+        attr(catchobj,"quotashare") <- window(attr(fishery[[y]],"quotashare"), 
+                                              start = as.character(minyr), 
+                                              end = as.character(maxyr))
+        
+        return(catchobj)
+      }) # end lapply
+    ) # close FLFishery
+    
+    ## Insert capacity. If NA replace with 1
+    FLFishery::capacity(object[[x]]) <- FLFishery::capacity(fishery)[,as.character(minyr:maxyr)]
+    FLFishery::effort(object[[x]])   <- fishery@effort[,as.character(minyr:maxyr)]
+    FLFishery::hperiod(object[[x]])  <- FLFishery::hperiod(fishery)[,as.character(minyr:maxyr)]
+    FLFishery::vcost(object[[x]])    <- FLFishery::vcost(fishery)[,as.character(minyr:maxyr)]
+    FLFishery::fcost(object[[x]])    <- FLFishery::fcost(fishery)[,as.character(minyr:maxyr)]
+    FLFishery::orevenue(object[[x]]) <- FLFishery::orevenue(fishery)[,as.character(minyr:maxyr)]
+    
+    names(object[[x]]) <- stknames
+  }
+  return(object)
 }
