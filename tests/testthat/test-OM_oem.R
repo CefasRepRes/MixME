@@ -110,6 +110,7 @@ test_that("oemMixME outputs from FLStock oem", {
   expect_equal(dimnames(oem$idx$X)$year, as.character(1:8))
   
   ## check content
+  expect_true(all(is.na(oem$stk@stock.n)))
   expect_equal(sum(oem$stk@catch.n), 64)
   expect_equal(sum(oem$idx$X@index.q), 4)
   expect_equal(sum(oem$idx$X@index), 0.5*1*exp(-1*(1+1))*8*2)
@@ -225,6 +226,7 @@ test_that("oemMixME outputs from OM", {
   expect_equal(dimnames(oem$idx$X)$year, as.character(1:8))
   
   ## check content
+  expect_true(all(is.na(oem$stk@n)))
   expect_equal(sum(FLCore::catch.n(oem$flt$A$`1`)), 32)
   expect_equal(sum(oem$idx$X@index.q), 4)
   expect_equal(sum(oem$idx$X@index), 0.5*1*exp(-1*(1+1))*8)

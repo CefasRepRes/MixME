@@ -289,6 +289,8 @@ oemMixME <- function(x,
     stk0 <- om$stks[[x]]
     flt0 <- om$flts
     
+    ## remove stock numbers
+    stk0@n[] <- NA
   }
   
   # ---------------------------------#
