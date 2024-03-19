@@ -62,8 +62,8 @@ oemMixME <- function(x,
   #   I ...... Use oem observation structure (FLStock) 
   #     ......... If perfect observations
   #     ......... If observations with uncertainty
-  #  II ...... Use oem observation structure (FLBiol & FLFishery)
-  # III ...... Use OM structure (FLStock)
+  #  II ...... Use oem observation structure (FLBiol & FLFishery) [NOT YET IMPLEMENTED]
+  # III ...... Use OM structure (FLStock)                         [OBSOLETE]
   #  IV ...... Use OM structure (FLBiols & FLFisheries)
   # 2.2 ... Trim to data period
   # 2.3 ... Observed survey indices

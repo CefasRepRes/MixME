@@ -131,6 +131,8 @@ test_that("estMixME single-stock (FLStocks) estimation works", {
   ## Fill necessary slots
   om$stks$`1`@n[] <- 1
   om$stks$`1`@m[] <- 1
+  om$stks$`1`@mat$mat[] <- 1
+  om$stks$`1`@wt[]  <- 1
   om$flts$A$`1`@landings.n[]  <- 1
   om$flts$A$`1`@landings.wt[] <- 1
   om$flts$A$`1`@discards.n[]  <- 1
@@ -206,9 +208,25 @@ test_that("estMixME single-stock (FLStocks) estimation works", {
   ## --------------------------------------------------------------------------#
   
   ## check structure
+  expect_type(out, "list")
+  expect_type(out$stk0, "S4")
+  expect_true(is.null(out$flt0))
+  expect_true(is.null(out$sr0))
+  expect_type(out$tracking, "list")
+  
   ## check dimensions - age
+  expect_equal(dimnames(out$stk0)$age, as.character(1:3))
+  
   ## check dimensions - year
+  expect_equal(dimnames(out$stk0)$year, as.character(1:10))
+  
   ## check content
+  expect_equal(sum(out$stk0@stock.n), 2*3*10)
+  expect_equal(sum(out$stk0@stock.wt), 1*3*10)
+  expect_equal(sum(out$stk0@catch.n), 2*3*10)
+  expect_equal(sum(out$stk0@landings.n), 1*3*10)
+  expect_equal(sum(out$stk0@discards.n), 1*3*10)
+  expect_equal(sum(out$stk0@harvest), 3*3*10)
   
 })
 

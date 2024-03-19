@@ -76,11 +76,14 @@ estMixME <- function(x,
                      tracking,
                      fitList = NULL,
                      fwdList = NULL) {
-
+  
   # ------------------------#
   # (Option 1) Apply user-supplied stock estimation method
+  # ... If FLBiol
+  # ... If FLStock
   # (Option 2) Apply perfect stock observation
-  # (Option 2.1) Apply short term forecast on perfect stock observation
+  # ... If FLBiol
+  # ... If FLStock
   # ------------------------#
   
   ## extract timings
@@ -100,21 +103,36 @@ estMixME <- function(x,
       tracking[[x]]$par_ini <- fitList[[x]]$par_ini
     }
     
-    stk_est <- do.call(estmethod[[x]],
-                       c(list(stk      = stk[[x]],
-                              idx      = idx[[x]],
-                              tracking = tracking[[x]],
-                              args     = args),
-                         fitList[[x]],
-                         fwdList[[x]]))
+    ## If FLBiols
+    if(class(stk[[x]]) == "FLBiol") {
+      stk_est <- do.call(estmethod[[x]],
+                         c(list(stk      = stk[[x]],
+                                flt      = flt[[x]],
+                                idx      = idx[[x]],
+                                tracking = tracking[[x]],
+                                args     = args),
+                           fitList[[x]],
+                           fwdList[[x]]))
+    }
+    
+    ## If FLStock
+    if(class(stk[[x]]) == "FLStock") {
+      stk_est <- do.call(estmethod[[x]],
+                         c(list(stk      = stk[[x]],
+                                idx      = idx[[x]],
+                                tracking = tracking[[x]],
+                                args     = args),
+                           fitList[[x]],
+                           fwdList[[x]]))
+    }
     
   } else if(estmethod[[x]] == "perfectObs") {
-  
-  # ---------------------------------------------------------#
-  # (Option 2) Apply perfect stock observation
-  # ---------------------------------------------------------#
-  #
-  # Alternatively, simply populate OEM stock numbers and recruitment from OM
+    
+    # ---------------------------------------------------------#
+    # (Option 2) Apply perfect stock observation
+    # ---------------------------------------------------------#
+    #
+    # Alternatively, simply populate OEM stock numbers and recruitment from OM
     
     ## Copy observed stock object
     stk0 <- stk[[x]]
@@ -122,7 +140,7 @@ estMixME <- function(x,
     ## Extract data year vector
     yrs_oem <- (range(stk0)["minyear"]):(range(stk0)["maxyear"])
     
-    ## If FLBiols
+    ## If FLBiol
     if(class(stk[[x]]) == "FLBiol") {
       
       ## insert stock numbers
@@ -168,7 +186,7 @@ estMixME <- function(x,
       tracking[[x]]$stk["D.est", ac(ay)] <- Reduce("+",lapply(FLCore::discards(flt0, sum = FALSE), "[[", x))[,ac(ay)]
       
       tracking[[x]]$sel_est[,ac(ay)] <- sweep(totFage, c(2:6), totFbar, "/")
-
+      
     } # END if FLBiol
     
     ## If FLStock
@@ -254,13 +272,6 @@ estMixME <- function(x,
       }
       
     } # END if FLStock
-    
-    # ---------------------------------------------------------------------#
-    # (Option 2.1) Apply short term forecast on perfect stock observation
-    # ---------------------------------------------------------------------#
-    
-    # if(mlag > 0 & Forecast == FALSE)
-    #   warning("Management lag > 0 but no short-term forecast defined. Errors may occur.")
     
     ## Combine outputs into list
     stk_est <- list(stk0 = stk0,
