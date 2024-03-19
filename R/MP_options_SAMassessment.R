@@ -364,6 +364,23 @@ SAMassessment <- function(stk, idx, tracking,
     }
   })
   
+  ## estimate final data year
+  dy <- dims(stk)$maxyear
+  
+  ## Store estimated properties
+  if (dy %in% dimnames(tracking$stk)$year) {
+    tracking$stk["F.est", ac(dy)]  <- FLCore::fbar(stk0)[,ac(dy)]
+    tracking$stk["B.est", ac(dy)]  <- FLCore::stock(stk0)[,ac(dy)]
+    tracking$stk["SB.est", ac(dy)] <- FLCore::ssb(stk0)[,ac(dy)]
+    
+    tracking$stk["C.est", ac(dy)] <- FLCore::catch(stk0)[,ac(dy)]
+    tracking$stk["L.est", ac(dy)] <- FLCore::landings(stk0)[,ac(dy)]
+    tracking$stk["D.est", ac(dy)] <- FLCore::discards(stk0)[,ac(dy)]
+    
+    tracking$sel_est[,ac(dy)] <- sweep(FLCore::harvest(stk0)[,ac(dy)], 
+                                               c(2:6), fbar(stk0)[,ac(dy)], "/")
+  }
+  
   ## save model fit (list) as attribute in stk0
   attr(stk0, "fit") <- fit
   

@@ -108,22 +108,6 @@ estMixME <- function(x,
                          fitList[[x]],
                          fwdList[[x]]))
     
-    ## estimate final data year
-    dy <- dims(stk[[x]])$maxyear
-    
-    ## Store estimated properties
-    if (dy %in% dimnames(stk_est$tracking$stk)$year) {
-      stk_est$tracking$stk["F.est", ac(dy)]  <- FLCore::fbar(stk_est$stk0)[,ac(dy)]
-      stk_est$tracking$stk["B.est", ac(dy)]  <- FLCore::stock(stk_est$stk0)[,ac(dy)]
-      stk_est$tracking$stk["SB.est", ac(dy)] <- FLCore::ssb(stk_est$stk0)[,ac(dy)]
-      
-      stk_est$tracking$stk["C.est", ac(dy)] <- FLCore::catch(stk_est$stk0)[,ac(dy)]
-      stk_est$tracking$stk["L.est", ac(dy)] <- FLCore::landings(stk_est$stk0)[,ac(dy)]
-      stk_est$tracking$stk["D.est", ac(dy)] <- FLCore::discards(stk_est$stk0)[,ac(dy)]
-      
-      stk_est$tracking$sel_est[,ac(dy)] <- sweep(FLCore::harvest(stk_est$stk0)[,ac(dy)], 
-                                                 c(2:6), fbar(stk_est$stk0)[,ac(dy)], "/")
-    }
   } else if(estmethod[[x]] == "perfectObs") {
   
   # ---------------------------------------------------------#
