@@ -161,6 +161,7 @@ estMixME <- function(x,
       for(i in names(flt0)[fltnames]) {
         effort(flt0[[i]])[, ac(yrs_oem)]              <- om$flts[[i]]@effort[, ac(yrs_oem)]
         catch.q(flt0[[i]][[x]])["alpha", ac(yrs_oem)] <- catch.q(om$flts[[i]][[x]])["alpha", ac(yrs_oem)]
+        catch.sel(flt0[[i]][[x]])[, ac(yrs_oem)]      <- catch.sel(om$flts[[i]][[x]])[, ac(yrs_oem)]
       }
       
       ## Calculate fishing mortality at age
