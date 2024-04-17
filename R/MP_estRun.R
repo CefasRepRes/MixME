@@ -115,11 +115,23 @@ estRun <- function(stk,
   # is a list of stocks with nested stock, fleet, recruitment and tracking objects
   
   if (any(sapply(estgroup, length) > 1)) {
-    est_list <- unlist(est_list, recursive = FALSE)
+    
+    flatlist <- function(x, estgroup) {
+      tmp <- c(x[sapply(estgroup, length) == 1],
+                 unlist(x[sapply(estgroup, length) > 1], recursive = FALSE))
+      names(tmp) <- c(estgroup[[which(sapply(estgroup, length) == 1)]],
+                        estgroup[[which(sapply(estgroup, length) > 1)]])
+      tmp <- tmp[unlist(estgroup)]
+    }
+    
+    ## partially flatten list
+    est_list <- flatlist(est_list, estgroup)
+    
+  } else {
+    
+    ## Add names to list of estimated stocks
+    names(est_list) <- unlist(estgroup)
   }
-  
-  ## Add names to list of estimated stocks
-  names(est_list) <- unlist(estgroup)
   
   ## Update tracking object
   for(x in stk@names) {
