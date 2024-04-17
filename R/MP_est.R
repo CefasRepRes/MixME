@@ -117,10 +117,10 @@ estMixME <- function(x,
       ## If FLBiols
       if (class(stk[[estgroup[[x]][1]]]) == "FLBiol") {
         stk_est <- do.call(estmethod[[x]],
-                           c(list(stk      = stk[x],
-                                  flt      = flt[x],
-                                  idx      = idx[x],
-                                  tracking = tracking[x],
+                           c(list(stk      = stk[estgroup[[x]]],
+                                  flt      = flt[estgroup[[x]]],
+                                  idx      = idx[estgroup[[x]]],
+                                  tracking = tracking[estgroup[[x]]],
                                   args     = args),
                              fitList[[x]],
                              fwdList[[x]]))
@@ -129,9 +129,9 @@ estMixME <- function(x,
       ## If FLStock
       if (class(stk[[estgroup[[x]][1]]]) == "FLStock") {
         stk_est <- do.call(estmethod[[x]],
-                           c(list(stk      = stk[x],
-                                  idx      = idx[x],
-                                  tracking = tracking[x],
+                           c(list(stk      = stk[estgroup[[x]]],
+                                  idx      = idx[estgroup[[x]]],
+                                  tracking = tracking[estgroup[[x]]],
                                   args     = args),
                              fitList[[x]],
                              fwdList[[x]]))
