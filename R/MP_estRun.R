@@ -114,7 +114,9 @@ estRun <- function(stk,
   # within the group of stocks. We want to flatten the list so that 'est_list'
   # is a list of stocks with nested stock, fleet, recruitment and tracking objects
   
-  est_list <- unlist(est_list, recursive = FALSE)
+  if (any(sapply(estgroup, length) > 1)) {
+    est_list <- unlist(est_list, recursive = FALSE)
+  }
   
   ## Add names to list of estimated stocks
   names(est_list) <- unlist(estgroup)

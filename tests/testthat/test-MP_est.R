@@ -95,6 +95,7 @@ test_that("estMixME single-stock (FLBiol) estimation works", {
                iy = 9,
                management_lag = 1)
   estmethod <- list("1" = estfun)
+  estgroup  <- list("1" = "1")
   tracking  <- makeTracking(om, c("9","10"))
   
   ## Run function
@@ -112,6 +113,7 @@ test_that("estMixME single-stock (FLBiol) estimation works", {
                   om = om,
                   args = args,
                   estmethod = estmethod,
+                  estgroup = estgroup,
                   tracking = tracking,
                   fitList = NULL,
                   fwdList = NULL)
@@ -235,6 +237,7 @@ test_that("estMixME single-stock (FLStocks) estimation works", {
                iy = 9,
                management_lag = 1)
   estmethod <- list("1" = estfun)
+  estgroup  <- list("1" = "1")
   tracking  <- makeTracking(om, c("9","10"))
   
   ## Run function
@@ -248,6 +251,7 @@ test_that("estMixME single-stock (FLStocks) estimation works", {
                   om = om,
                   args = args,
                   estmethod = estmethod,
+                  estgroup = estgroup,
                   tracking = tracking,
                   fitList = NULL,
                   fwdList = NULL)
@@ -345,6 +349,7 @@ test_that("estMixME single-stock perfect observation works", {
                management_lag = 1,
                frange = list("1" = c(1,3)))
   estmethod <- list("1" = "perfectObs")
+  estgroup  <- list("1" = "1")
   tracking  <- makeTracking(om, c("9","10"))
   
   ## Run function
@@ -358,6 +363,7 @@ test_that("estMixME single-stock perfect observation works", {
                   om = om,
                   args = args,
                   estmethod = estmethod,
+                  estgroup = estgroup,
                   tracking = tracking,
                   fitList = NULL,
                   fwdList = NULL)
