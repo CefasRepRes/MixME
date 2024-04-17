@@ -68,6 +68,7 @@ estRun <- function(stk,
                    om   = NULL,
                    args,
                    estmethod = NULL,
+                   estgroup  = NULL,
                    tracking,
                    fitList = NULL,
                    fwdList = NULL){
@@ -83,40 +84,51 @@ estRun <- function(stk,
                         USE.NAMES = TRUE, simplify = FALSE)
   }
   
+  ## If no groups supplies, then assume single-stock estimation
+  if(is.null(estgroup)) {
+    
+    estgroup <- sapply(stk@names, function(x) x,
+                       USE.NAMES = TRUE, simplify = FALSE)
+  }
+  
   # ======================================#
-  # SECTION 2: Iterative stock estimation
+  # SECTION 2: Iterative estimation
   # ======================================#
   
-  ## If a list of stocks is given, loop over each stock
-  if(is.list(stk)) {
-    
-    est_list <- lapply(stk@names, 
-                       estMixME,
-                       stk = stk,
-                       flt = flt,
-                       idx = idx,
-                       ctrl = ctrl,
-                       om   = om,
-                       args = args,
-                       estmethod = estmethod,
-                       tracking  = tracking,
-                       fitList = fitList,
-                       fwdList = fwdList)
-    
-    ## Add names to list of estimated stocks
-    names(est_list) <- stk@names
-    
-    ## Update tracking object
-    for(x in stk@names) {
-      tracking[[x]] <- est_list[[x]]$tracking
-    }
-    
-    ## Handle FLStocks and FLBiols
-    stkList <- lapply(est_list, "[[", "stk0")
-    stk0 <- if(class(stkList[[1]]) == "FLStock") FLStocks(stkList) else FLBiols(stkList)
-    flt0 <- lapply(est_list, "[[", "flt0")
-    sr0  <- lapply(est_list, "[[", "sr0")
+  ## loop over each stock or group of stocks
+  est_list <- lapply(names(estgroup), 
+                     estMixME,
+                     stk = stk,
+                     flt = flt,
+                     idx = idx,
+                     ctrl = ctrl,
+                     om   = om,
+                     args = args,
+                     estmethod = estmethod,
+                     estgroup  = estgroup,
+                     tracking  = tracking,
+                     fitList = fitList,
+                     fwdList = fwdList)
+  
+  # If multi-stock estimation has been carried out, then these stocks will be nested
+  # within the group of stocks. We want to flatten the list so that 'est_list'
+  # is a list of stocks with nested stock, fleet, recruitment and tracking objects
+  
+  est_list <- unlist(est_list, recursive = FALSE)
+  
+  ## Add names to list of estimated stocks
+  names(est_list) <- unlist(estgroup)
+  
+  ## Update tracking object
+  for(x in stk@names) {
+    tracking[[x]] <- est_list[[x]]$tracking
   }
+  
+  ## Handle FLStocks and FLBiols
+  stkList <- lapply(est_list, "[[", "stk0")
+  stk0 <- if(class(stkList[[1]]) == "FLStock") FLStocks(stkList) else FLBiols(stkList)
+  flt0 <- lapply(est_list, "[[", "flt0")
+  sr0  <- lapply(est_list, "[[", "sr0")
   
   return(list(stk      = stk0,
               flt      = flt0,

@@ -73,17 +73,27 @@ estMixME <- function(x,
                      om   = NULL,
                      args,
                      estmethod = NULL,
+                     estgroup,
                      tracking,
                      fitList = NULL,
                      fwdList = NULL) {
   
   # ------------------------#
-  # (Option 1) Apply user-supplied stock estimation method
-  # ... If FLBiol
-  # ... If FLStock
-  # (Option 2) Apply perfect stock observation
-  # ... If FLBiol
-  # ... If FLStock
+  # (Option A) multi-stock estimation
+  #
+  # ... Apply user-supplied multi-stock estimation method
+  # ...... If FLBiol
+  # ...... If FLStock
+  #
+  # (Option B) single stock estimation
+  #
+  # ... (Option B1) Apply user-supplied single-stock estimation method
+  # ...... If FLBiol
+  # ...... If FLStock
+  #
+  # ... (Option B2) Apply perfect stock observation
+  # ...... If FLBiol
+  # ...... If FLStock
   # ------------------------#
   
   ## extract timings
@@ -92,195 +102,243 @@ estMixME <- function(x,
   mlag <- args$management_lag # managment lag
   
   # ---------------------------------------------------------#
-  # (Option 1) Apply user-supplied stock estimation method
+  # (Option A) Multi-stock estimation
   # ---------------------------------------------------------#
   
-  ## If available, apply user-supplied estimation method
-  if(is.function(estmethod[[x]])) {
+  if (length(estgroup[[x]]) > 1) {
     
-    ## if initial parameters are supplied, store in tracking in first year
-    if(!is.null(fitList[[x]]$par_ini) & ay == iy){
-      tracking[[x]]$par_ini <- fitList[[x]]$par_ini
+    if (is.function(estmethod[[x]])) {
+      
+      ## if initial parameters are supplied, store in tracking in first year
+      if (!is.null(fitList[[x]]$par_ini) & ay == iy){
+        tracking[[x]]$par_ini <- fitList[[x]]$par_ini
+      }
+      
+      ## If FLBiols
+      if (class(stk[[x]]) == "FLBiol") {
+        stk_est <- do.call(estmethod[[x]],
+                           c(list(stk      = stk[x],
+                                  flt      = flt[x],
+                                  idx      = idx[x],
+                                  tracking = tracking[x],
+                                  args     = args),
+                             fitList[[x]],
+                             fwdList[[x]]))
+      }
+      
+      ## If FLStock
+      if (class(stk[[x]]) == "FLStock") {
+        stk_est <- do.call(estmethod[[x]],
+                           c(list(stk      = stk[x],
+                                  idx      = idx[x],
+                                  tracking = tracking[x],
+                                  args     = args),
+                             fitList[[x]],
+                             fwdList[[x]]))
+      }
+      
+    } else {
+      stop("A multi-stock estimation method must be supplied to 'estmethod' as a function.")
     }
-    
-    ## If FLBiols
-    if(class(stk[[x]]) == "FLBiol") {
-      stk_est <- do.call(estmethod[[x]],
-                         c(list(stk      = stk[[x]],
-                                flt      = flt[[x]],
-                                idx      = idx[[x]],
-                                tracking = tracking[[x]],
-                                args     = args),
-                           fitList[[x]],
-                           fwdList[[x]]))
-    }
-    
-    ## If FLStock
-    if(class(stk[[x]]) == "FLStock") {
-      stk_est <- do.call(estmethod[[x]],
-                         c(list(stk      = stk[[x]],
-                                idx      = idx[[x]],
-                                tracking = tracking[[x]],
-                                args     = args),
-                           fitList[[x]],
-                           fwdList[[x]]))
-    }
-    
-  } else if(estmethod[[x]] == "perfectObs") {
+  }
+  
+  # ---------------------------------------------------------#
+  # (Option B) Single-stock estimation
+  # ---------------------------------------------------------#
+  
+  if (length(estgroup[[x]]) == 1) {
     
     # ---------------------------------------------------------#
-    # (Option 2) Apply perfect stock observation
+    # (Option B1) Apply user-supplied single-stock estimation method
     # ---------------------------------------------------------#
-    #
-    # Alternatively, simply populate OEM stock numbers and recruitment from OM
     
-    ## Copy observed stock object
-    stk0 <- stk[[x]]
-    
-    ## Extract data year vector
-    yrs_oem <- (range(stk0)["minyear"]):(range(stk0)["maxyear"])
-    
-    ## If FLBiol
-    if(class(stk[[x]]) == "FLBiol") {
+    ## If available, apply user-supplied estimation method
+    if (is.function(estmethod[[x]])) {
       
-      ## insert stock numbers
-      FLCore::n(stk0)[,ac(yrs_oem)] <- FLCore::n(om$stks[[x]])[,ac(yrs_oem)]
-      
-      ## insert stock recruitment data (currently redundant - but good to keep)
-      stk0@rec@params <- om$stks[[x]]@rec@params
-      stk0@rec@model  <- om$stks[[x]]@rec@model
-      
-      ## insert stock recruitment information
-      sr0 <- NULL
-      
-      ## extract vector of fleets catching stocks
-      flt0 <- flt[[x]]
-      fltnames <- sapply(flt0, function(xx) x %in% names(xx))
-      
-      ## insert parameters/variables to calculate fishing mortality
-      for(i in names(flt0)[fltnames]) {
-        effort(flt0[[i]])[, ac(yrs_oem)]              <- om$flts[[i]]@effort[, ac(yrs_oem)]
-        catch.q(flt0[[i]][[x]])["alpha", ac(yrs_oem)] <- catch.q(om$flts[[i]][[x]])["alpha", ac(yrs_oem)]
-        catch.sel(flt0[[i]][[x]])[, ac(yrs_oem)]      <- catch.sel(om$flts[[i]][[x]])[, ac(yrs_oem)]
+      ## if initial parameters are supplied, store in tracking in first year
+      if (!is.null(fitList[[x]]$par_ini) & ay == iy){
+        tracking[[x]]$par_ini <- fitList[[x]]$par_ini
       }
       
-      ## Calculate fishing mortality at age
-      fltFage <- sapply(fltnames,
-                        function(y){
-                          Fage <- catch.q(flt0[[y]][[x]])["alpha", ac(ay)] *
-                            flt0[[y]]@effort[,ac(ay)] %*%
-                            flt0[[y]][[x]]@catch.sel[,ac(ay)]
-                          
-                          Fage#[drop = TRUE]
-                        }, simplify = "array")
-      
-      totFage <- apply(fltFage, c(1:6), sum)
-      totFbar <- apply(totFage[ac(args$frange[[x]][1]:args$frange[[x]][2]),,,,,,drop = FALSE], c(2:6), mean)
-      
-      ## Update tracking object
-      tracking[[x]]$stk["F.est", ac(ay)]  <- totFbar
-      tracking[[x]]$stk["B.est", ac(ay)]  <- FLCore::tsb(stk0)[,ac(ay)]
-      tracking[[x]]$stk["SB.est", ac(ay)] <- FLCore::ssb(stk0)[,ac(ay)]
-      
-      tracking[[x]]$stk["C.est", ac(ay)] <- Reduce("+",lapply(FLCore::catch(flt0, sum = FALSE), "[[", x))[,ac(ay)]
-      tracking[[x]]$stk["L.est", ac(ay)] <- Reduce("+",lapply(FLCore::landings(flt0, sum = FALSE), "[[", x))[,ac(ay)]
-      tracking[[x]]$stk["D.est", ac(ay)] <- Reduce("+",lapply(FLCore::discards(flt0, sum = FALSE), "[[", x))[,ac(ay)]
-      
-      tracking[[x]]$sel_est[,ac(ay)] <- sweep(totFage, c(2:6), totFbar, "/")
-      
-    } # END if FLBiol
-    
-    ## If FLStock
-    if(class(stk[[x]]) == "FLStock") {
-      
-      ## insert stock numbers and calculate stock biomass
-      FLCore::stock.n(stk0)[,ac(yrs_oem)] <- FLCore::n(om$stks[[x]])[,ac(yrs_oem)]
-      FLCore::stock(stk0)                 <- FLCore::computeStock(stk0)
-      
-      ## extract vector of fleets catching stocks
-      fltnames <- names(om$flts)[sapply(om$flts, function(ii) any(names(ii) %in% x))]
-      
-      ## insert fishing mortality
-      fltFage <- sapply(fltnames,
-                        function(y){
-                          Fage <- catch.q(om$flts[[y]][[x]])["alpha", ac(yrs_oem)] *
-                            om$flts[[y]]@effort[,ac(yrs_oem)] %*%
-                            om$flts[[y]][[x]]@catch.sel[,ac(yrs_oem)]
-                          
-                          Fage#[drop = TRUE]
-                        }, simplify = "array")
-      
-      FLCore::harvest(stk0)[,ac(yrs_oem)] <- apply(fltFage, c(1:6), sum)
-      
-      # Under perfect stock observations and zero management lag, the final
-      # (current) year is also the advice year and no fishing has occurred yet. The
-      # harvest data in the stock object for this year is the basis for selectivity
-      # understood by the OM.
-      
-      # If projected values are means of the historical period, there will be
-      # slight differences in the resulting values compared to the FLStock
-      # generated when conditioning the OM. This is because we are calculated
-      # using projected values at the fleet level, whereas the FLStock is simply
-      # a mean of historic F.
-      
-      # This whole process is not needed if we intend to extend the stock
-      # for a short-term forecast.
-      
-      ## Update intermediate year harvest selectivity
-      if (mlag == 0) {
-        if(ay == iy) {
-          FLCore::harvest(stk0)[,ac(ay)] <- 
-            FLCore::yearMeans(harvest(stk0)[,ac((ay-3):(ay-1))])
-        }
-        if(ay > iy) {
-          
-          FLCore::harvest(stk0)[,ac(ay)] <- FLCore::harvest(stk0)[,ac(ay-1)]
-          # harvest(stk0)[,ac(ay)] <- sweep(harvest(stk0)[,ac(ay-1)], 
-          #                                 c(2:6), fbar(stk0)[,ac(ay-1)], "/")
-          
-        }
+      ## If FLBiols
+      if (class(stk[[x]]) == "FLBiol") {
+        stk_est <- do.call(estmethod[[x]],
+                           c(list(stk      = stk[[x]],
+                                  flt      = flt[[x]],
+                                  idx      = idx[[x]],
+                                  tracking = tracking[[x]],
+                                  args     = args),
+                             fitList[[x]],
+                             fwdList[[x]]))
       }
       
-      ## extract stock recruitment information
-      # sr0        <- FLCore::as.FLSR(stk0, model = om$stks[[x]]@rec@model) 
-      ## throws error if stk0 recruitment time-series is too short
+      ## If FLStock
+      if (class(stk[[x]]) == "FLStock") {
+        stk_est <- do.call(estmethod[[x]],
+                           c(list(stk      = stk[[x]],
+                                  idx      = idx[[x]],
+                                  tracking = tracking[[x]],
+                                  args     = args),
+                             fitList[[x]],
+                             fwdList[[x]]))
+      }
       
-      sr0        <- FLCore::FLSR(model = om$stks[[x]]@rec@model)
-      sr0        <- FLCore::propagate(sr0, iter = dim(stk0)[6])
-      sr0        <- window(sr0, start = dims(stk0)$minyear, end = dims(stk0)$maxyear)
-      sr0@rec    <- FLCore::rec(stk0)
-      sr0@ssb    <- FLCore::ssb(stk0)
-      sr0@params <- om$stks[[x]]@rec@params
+    } else if (estmethod[[x]] == "perfectObs") {
       
-      ## create a null object for fleets
-      flt0 <- NULL
+      # ---------------------------------------------------------#
+      # (Option B2) Apply perfect stock observation
+      # ---------------------------------------------------------#
+      #
+      # Alternatively, simply populate OEM stock numbers and recruitment from OM
       
-      ## estimate final data year
-      dy <- dims(stk0)$maxyear
+      ## Copy observed stock object
+      stk0 <- stk[[x]]
       
-      ## Update tracking object
-      if(dy %in% dimnames(tracking[[x]]$stk)$year) {
-        tracking[[x]]$stk["F.est", ac(dy)]  <- FLCore::fbar(stk0)[,ac(dy)]
-        tracking[[x]]$stk["B.est", ac(dy)]  <- FLCore::stock(stk0)[,ac(dy)]
-        tracking[[x]]$stk["SB.est", ac(dy)] <- FLCore::ssb(stk0)[,ac(dy)]
+      ## Extract data year vector
+      yrs_oem <- (range(stk0)["minyear"]):(range(stk0)["maxyear"])
+      
+      ## If FLBiol
+      if (class(stk[[x]]) == "FLBiol") {
         
-        tracking[[x]]$stk["C.est", ac(dy)] <- FLCore::catch(stk0)[,ac(dy)]
-        tracking[[x]]$stk["L.est", ac(dy)] <- FLCore::landings(stk0)[,ac(dy)]
-        tracking[[x]]$stk["D.est", ac(dy)] <- FLCore::discards(stk0)[,ac(dy)]
+        ## insert stock numbers
+        FLCore::n(stk0)[,ac(yrs_oem)] <- FLCore::n(om$stks[[x]])[,ac(yrs_oem)]
         
-        tracking[[x]]$sel_est[,ac(dy)] <- sweep(FLCore::harvest(stk0)[,ac(dy)], 
-                                                c(2:6), fbar(stk0)[,ac(dy)], "/")
-      }
+        ## insert stock recruitment data (currently redundant - but good to keep)
+        stk0@rec@params <- om$stks[[x]]@rec@params
+        stk0@rec@model  <- om$stks[[x]]@rec@model
+        
+        ## insert stock recruitment information
+        sr0 <- NULL
+        
+        ## extract vector of fleets catching stocks
+        flt0 <- flt[[x]]
+        fltnames <- sapply(flt0, function(xx) x %in% names(xx))
+        
+        ## insert parameters/variables to calculate fishing mortality
+        for (i in names(flt0)[fltnames]) {
+          effort(flt0[[i]])[, ac(yrs_oem)]              <- om$flts[[i]]@effort[, ac(yrs_oem)]
+          catch.q(flt0[[i]][[x]])["alpha", ac(yrs_oem)] <- catch.q(om$flts[[i]][[x]])["alpha", ac(yrs_oem)]
+          catch.sel(flt0[[i]][[x]])[, ac(yrs_oem)]      <- catch.sel(om$flts[[i]][[x]])[, ac(yrs_oem)]
+        }
+        
+        ## Calculate fishing mortality at age
+        fltFage <- sapply(fltnames,
+                          function(y){
+                            Fage <- catch.q(flt0[[y]][[x]])["alpha", ac(ay)] *
+                              flt0[[y]]@effort[,ac(ay)] %*%
+                              flt0[[y]][[x]]@catch.sel[,ac(ay)]
+                            
+                            Fage#[drop = TRUE]
+                          }, simplify = "array")
+        
+        totFage <- apply(fltFage, c(1:6), sum)
+        totFbar <- apply(totFage[ac(args$frange[[x]][1]:args$frange[[x]][2]),,,,,,drop = FALSE], c(2:6), mean)
+        
+        ## Update tracking object
+        tracking[[x]]$stk["F.est", ac(ay)]  <- totFbar
+        tracking[[x]]$stk["B.est", ac(ay)]  <- FLCore::tsb(stk0)[,ac(ay)]
+        tracking[[x]]$stk["SB.est", ac(ay)] <- FLCore::ssb(stk0)[,ac(ay)]
+        
+        tracking[[x]]$stk["C.est", ac(ay)] <- Reduce("+",lapply(FLCore::catch(flt0, sum = FALSE), "[[", x))[,ac(ay)]
+        tracking[[x]]$stk["L.est", ac(ay)] <- Reduce("+",lapply(FLCore::landings(flt0, sum = FALSE), "[[", x))[,ac(ay)]
+        tracking[[x]]$stk["D.est", ac(ay)] <- Reduce("+",lapply(FLCore::discards(flt0, sum = FALSE), "[[", x))[,ac(ay)]
+        
+        tracking[[x]]$sel_est[,ac(ay)] <- sweep(totFage, c(2:6), totFbar, "/")
+        
+      } # END if FLBiol
       
-    } # END if FLStock
-    
-    ## Combine outputs into list
-    stk_est <- list(stk0 = stk0,
-                    flt0 = flt0,
-                    sr0  = sr0,
-                    tracking = tracking[[x]])
-    
-  } # END if "perfectObs"
+      ## If FLStock
+      if (class(stk[[x]]) == "FLStock") {
+        
+        ## insert stock numbers and calculate stock biomass
+        FLCore::stock.n(stk0)[,ac(yrs_oem)] <- FLCore::n(om$stks[[x]])[,ac(yrs_oem)]
+        FLCore::stock(stk0)                 <- FLCore::computeStock(stk0)
+        
+        ## extract vector of fleets catching stocks
+        fltnames <- names(om$flts)[sapply(om$flts, function(ii) any(names(ii) %in% x))]
+        
+        ## insert fishing mortality
+        fltFage <- sapply(fltnames,
+                          function(y){
+                            Fage <- catch.q(om$flts[[y]][[x]])["alpha", ac(yrs_oem)] *
+                              om$flts[[y]]@effort[,ac(yrs_oem)] %*%
+                              om$flts[[y]][[x]]@catch.sel[,ac(yrs_oem)]
+                            
+                            Fage#[drop = TRUE]
+                          }, simplify = "array")
+        
+        FLCore::harvest(stk0)[,ac(yrs_oem)] <- apply(fltFage, c(1:6), sum)
+        
+        # Under perfect stock observations and zero management lag, the final
+        # (current) year is also the advice year and no fishing has occurred yet. The
+        # harvest data in the stock object for this year is the basis for selectivity
+        # understood by the OM.
+        
+        # If projected values are means of the historical period, there will be
+        # slight differences in the resulting values compared to the FLStock
+        # generated when conditioning the OM. This is because we are calculated
+        # using projected values at the fleet level, whereas the FLStock is simply
+        # a mean of historic F.
+        
+        # This whole process is not needed if we intend to extend the stock
+        # for a short-term forecast.
+        
+        ## Update intermediate year harvest selectivity
+        if (mlag == 0) {
+          if(ay == iy) {
+            FLCore::harvest(stk0)[,ac(ay)] <- 
+              FLCore::yearMeans(harvest(stk0)[,ac((ay-3):(ay-1))])
+          }
+          if (ay > iy) {
+            
+            FLCore::harvest(stk0)[,ac(ay)] <- FLCore::harvest(stk0)[,ac(ay-1)]
+            # harvest(stk0)[,ac(ay)] <- sweep(harvest(stk0)[,ac(ay-1)], 
+            #                                 c(2:6), fbar(stk0)[,ac(ay-1)], "/")
+            
+          }
+        }
+        
+        ## extract stock recruitment information
+        # sr0        <- FLCore::as.FLSR(stk0, model = om$stks[[x]]@rec@model) 
+        ## throws error if stk0 recruitment time-series is too short
+        
+        sr0        <- FLCore::FLSR(model = om$stks[[x]]@rec@model)
+        sr0        <- FLCore::propagate(sr0, iter = dim(stk0)[6])
+        sr0        <- window(sr0, start = dims(stk0)$minyear, end = dims(stk0)$maxyear)
+        sr0@rec    <- FLCore::rec(stk0)
+        sr0@ssb    <- FLCore::ssb(stk0)
+        sr0@params <- om$stks[[x]]@rec@params
+        
+        ## create a null object for fleets
+        flt0 <- NULL
+        
+        ## estimate final data year
+        dy <- dims(stk0)$maxyear
+        
+        ## Update tracking object
+        if (dy %in% dimnames(tracking[[x]]$stk)$year) {
+          tracking[[x]]$stk["F.est", ac(dy)]  <- FLCore::fbar(stk0)[,ac(dy)]
+          tracking[[x]]$stk["B.est", ac(dy)]  <- FLCore::stock(stk0)[,ac(dy)]
+          tracking[[x]]$stk["SB.est", ac(dy)] <- FLCore::ssb(stk0)[,ac(dy)]
+          
+          tracking[[x]]$stk["C.est", ac(dy)] <- FLCore::catch(stk0)[,ac(dy)]
+          tracking[[x]]$stk["L.est", ac(dy)] <- FLCore::landings(stk0)[,ac(dy)]
+          tracking[[x]]$stk["D.est", ac(dy)] <- FLCore::discards(stk0)[,ac(dy)]
+          
+          tracking[[x]]$sel_est[,ac(dy)] <- sweep(FLCore::harvest(stk0)[,ac(dy)], 
+                                                  c(2:6), fbar(stk0)[,ac(dy)], "/")
+        }
+        
+      } # END if FLStock
+      
+      ## Combine outputs into list
+      stk_est <- list(stk0 = stk0,
+                      flt0 = flt0,
+                      sr0  = sr0,
+                      tracking = tracking[[x]])
+      
+    } # END if "perfectObs"
+  } # END single-stock estimation 
   
   return(stk_est)
 }
