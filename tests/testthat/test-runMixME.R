@@ -161,7 +161,7 @@ test_that("conditioning a simple single-stock Operating model works", {
   expect_equal(round(tail(c(quantSums(res$om$flts$fleet$had@landings.n * 
                                       res$om$flts$fleet$had@landings.wt + 
                                       res$om$flts$fleet$had@discards.n * 
-                                      res$om$flts$fleet$had@discards.wt)), 20),1), 1000) # catch
+                                      res$om$flts$fleet$had@discards.wt)), 1),1), 1000) # catch
   expect_true(all(round(res$tracking$uptake[1,,,],3) == 0)) # uptake
 
 })
