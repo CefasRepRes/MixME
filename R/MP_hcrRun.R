@@ -30,6 +30,7 @@ hcrRun <- function(stk,
                    args,
                    hcrpars = NULL,
                    hcrmethod = NULL,
+                   hcrgroup  = NULL,
                    ctrg = NULL,
                    ftrg = NULL,
                    tracking) {
@@ -43,7 +44,22 @@ hcrRun <- function(stk,
   ## Extract the methods to be used for each stock
   #hcrmethod <- args$hcrmethod
   
-  ctrlList <- lapply(names(stk), 
+  # ===================================#
+  # SECTION 1: Handle missing arguments
+  # ===================================#
+  
+  ## If no groups supplied, then assume single-stock estimation
+  if(is.null(hcrgroup)) {
+    
+    hcrgroup <- sapply(stk@names, function(x) x,
+                       USE.NAMES = TRUE, simplify = FALSE)
+  }
+  
+  # ======================================#
+  # SECTION 2: Iterative processing
+  # ======================================#
+  
+  ctrlList <- lapply(names(hcrgroup), 
                      hcrMixME,
                      stk       = stk,
                      flt       = flt,
@@ -51,9 +67,29 @@ hcrRun <- function(stk,
                      args      = args,
                      hcrpars   = hcrpars,
                      hcrmethod = hcrmethod,
+                     hcrgroup  = hcrgroup,
                      ctrg      = ctrg,
                      ftrg      = ftrg,
                      tracking  = tracking)
+  
+  # If multi-stock HCR has been used, then these stocks will be nested
+  # within the group of stocks. We want to flatten the list so that 'ctrlList'
+  # is a list of stocks with nested ctrl and tracking objects
+  
+  if (any(sapply(hcrgroup, length) > 1)) {
+    
+    flatlist <- function(x, hcrgroup) {
+      tmp <- c(x[sapply(hcrgroup, length) == 1],
+               unlist(x[sapply(hcrgroup, length) > 1], recursive = FALSE))
+      names(tmp) <- c(hcrgroup[[which(sapply(hcrgroup, length) == 1)]],
+                      hcrgroup[[which(sapply(hcrgroup, length) > 1)]])
+      tmp <- tmp[unlist(hcrgroup)]
+    }
+    
+    ## partially flatten list
+    ctrlList <- flatlist(ctrlList, hcrgroup)
+    
+  }
   
   ## A bit of a shoddy way of re-organising our returned list
   ctrl <- vector(mode = "list", length = length(stk))

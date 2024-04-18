@@ -84,7 +84,7 @@ estRun <- function(stk,
                         USE.NAMES = TRUE, simplify = FALSE)
   }
   
-  ## If no groups supplies, then assume single-stock estimation
+  ## If no groups supplied, then assume single-stock estimation
   if(is.null(estgroup)) {
     
     estgroup <- sapply(stk@names, function(x) x,
