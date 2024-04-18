@@ -114,7 +114,7 @@ hcrMixME <- function(x,
   # (Option B) Single-stock harvest rule
   # ---------------------------------------------------------#
   
-  if (length(estgroup[[x]]) == 1) {
+  if (length(hcrgroup[[x]]) == 1) {
     
     ## extrack stock
     stk0 <- stk[[x]]
