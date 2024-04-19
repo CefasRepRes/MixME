@@ -1,4 +1,29 @@
 ## ============================================================================#
+## Test HCR parameterisation function
+## ============================================================================#
+
+test_that("phcrMixME works", {
+  
+  ## Generate token stock
+  ## --------------------------------------------------------------------------#
+  flq <- FLCore::FLQuant(1, 
+                         dim = c(3,10,1,1,1,1), 
+                         dimnames = list(age  = c("1","2","3"),
+                                         year = c("1","2","3","4","5","6","7","8","9","10")))
+  stk  <- FLStock(flq)
+  
+  expect_error(phcrMixME(stk = stk, args = NULL, tracking = NULL))
+  expect_error(phcrMixME(stk = stk, args = NULL, hcrpars = NULL, tracking = NULL))
+  
+  out <- phcrMixME(stk = stk, args = NULL, hcrpars = list(i = c(trgt = 1)), tracking = NULL)
+  
+  expect_type(out, "list")
+  expect_type(out$hcrpars, "list")
+  expect_equal(class(out$hcrpars$i)[1], "FLPar")
+  expect_equal(c(out$hcrpars$i), 1)
+})
+
+## ============================================================================#
 ## Test in-built Constant Catch HCR (FLBiols, FLStocks)
 ## ============================================================================#
 
