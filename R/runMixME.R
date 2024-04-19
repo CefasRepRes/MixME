@@ -67,7 +67,7 @@ runMixME <- function(om,
   
   ## stock names in "stks", "flts" must match
   if (!all(names(om$stks) %in% unique(unlist(lapply(om$flts, names))))|
-      !all(unique(unlist(lapply(om$flts, names))) %in% names(om$stks))) %in% 
+      !all(unique(unlist(lapply(om$flts, names))) %in% names(om$stks)))
     stop("stock names in 'stks' and catches names in 'flts' must match")
   
   ## args must contain critical elements
