@@ -176,9 +176,54 @@ test_that("conditioning a simple single-stock Operating model works", {
 ## ============================================================================#
 
 test_that("runMixME catches errors", {
+
+  # 0. No OM 
+  # 1. Wrong OM names
+  # 2. Missing stock names
+  # 3. Missing fleet names
   
+  ## load dataset
   data("mixedfishery_MixME_input")
-  mixedfishery_MixME_input$om$flts$OTB_A@effort[] <- NA
   
-  runMixME(mixedfishery_MixME_input$om, mixedfishery_MixME_input$oem, mixedfishery_MixME_input$ctrl_obj, mixedfishery_MixME_input$args)
+  ## No OM
+  t0 <- mixedfishery_MixME_input
+  expect_error(runMixME(NULL, t0$oem, t0$ctrl_obj, t0$args),
+               regexp = "'om' must contain stock and fleet data in 'stks' and 'flts' respectively")
+  
+  ## Wrong OM names
+  t1 <- mixedfishery_MixME_input$om
+  names(t1) <- c("biols","fisheries")
+  expect_error(runMixME(t1, t0$oem, t0$ctrl_obj, t0$args),
+               regexp = "'om' must contain stock and fleet data in 'stks' and 'flts' respectively")
+  
+  ## Missing stock names
+  t2 <- mixedfishery_MixME_input$om
+  names(t2$stks) <- NULL
+  expect_error(runMixME(t2, t0$oem, t0$ctrl_obj, t0$args), regexp = "stocks in 'stks' must be named")
+  names(t2$stks) <- NA
+  expect_error(runMixME(t2, t0$oem, t0$ctrl_obj, t0$args), regexp = "stocks in 'stks' must be named")
+  
+  ## Missing fleet names
+  t3 <- mixedfishery_MixME_input$om
+  names(t3$flts) <- NULL
+  expect_error(runMixME(t3, t0$oem, t0$ctrl_obj, t0$args), regexp = "fleets in 'flts' must be named")
+  names(t3$flts) <- NA
+  expect_error(runMixME(t3, t0$oem, t0$ctrl_obj, t0$args), regexp = "fleets in 'flts' must be named")
+  
+  ## Mismatched stocks and fleet catches names
+  t4 <- mixedfishery_MixME_input$om
+  names(t4$flts$OTB_A) <- c("A_cod", "A_had")
+  expect_error(runMixME(t4, t0$oem, t0$ctrl_obj, t0$args), regexp = "fleets in 'flts' must be named")
+  t4 <- mixedfishery_MixME_input$om
+  names(t4$stks) <- c("cd", "hd")
+  expect_error(runMixME(t4, t0$oem, t0$ctrl_obj, t0$args), regexp = "fleets in 'flts' must be named")
+  
+  ## NA in fleet efforts
+  t1 <- mixedfishery_MixME_input
+  t1$om$flts$OTB_A@effort[] <- NA
+  expect_error(runMixME(t1$om, t1$oem, t1$ctrl_obj, t1$args), 
+               regexp = "fleet effort slots cannot contain NA values in the projection period")
+  
+  
 })
+  

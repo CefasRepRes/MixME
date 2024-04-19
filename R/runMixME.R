@@ -61,12 +61,13 @@ runMixME <- function(om,
     stop("'stks' must be class 'FLBiols' or 'FLStocks'")
   
   ## stocks in "stks" must be named
-  if (any(is.na(names(om$stks)))) stop("stocks in 'stks' must be named")
+  if (any(is.na(names(om$stks)))|any(is.null(names(om$stks)))) stop("stocks in 'stks' must be named")
   if (any(sapply(om$stks, function(x) x@name) %in% "")) stop("stock FLR objects must be named")
-  if (any(is.na(names(om$flts)))) stop("fleets in 'flts' must be named")
+  if (any(is.na(names(om$flts)))|any(is.null(names(om$stks)))) stop("fleets in 'flts' must be named")
   
   ## stock names in "stks", "flts" must match
-  if (!all(names(om$stks) %in% unique(unlist(lapply(om$flts, names)))))
+  if (!all(names(om$stks) %in% unique(unlist(lapply(om$flts, names))))|
+      !all(unique(unlist(lapply(om$flts, names))) %in% names(om$stks))) %in% 
     stop("stock names in 'stks' and catches names in 'flts' must match")
   
   ## args must contain critical elements
