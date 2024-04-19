@@ -63,7 +63,7 @@ runMixME <- function(om,
   ## stocks in "stks" must be named
   if (any(is.na(names(om$stks)))) stop("stocks in 'stks' must be named")
   if (any(sapply(om$stks, function(x) x@name) %in% "")) stop("stock FLR objects must be named")
-  if (is.na(names(om$flts))) stop("fleets in 'flts' must be named")
+  if (any(is.na(names(om$flts)))) stop("fleets in 'flts' must be named")
   
   ## stock names in "stks", "flts" must match
   if (!all(names(om$stks) %in% unique(unlist(lapply(om$flts, names)))))

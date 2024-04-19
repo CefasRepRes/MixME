@@ -1,3 +1,7 @@
+## ============================================================================#
+## Test conditioning simple single-stock Operating Model
+## ============================================================================#
+
 test_that("conditioning a simple single-stock Operating model works", {
   
   ## load libraries
@@ -164,4 +168,17 @@ test_that("conditioning a simple single-stock Operating model works", {
                                       res$om$flts$fleet$had@discards.wt)), 1),1), 1000) # catch
   expect_true(all(round(res$tracking$uptake[1,,,],3) == 0)) # uptake
 
+})
+
+
+## ============================================================================#
+## Test Error Catching
+## ============================================================================#
+
+test_that("runMixME catches errors", {
+  
+  data("mixedfishery_MixME_input")
+  mixedfishery_MixME_input$om$flts$OTB_A@effort[] <- NA
+  
+  runMixME(mixedfishery_MixME_input$om, mixedfishery_MixME_input$oem, mixedfishery_MixME_input$ctrl_obj, mixedfishery_MixME_input$args)
 })
