@@ -70,10 +70,19 @@ runMixME <- function(om,
       !all(unique(unlist(lapply(om$flts, names))) %in% names(om$stks)))
     stop("stock names in 'stks' and catches names in 'flts' must match")
   
+  ## OM must contain critical elements
+  if(any(unlist(lapply(om$flts, function(x){ lapply(x, function(y) is.null(attr(y,"quotashare")))}))))
+    stop("each FLCatch must have an FLQuant attached as an attibute named 'quotashare'")
+  if(any(unlist(lapply(om$flts, function(x) {lapply(x, function(y) is.null(dimnames(y@catch.q)$year))}))))
+    stop("catchability 'catch.q' must contain a year dimension")
+  
   ## args must contain critical elements
   if (!any(names(ctrl_obj$fwd@args) == c("adviceType"))) stop("'adviceType' missing in 'ctrl_obj$fwd@args'.")
   if (!any(names(ctrl_obj$fwd@args) == c("effortType"))) stop("'effortType' missing in 'ctrl_obj$fwd@args'.")
+  if (!any(names(args) == c("fy"))) stop("final year 'fy' missing in 'args'.")
   if (!any(names(args) == c("iy"))) stop("Intermediate year 'iy' missing in 'args'.")
+  if (!any(names(args) == c("frange"))) stop("fishing mortality range 'frange' missing in 'args'")
+  if (!any(names(args) == c("management_lag"))) stop("management lag 'management_lag' missing in 'args'")
   
   ## check values of critical elements
   if (!(ctrl_obj$fwd@args$adviceType %in% c("landings","catch"))) stop("'adviceType' must be 'landings' or 'catch'")

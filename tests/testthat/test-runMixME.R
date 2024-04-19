@@ -181,6 +181,9 @@ test_that("runMixME catches errors", {
   # 1. Wrong OM names
   # 2. Missing stock names
   # 3. Missing fleet names
+  # 4. Mismatches stock and fleet catch names
+  # 5. missing quotashare
+  # 6. catchability is not year-resolved
   
   ## load dataset
   data("mixedfishery_MixME_input")
@@ -213,17 +216,37 @@ test_that("runMixME catches errors", {
   ## Mismatched stocks and fleet catches names
   t4 <- mixedfishery_MixME_input$om
   names(t4$flts$OTB_A) <- c("A_cod", "A_had")
-  expect_error(runMixME(t4, t0$oem, t0$ctrl_obj, t0$args), regexp = "fleets in 'flts' must be named")
+  expect_error(runMixME(t4, t0$oem, t0$ctrl_obj, t0$args), regexp = "stock names in 'stks' and catches names in 'flts' must match")
   t4 <- mixedfishery_MixME_input$om
   names(t4$stks) <- c("cd", "hd")
-  expect_error(runMixME(t4, t0$oem, t0$ctrl_obj, t0$args), regexp = "fleets in 'flts' must be named")
+  expect_error(runMixME(t4, t0$oem, t0$ctrl_obj, t0$args), regexp = "stock names in 'stks' and catches names in 'flts' must match")
+  
+  ## Missing quota-share
+  t5 <- mixedfishery_MixME_input$om
+  attr(t5$flts$OTB_A$cod,"quotashare") <- NULL
+  expect_error(runMixME(t5, t0$oem, t0$ctrl_obj, t0$args), regexp = "each FLCatch must have an FLQuant attached as an attibute named 'quotashare'")
+  
+  ## Catchability is not year-resolved
+  t6 <- mixedfishery_MixME_input$om
+  t6$flts$OTB_B$cod@catch.q <- FLPar(c(1,0), dimnames = list(params = c("alpha","beta"),
+                                                             iter   = 1))
+  expect_error(runMixME(t6, t0$oem, t0$ctrl_obj, t0$args), regexp = "catchability 'catch.q' must contain a year dimension")
   
   ## NA in fleet efforts
-  t1 <- mixedfishery_MixME_input
-  t1$om$flts$OTB_A@effort[] <- NA
-  expect_error(runMixME(t1$om, t1$oem, t1$ctrl_obj, t1$args), 
+  t7 <- mixedfishery_MixME_input$om
+  t7$flts$OTB_A@effort[] <- NA
+  expect_error(runMixME(t7, t0$oem, t0$ctrl_obj, t0$args), 
                regexp = "fleet effort slots cannot contain NA values in the projection period")
   
+  ## Missing simulation arguments
+  t8 <- mixedfishery_MixME_input$args; t8$fy <- NULL;     expect_error(runMixME(t0$om, t0$oem, t0$ctrl_obj, t8), "final year 'fy' missing in 'args'.")
+  t8 <- mixedfishery_MixME_input$args; t8$iy <- NULL;     expect_error(runMixME(t0$om, t0$oem, t0$ctrl_obj, t8), "Intermediate year 'iy' missing in 'args'.")
+  t8 <- mixedfishery_MixME_input$args; t8$frange <- NULL; expect_error(runMixME(t0$om, t0$oem, t0$ctrl_obj, t8), "fishing mortality range 'frange' missing in 'args'")
+  t8 <- mixedfishery_MixME_input$args; t8$management_lag <- NULL; expect_error(runMixME(t0$om, t0$oem, t0$ctrl_obj, t8), "management lag 'management_lag' missing in 'args'")
+  
+  ## Wrong simulation arguments
+  t9 <- mixedfishery_MixME_input$args
+  t9$fy <- 2019; expect_error(runMixME(t0$om, t0$oem, t0$ctrl_obj, t9), "Final year 'fy' must be greater than intermediate year 'iy'")
   
 })
   
