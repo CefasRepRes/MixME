@@ -585,6 +585,8 @@ multiSAM2FLStock <- function(SAMfit,
       
       ## calculate catch numbers from sampled parameter values
       res_n <- multiSAMcay(SAMfit, variates, niter, option = 2) # age, year, iter, fleet
+      catch_years <- dimnames(res_n)[[2]]
+      
       res_n <- apply(res_n, c(1,2,3), sum)
 
     }
