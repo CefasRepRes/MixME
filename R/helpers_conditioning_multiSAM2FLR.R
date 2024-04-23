@@ -367,10 +367,10 @@ multiSAMfay <- function(SAMfit, variates, niter, catch_fleets = NULL) {
   ## Extract fishing mortality variates to a separate object
   Fvariates <- variates[, colnames(variates) == "logF"]
   
-  ## extract dimensions
-  cw <- SAMfit$data$catchMeanWeight
-  aa <- colnames(cw[,,1])
-  yy <- rownames(cw[,,1])
+  ## extract dimensions - natural mortality is a safer reference than catch
+  nm <- SAMfit$data$natMor
+  aa <- colnames(nm[,,1])
+  yy <- rownames(nm[,,1])
   
   # Loop over each fleet that is identified and extract the corresponding
   # partial fishing mortality-at-age matrices

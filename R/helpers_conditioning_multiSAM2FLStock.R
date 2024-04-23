@@ -592,7 +592,7 @@ multiSAM2FLStock <- function(SAMfit,
     }
 
     ## insert into catch.n slot
-    FLCore::catch.n(stk)[rownames(Cmatrix), FLCore::ac(catch_years),1,1,1,-1] <- res_n
+    FLCore::catch.n(stk)[rownames(Cmatrix), FLCore::ac(catch_years),1,1,1,-1] <- res_n[rownames(Cmatrix),,]
 
     # -----------------------------------------------------#
     # SECTION 7.5: Update additional slots
