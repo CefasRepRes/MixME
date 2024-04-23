@@ -12,6 +12,7 @@ hcrMixME(
   args,
   hcrpars = NULL,
   hcrmethod = NULL,
+  hcrgroup,
   ctrg = NULL,
   ftrg = NULL,
   tracking

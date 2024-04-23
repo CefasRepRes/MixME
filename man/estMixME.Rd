@@ -13,6 +13,7 @@ estMixME(
   om = NULL,
   args,
   estmethod = NULL,
+  estgroup,
   tracking,
   fitList = NULL,
   fwdList = NULL

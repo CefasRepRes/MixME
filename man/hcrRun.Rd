@@ -11,6 +11,7 @@ hcrRun(
   args,
   hcrpars = NULL,
   hcrmethod = NULL,
+  hcrgroup = NULL,
   ctrg = NULL,
   ftrg = NULL,
   tracking

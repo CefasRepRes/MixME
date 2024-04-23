@@ -12,6 +12,7 @@ estRun(
   om = NULL,
   args,
   estmethod = NULL,
+  estgroup = NULL,
   tracking,
   fitList = NULL,
   fwdList = NULL
