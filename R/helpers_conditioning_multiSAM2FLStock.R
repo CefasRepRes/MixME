@@ -541,8 +541,8 @@ multiSAM2FLStock <- function(SAMfit,
     # SECTION 7.3: Insert sampled fishing mortality-at-age
     # -----------------------------------------------------#
 
-    ## I need to handle single fleet and multifleet SAM fits differently
-    if(fleet_n > 1) {
+    ## I need to handle single fleet and multifleet SAM fits differently - Why?
+    # if(fleet_n > 1) {
 
       # Loop over each fleet that is identified and extract the corresponding
       # partial fishing mortality-at-age matrices
@@ -552,21 +552,21 @@ multiSAM2FLStock <- function(SAMfit,
       Ftotal <- apply(Farray, c(1,2,3), sum)
       
       ## Fill fishing mortality-at-age
-      FLCore::harvest(stk)[, colnames(Cmatrix),,,,-1] <- Ftotal
+      FLCore::harvest(stk)[, colnames(Cmatrix),,,,-1] <- Ftotal[, colnames(Cmatrix),]
 
-    } else {
-      
-      ## Extract fishing mortality variates to a separate object
-      Fvariates <- variates[, colnames(variates) == "logF"]
-
-      ## Extract fishing mortality-at-age
-      idx <- (SAMfit$conf$keyLogFsta + 1)[1,]
-      Ftotal <- exp(t(Fvariates[,idx]))
-      
-      ## Fill fishing mortality-at-age
-      FLCore::harvest(stk)[rownames(Cmatrix), colnames(Cmatrix),,,,-1] <- Ftotal
-
-    }
+    # } else {
+    #   
+    #   ## Extract fishing mortality variates to a separate object
+    #   Fvariates <- variates[, colnames(variates) == "logF"]
+    # 
+    #   ## Extract fishing mortality-at-age
+    #   idx <- (SAMfit$conf$keyLogFsta + 1)[1,]
+    #   Ftotal <- exp(t(Fvariates[,idx]))
+    #   
+    #   ## Fill fishing mortality-at-age
+    #   FLCore::harvest(stk)[rownames(Cmatrix), colnames(Cmatrix),,,,-1] <- Ftotal
+    # 
+    # }
 
     # -----------------------------------------------------#
     # SECTION 7.4: Insert sampled catch numbers
