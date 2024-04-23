@@ -615,11 +615,11 @@ makeFLCatch <- function(SAMfit,        # fitted SAM object
   SdLogObs_idx <- idxObs[idxObs > 0]
   
   ## Insert maximum likelihood values
-  catch_sd[,,,,,1]  <- exp(SAMfit$pl$logSdLogObs)[SdLogObs_idx]
+  catch_sd[ages[idxObs>0],,,,,1]  <- exp(SAMfit$pl$logSdLogObs)[SdLogObs_idx]
   
   ## (Optional) insert sampled values
   if(!is.null(variates)) {
-    catch_sd[,,,,,-1] <- 
+    catch_sd[ages[idxObs>0],,,,,-1] <- 
       exp(t(variates[, colnames(variates) == "logSdLogObs", drop = FALSE][, SdLogObs_idx]))
   }
   
