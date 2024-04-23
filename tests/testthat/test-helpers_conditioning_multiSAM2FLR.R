@@ -38,9 +38,9 @@ test_that("conversion of SAM outputs into stochastic FLR fleet and stock objects
   expect_equal(names(flr2$stks), names(flr2$flts$`Residual catch`))
   
   ## Check dimensions
-  expect_equal(dimnames(flr2$stks$sole)$age,  dimnames(flr2$flts$`Residual catch`$had)$age)
-  expect_equal(dimnames(flr2$stks$sole)$year, dimnames(flr2$flts$`Residual catch`$had)$year)
-  expect_equal(dimnames(flr2$stks$sole)$iter, dimnames(flr2$flts$`Residual catch`$had)$iter)
+  expect_equal(dimnames(flr2$stks$sole)$age,  dimnames(flr2$flts$`Residual catch`$sole)$age)
+  expect_equal(dimnames(flr2$stks$sole)$year, dimnames(flr2$flts$`Residual catch`$sole)$year)
+  expect_equal(dimnames(flr2$stks$sole)$iter, dimnames(flr2$flts$`Residual catch`$sole)$iter)
   
   ## check content - expect consistent catch and F values
   expect_equal(c(t(flr2$stks$sole@catch.n[,,,,,1,drop = TRUE])), c(stockassessment::caytable(fit2)))
