@@ -455,7 +455,7 @@ test_that("running a simple mixed fisheriy constant F simulation works", {
     catch <- sapply(mixedfishery_MixME_om$flts, function(y) which(names(y) %in% name(x)))
     
     ## coerce to FLStock
-    xx <- as.FLStock(x, mixedfishery_MixME_om$flts, catch = catch)
+    xx <- suppressWarnings(as.FLStock(x, mixedfishery_MixME_om$flts, full = FALSE, catch = catch))
     
     ## remove excess data
     stock.n(xx)[] <- NA
