@@ -85,7 +85,7 @@ test_that("conditioning a simple single-stock Operating model works", {
   
   ## convert FLBiol to FLStocks
   stk_oem <- FLStocks(lapply(singlestock_MixME_om$stks, function(x) {
-    xx <- as.FLStock(x, singlestock_MixME_om$flts$fleet)
+    xx <- suppressWarnings(as.FLStock(x, singlestock_MixME_om$flts$fleet))
     stock.n(xx)[] <- NA
     stock(xx)[]   <- NA
     harvest(xx)[] <- NA
@@ -160,14 +160,14 @@ test_that("conditioning a simple single-stock Operating model works", {
   
   ## Check outputs
   expect_equal(round(tail(c(quantSums(res$om$stks$had@n * 
-                                      res$om$stks$had@wt * 
-                                      res$om$stks$had@mat$mat)),1),1), 104341.1) # ssb
+                                        res$om$stks$had@wt * 
+                                        res$om$stks$had@mat$mat)),1),1), 104341.1) # ssb
   expect_equal(round(tail(c(quantSums(res$om$flts$fleet$had@landings.n * 
-                                      res$om$flts$fleet$had@landings.wt + 
-                                      res$om$flts$fleet$had@discards.n * 
-                                      res$om$flts$fleet$had@discards.wt)), 1),1), 1000) # catch
+                                        res$om$flts$fleet$had@landings.wt + 
+                                        res$om$flts$fleet$had@discards.n * 
+                                        res$om$flts$fleet$had@discards.wt)), 1),1), 1000) # catch
   expect_true(all(round(res$tracking$uptake[1,,,],3) == 0)) # uptake
-
+  
 })
 
 ## ============================================================================#
@@ -233,16 +233,56 @@ test_that("conditioning a simple mixed fishery Operating model works", {
     catch <- sapply(mixedfishery_MixME_om$flts, function(y) which(names(y) %in% name(x)))
     
     ## coerce to FLStock
-    xx <- as.FLStock(x, mixedfishery_MixME_om$flts, catch = catch)
+    xx <- suppressWarnings(as.FLStock(x, mixedfishery_MixME_om$flts, full = FALSE, catch = catch))
     
     ## remove excess data
     stock.n(xx)[] <- NA
     stock(xx)[]   <- NA
-    harvest(xx)[] <- NA
     
     ## return result
     return(xx)
   }))
+  
+  ## Convert FLBiol to FLStock to check if method works
+  stk_oem2 <- FLStocks(lapply(mixedfishery_MixME_om$stks, function(x) {
+    xx <- as(x, "FLStock")
+    
+    ## summarise slots
+    xcatchn  <- Reduce("+", lapply(lapply(mixedfishery_MixME_om$flts, "[[", name(x)), catch.n))
+    xcatchwt <- suppressWarnings(weighted.mean(FLQuants(lapply(lapply(mixedfishery_MixME_om$flts, "[[", name(x)), catch.wt)),
+                                               FLQuants(lapply(lapply(mixedfishery_MixME_om$flts, "[[", name(x)), catch.n))))
+    
+    xlandingsn  <- Reduce("+", lapply(lapply(mixedfishery_MixME_om$flts, "[[", name(x)), landings.n))
+    xlandingswt <- suppressWarnings(weighted.mean(FLQuants(lapply(lapply(mixedfishery_MixME_om$flts, "[[", name(x)), landings.wt)),
+                                                  FLQuants(lapply(lapply(mixedfishery_MixME_om$flts, "[[", name(x)), landings.n))))
+    
+    xdiscardsn  <- Reduce("+", lapply(lapply(mixedfishery_MixME_om$flts, "[[", name(x)), discards.n))
+    xdiscardswt <- suppressWarnings(weighted.mean(FLQuants(lapply(lapply(mixedfishery_MixME_om$flts, "[[", name(x)), discards.wt)),
+                                                  FLQuants(lapply(lapply(mixedfishery_MixME_om$flts, "[[", name(x)), discards.n))))
+    
+    catch.n(xx)  <- xcatchn
+    catch.wt(xx) <- xcatchwt
+    catch(xx)    <- computeCatch(xx)
+    
+    landings.n(xx)  <- xlandingsn
+    landings.wt(xx) <- xlandingswt
+    landings(xx)    <- computeLandings(xx)
+    
+    discards.n(xx)  <- xdiscardsn
+    discards.wt(xx) <- xdiscardswt
+    discards(xx)    <- computeDiscards(xx)
+    
+    stock.n(xx)[] <- NA
+    stock(xx)[]   <- NA
+    
+    harvest.spwn(xx)[] <- m(xx) %*% spwn(x)
+    units(xx)[["harvest"]] <- "f"
+    
+    return(xx)
+  }))
+  
+  ## check equivalence of method
+  expect_equal(stk_oem, stk_oem2)
   
   ## assemble simulation inputs
   input <- makeMixME(om = mixedfishery_MixME_om, 
@@ -300,7 +340,7 @@ test_that("conditioning a simple mixed fishery Operating model works", {
   
   ## Plot risk time-series
   expect_no_error(plot_timeseries_MixME(res, quantity = "risk"))
-
+  
 })
 
 ## ============================================================================#
@@ -503,7 +543,7 @@ test_that("running a simple mixed fisheriy constant F simulation works", {
 ## ============================================================================#
 
 test_that("runMixME catches errors", {
-
+  
   # 0. No OM 
   # 1. Wrong OM names
   # 2. Missing stock names
@@ -576,4 +616,3 @@ test_that("runMixME catches errors", {
   t9$fy <- 2019; expect_error(runMixME(t0$om, t0$oem, t0$ctrl_obj, t9), "Final year 'fy' must be greater than intermediate year 'iy'")
   
 })
-  
