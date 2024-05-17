@@ -6,7 +6,10 @@ plot_ssb_MixME <- function(res,
                            trajectories = NULL,
                            quantiles = c(0.05, 0.25, 0.75, 0.95),
                            Refpts = NULL,
-                           iy     = NULL) {
+                           iy     = NULL,
+                           add    = NULL,
+                           fill   = "steelblue",
+                           colour = "black") {
   
   ## Calculate median ssb
   summary_ssb <- aggregate(res, SSB ~ year + stk, quantile, probs = 0.5)
@@ -41,29 +44,32 @@ plot_ssb_MixME <- function(res,
   }
   
   ## build plot
-  plot_out <- ggplot2::ggplot(data = summary_ssb,
-                              aes(x = year)) +
-    facet_wrap(~stk, scales = "free_y") +
-    scale_y_continuous("SSB (tonnes)") +
-    theme_bw()
+  if (is.null(add)) {
+    plot_out <- ggplot2::ggplot() +
+      facet_wrap(~stk, scales = "free_y") +
+      scale_y_continuous("SSB (tonnes)") +
+      theme_bw()
+  } else {
+    plot_out <- add
+  }
   
   ## add quantiles
   if(is.numeric(quantiles)) {
     if(length(quantiles) == 4){
       plot_out <- plot_out + 
-        geom_ribbon(aes(ymin = min, ymax = max), fill = "steelblue", alpha = 0.2) +
-        geom_ribbon(aes(ymin = low, ymax = upp), fill = "steelblue", alpha = 0.2)
+        geom_ribbon(aes(x = year, ymin = min, ymax = max), fill = fill, alpha = 0.2, data = summary_ssb) +
+        geom_ribbon(aes(x = year, ymin = low, ymax = upp), fill = fill, alpha = 0.2, data = summary_ssb)
     }
     if(length(quantiles) == 2){
       plot_out <- plot_out + 
-        geom_ribbon(aes(ymin = min, ymax = max), fill = "steelblue", alpha = 0.2)
+        geom_ribbon(aes(x = year, ymin = min, ymax = max), fill = fill, alpha = 0.2, data = summary_ssb)
     }
   }
   
   ## add trajectories
   if(!is.null(trajectories)) {
     plot_out <- plot_out +
-      geom_line(aes(y = SSB, colour = iter), data = traj_ssb) +
+      geom_line(aes(x = year, y = SSB, colour = iter), data = traj_ssb) +
       theme(legend.position = "none")
     
   }
@@ -72,22 +78,21 @@ plot_ssb_MixME <- function(res,
   if(!is.null(Refpts)) {
     if(!is.null(Refpts$Btrigger)) {
       plot_out <- plot_out + 
-        geom_hline(aes(yintercept = Btrigger), linetype = 3, data = Refpts)
+        geom_hline(aes(x = year, yintercept = Btrigger), linetype = 3, data = Refpts)
     }
     if(!is.null(Refpts$Blim)) {
       plot_out <- plot_out + 
-        geom_hline(aes(yintercept = Blim), linetype = 3, data = Refpts)
+        geom_hline(aes(x = year, yintercept = Blim), linetype = 3, data = Refpts)
     }
   }
   
   ## (Optional) Add start line
   if(!is.null(iy)){
-    plot_out <- plot_out +
-      geom_vline(aes(xintercept = iy), linetype = 2)
+    plot_out <- plot_out + geom_vline(xintercept = iy, linetype = 2)
   }
   
   plot_out <- plot_out +
-    geom_line(aes(y = SSB))
+    geom_line(aes(x = year, y = SSB), colour = colour, data = summary_ssb)
   
   return(plot_out)
 }
