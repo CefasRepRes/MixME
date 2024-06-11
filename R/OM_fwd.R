@@ -158,24 +158,33 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
     # Optimise fleet activity
     # -------------------------------------------------------------------------#
     
-    ## optimise effort
-    effOptimised <- effortBaranov(omList       = omList,
-                                  adviceType   = adviceType,
-                                  effortType   = effortType,
-                                  exceptions   = exceptions,
-                                  multiplier   = multiplier,
-                                  maxRetry     = maxRetry,
-                                  useEffortAsInit = useEffortAsInit,
-                                  useTMB       = useTMB,
-                                  correctResid = FALSE)
-
-    ## Extract effort parameters for each fleet
-    pars <- sapply(1:ni, function(x) { effOptimised[[x]]$par})
-    
-    ## If pars are not a matrix, coerce
-    if(!is.matrix(pars)){
-      pars <- matrix(pars, nrow = length(om$flts), ncol = ni)
-    }
+    ## only run optimisation if at least 1 fleet has dynamic effort
+    if(any(colSums(exceptions) > 0)) {
+      
+      ## optimise effort
+      effOptimised <- effortBaranov(omList       = omList,
+                                    adviceType   = adviceType,
+                                    effortType   = effortType,
+                                    exceptions   = exceptions,
+                                    multiplier   = multiplier,
+                                    maxRetry     = maxRetry,
+                                    useEffortAsInit = useEffortAsInit,
+                                    useTMB       = useTMB,
+                                    correctResid = FALSE)
+      
+      ## Extract effort parameters for each fleet
+      pars <- sapply(1:ni, function(x) { effOptimised[[x]]$par})
+      
+      ## If pars are not a matrix, coerce
+      if(!is.matrix(pars)){
+        pars <- matrix(pars, nrow = length(om$flts), ncol = ni)
+      }
+      
+    } else {
+      ## Extract status quo effort for all fleets
+      pars <- sapply(1:ni, function(x) { log(omList[[x]]$effort)})
+      
+    } # END if any fleets dynamic effort
 
     # -------------------------------------------------------------------------#
     # TRACKING
@@ -185,41 +194,49 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
     tracking$quota[,,ac(yr),] <- sapply(1:ni, function(y) {
       omList[[y]]$quota
     }, simplify = "array")
-
-    ## save optimisation results to tracker
-    tracking$optim[,ac(yr),] <- sapply(1:ni, function(x){
-      c(effOptimised[[x]]$objective,
-        effOptimised[[x]]$convergence)
-    })
-
-    ## save optimisation messages to tracker
-    tracking$message[1,ac(yr),] <- sapply(1:ni, function(x){
-      effOptimised[[x]]$message[1]
-    })
-
-    ## save re-scaling messages to tracker
-    tracking$message[2,ac(yr),] <- sapply(1:ni, function(x){
-      effOptimised[[x]]$message[2]
-    })
-
-    ## save quota uptake to tracker
-    tracking$uptake[,,ac(yr),] <- sapply(1:ni, function(x){
+    
+    if(any(colSums(exceptions) > 0)) {
       
-      if(useTMB == TRUE) {
-        tracking$quota[,,ac(yr),x] - effOptimised[[x]]$Cfleet
-      } else {
-        tracking$quota[,,ac(yr),x] - catchBaranov(par = exp(effOptimised[[x]]$par),
+      ## save optimisation results to tracker
+      tracking$optim[,ac(yr),] <- sapply(1:ni, function(x){
+        c(effOptimised[[x]]$objective,
+          effOptimised[[x]]$convergence)
+      })
+      
+      ## save optimisation messages to tracker
+      tracking$message[1,ac(yr),] <- sapply(1:ni, function(x){
+        effOptimised[[x]]$message[1]
+      })
+      
+      ## save re-scaling messages to tracker
+      tracking$message[2,ac(yr),] <- sapply(1:ni, function(x){
+        effOptimised[[x]]$message[2]
+      })
+      
+      ## save choke stock vector to tracker
+      tracking$choke[,ac(yr),] <- sapply(1:ni, function(x){
+        effOptimised[[x]]$stkLim
+      })
+      
+      ## save quota uptake to tracker
+      tracking$uptake[,,ac(yr),] <- sapply(1:ni, function(x){
+          tracking$quota[,,ac(yr),x] - effOptimised[[x]]$Cfleet
+      }, simplify = "array")
+      
+    } else {
+      
+      ## save quota uptake to tracker
+      tracking$uptake[,,ac(yr),] <- sapply(1:ni, function(x){
+        tracking$quota[,,ac(yr),x] - catchBaranov(par = omList[[x]]$effort,
                                                   dat = omList[[x]],
                                                   adviceType = adviceType,
                                                   islog = FALSE)
-      }
-
-    }, simplify = "array")
-    
-    ## save choke stock vector to tracker
-    tracking$choke[,ac(yr),] <- sapply(1:ni, function(x){
-      effOptimised[[x]]$stkLim
-    })
+      }, simplify = "array")
+      
+      ## save choke stock vector to tracker
+      tracking$choke[,ac(yr),] <- NA
+      
+    }
     
     # -------------------------------------------------------------------------#
     # Do not project if final projection year with zero management lag

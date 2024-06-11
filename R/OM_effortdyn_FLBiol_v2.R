@@ -59,35 +59,35 @@
 #' @export
 
 FLBiols2List <- function(om, year, advice, useCpp = TRUE, process_residuals = NULL) {
-
+  
   # NOTE! CURRENTLY ASSUMES THAT CATCH.Q IS FLPAR... MIGHT WANT TO CHANGE THIS...
   # NOTE! R version CURRENTLY ASSUMES THAT ALL FLEETS CATCH ALL STOCKS ... FIX THIS!
-
+  
   # ---------------------------------#
   # Extract some summary information
   # ---------------------------------#
-
+  
   ## How many stocks and fleets?
   nstk <- length(om$stks)
   nflt <- length(om$flts)
-
+  
   ## How many iterations?
   ## (use the first stock for this -- all dimensions should be identical across stocks and fleets)
   ni <- dims(om$stks[[1]])$iter
-
+  
   # -------------------#
   # Run checks on data
   # -------------------#
-
+  
   ## Is year a numeric element?
   if(!is.numeric(year) | length(year) > 1) stop("'year' must be a single numeric value")
-
+  
   ## Is advice a list with elements for each stock?
   if(!is.list(advice) | length(advice) != nstk) stop("'advice' must be a list with a TAC for each stock")
-
+  
   ## Do stocks and fisheries have the same number of iterations?
   if(dims(om$flts[[1]])$iter != ni) stop("FLBiols and FLFisheries must have the same number of iterations")
-
+  
   ## Is there area, season, unit information? (these are not yet supported)
   if(length(dimnames(om$stks[[1]])$unit) > 1 |
      length(dimnames(om$stks[[1]])$season) > 1|
@@ -131,47 +131,47 @@ FLBiols2List <- function(om, year, advice, useCpp = TRUE, process_residuals = NU
       FLCore::n(om$stks[[i]])[-1,ac(year)] <- FLCore::n(om_fwd$biols[[i]])[-1,ac(year)]
     }
   }
-
+  
   # ---------------------------#
   # Run Calculations using C++
   # ---------------------------#
   #
   # Using C++ should be substantially faster at extracting and processing data with
   # large numbers of iterations
-
+  
   if(useCpp == TRUE) {
-
+    
     ## Call c++ function
     omList <- flr_to_list(om = om, advice = advice, year = year,
                           nstock = nstk, nfleet = nflt, niter = ni)
-
+    
   }
-
+  
   # ---------------------------#
   # Run Calculations using R
   # ---------------------------#
   #
   # Using R is useful to debug issues in the inputs or potential bugs in code.
   # Much slower than C++.
-
+  
   if(useCpp == FALSE){
-
+    
     ## loop over each iteration
     omList <- lapply(1:ni, function(x){
-
+      
       ## extract numbers-at-age for each stock
       ## (I'm guessing that FLasher considers numbers in year x to be numbers at beginning of year x+1)
       n_age <- lapply(1:nstk, function(y){
         n(iter(om$stks[[y]],x))[,ac(year), drop = TRUE]
       })
       names(n_age) <- names(om$stks)
-
+      
       ## extract natural mortality-at-age
       m_age <- lapply(1:nstk, function(y){
         m(iter(om$stks[[y]], x))[,ac(year), drop = TRUE]
       })
       names(m_age) <- names(om$stks)
-
+      
       ## extract landings individual mean weight-at-age
       landwt_age <- lapply(1:nstk, function(y){
         wt_y <- sapply(1:nflt, function(z){
@@ -181,7 +181,7 @@ FLBiols2List <- function(om, year, advice, useCpp = TRUE, process_residuals = NU
         return(wt_y)
       })
       names(landwt_age) <- names(om$stks)
-
+      
       ## extract discards individual mean weight-at-age
       discwt_age <- lapply(1:nstk, function(y){
         wt_y <- sapply(1:nflt, function(z){
@@ -191,7 +191,7 @@ FLBiols2List <- function(om, year, advice, useCpp = TRUE, process_residuals = NU
         return(wt_y)
       })
       names(discwt_age) <- names(om$stks)
-
+      
       ## extract proportion catch retained-at-age
       landfrac_age <- lapply(1:nstk, function(y){
         lf_y <- sapply(1:nflt, function(z){
@@ -203,7 +203,7 @@ FLBiols2List <- function(om, year, advice, useCpp = TRUE, process_residuals = NU
         return(lf_y)
       })
       names(landfrac_age) <- names(om$stks)
-
+      
       ## extract selection-at-age
       sel_age <- lapply(1:nstk, function(y){
         sel_y <- sapply(1:nflt, function(z){
@@ -213,7 +213,7 @@ FLBiols2List <- function(om, year, advice, useCpp = TRUE, process_residuals = NU
         return(sel_y)
       })
       names(sel_age) <- names(om$stks)
-
+      
       ## Catchability by fleet (matrix stock x fleet)
       q_age <- sapply(1:nstk, function(y){
         q_y <- sapply(1:nflt, function(z){
@@ -223,7 +223,7 @@ FLBiols2List <- function(om, year, advice, useCpp = TRUE, process_residuals = NU
         return(q_y)
       })
       colnames(q_age) <- names(om$stks)
-
+      
       ## Quota-share by fleet (matrix stock x fleet)
       quota_f <- sapply(1:nstk, function(y){
         quota_y <- sapply(1:nflt, function(z){
@@ -233,7 +233,7 @@ FLBiols2List <- function(om, year, advice, useCpp = TRUE, process_residuals = NU
         return(quota_y)
       })
       colnames(quota_f) <- names(om$stks)
-
+      
       ## return list of objects
       list(n          = n_age,
            m          = m_age,
@@ -244,9 +244,9 @@ FLBiols2List <- function(om, year, advice, useCpp = TRUE, process_residuals = NU
            catchq     = t(q_age),
            quota = t(quota_f))
     })
-
+    
   }
-
+  
   return(omList)
 }
 
@@ -306,7 +306,7 @@ FLBiols2List <- function(om, year, advice, useCpp = TRUE, process_residuals = NU
 #' @export
 
 catchBaranov <- function(par, dat, adviceType, islog = FALSE) {
-
+  
   ## exponentiate to normal-scale effort (if necessary)
   if(islog == TRUE){
     E <- exp(par)
@@ -314,36 +314,36 @@ catchBaranov <- function(par, dat, adviceType, islog = FALSE) {
   if(islog == FALSE){
     E <- par
   }
-
+  
   ## Calculate partial F
   dat$partF <- t(t(dat$catchq) * E) # rows = stocks, cols = fleets
-
+  
   ## Calculate partial F-at-age using fleet selectivity
   partFage <- sapply(1:nrow(dat$partF),
                      function(x){
                        t(dat$partF[x,] * t(dat$catchsel[[x]]))
                      })
-
+  
   ## Overall Stock fishing mortality
   # Fm   <- rowSums(dat$partF, na.rm = TRUE)
-
+  
   ## Overall Stock fishing mortality-at-age
   Fage <- sapply(1:length(partFage),
                  function(x) {
                    rowSums(partFage[[x]])
                  })
-
+  
   ## calculate catch for a given F
   Cage <- sapply(1:nrow(dat$partF),
                  function(x) {
-
+                   
                    (Fage[[x]]/(Fage[[x]] + dat$m[[x]])) * (1-exp(-(Fage[[x]] + dat$m[[x]]))) * dat$n[[x]]
-
+                   
                  })
-
+  
   # Note that we need to use an ifelse statement to catch instances
   # where Ftot = 0 and avaid NaN issues.
-
+  
   ## calculate fleet-level catches by weight
   #  - first split Catch number-at-age by fleet partial F-at-age
   #    and calculate Catch weight-at-age
@@ -353,13 +353,13 @@ catchBaranov <- function(par, dat, adviceType, islog = FALSE) {
   #  - then sum over ages to calculate total Catch in weight per stock
   Cfleet <- sapply(1:nrow(dat$partF),
                    function(x){
-
+                     
                      ## to avoid divide by zro issues
                      Fa_x <- ifelse(Fage[[x]] == 0, 1, Fage[[x]])
-
+                     
                      ## Calculate Catch in numbers at age per fleet
                      partCage <- Cage[[x]] * (partFage[[x]] / Fa_x)
-
+                     
                      ## If advice is landings-based, account for
                      ## size-selective discarding
                      if(adviceType == "landings"){
@@ -371,7 +371,7 @@ catchBaranov <- function(par, dat, adviceType, islog = FALSE) {
                        partLWage[partCage * dat$landfrac[[x]] == 0] <- 0 
                        
                        return(colSums(partLWage))
-
+                       
                      } else if(adviceType == "catch"){
                        
                        ## Calculate landings and discards in weight at age per fleet
@@ -388,7 +388,7 @@ catchBaranov <- function(par, dat, adviceType, islog = FALSE) {
                    })
   ## Transpose because output has fleets on rows
   Cfleet <- t(Cfleet)
-
+  
   return(Cfleet)
 }
 
@@ -467,7 +467,7 @@ effortBaranov <- function(omList,
   ## How many stocks and fleets? - use first iteration for reference
   nstk <- nrow(omList[[1]]$quota)
   nflt <- ncol(omList[[1]]$quota)
-
+  
   ## How many iterations?
   ni <- length(omList)
   
@@ -487,6 +487,8 @@ effortBaranov <- function(omList,
   # ======================================================#
   
   if (useTMB == FALSE){
+    
+    stop("non-TMB optimisation is no longer supported")
     
     # ------------------------------------------------------#
     # Define a function to globally optimise effort
@@ -542,11 +544,11 @@ effortBaranov <- function(omList,
   # ======================================================#
   # Loop over each iteration
   # ======================================================#
-
+  
   ## if parallel = FALSE, run iteratively
   if (parallel == FALSE){
     out <- lapply(1:ni, function(it) {
-
+      
       ## define default initial log-effort values if not defined
       if(is.null(par) & useEffortAsInit == FALSE){
         par <- rep(log(0.5), nflt)
@@ -555,94 +557,76 @@ effortBaranov <- function(omList,
       if(is.null(par) & useEffortAsInit == TRUE){
         par <- log(omList[[it]]$effort)
       }
-
+      
+      # ------------------------------------------------------#
+      # Handle Status quo effort
+      # ------------------------------------------------------#
+      
+      # If one or more fleets have fixed effort, then these are identified from the
+      # exceptions matrix.
+      
+      ## find status quo effort fleet
+      sqE <- colSums(exceptions) == 0
+      
+      if(sum(sqE) > 0) {
+        par[sqE] <- log(omList[[it]]$effort)[sqE]
+        mapfactors <- par
+        mapfactors[sqE] <- NA
+        mapfactors[!sqE] <- seq_along(par[!sqE])
+        
+        map <- list(logE = factor(mapfactors))
+      } else {
+        map <- NULL
+      }
+      
       # ------------------------------------------------------#
       # Identify choke stocks for each fleet
       # ------------------------------------------------------#
-      #
-      # If useTMB is FALSE, then we use a previously defined objective function
-      # to estimate fleet efforts. We're not expecting to achieve effort targets.
-      # Instead, we intend to identify the stock for each fleet that chokes
-      # effort.
       
-      if(useTMB == FALSE){
-        
-        eff <- nlminb(start = par, objective = Gobj, 
-                      dat = omList[[it]],
-                      adviceType = adviceType,
-                      objType    = objType,
-                      exceptions = exceptions,
-                      multiplier = multiplier,
-                      control = list("iter.max" = 1000,
-                                     "eval.max" = 1000))
-        
-        ## Calculate resulting stock catches for each fleet and find choke stocks
-        stkEff <- (omList[[it]]$quota * multiplier) - catchBaranov(par = exp(eff$par),
-                                                                   dat = omList[[it]],
-                                                                   adviceType = adviceType)
-        
-        ## Find (most or least) effort-limiting stock for each fleet
-        ## NOTE: I apply over fleets (cols)
-        ## NOTE: we need to select from only stocks the fleet has catching power for!
-        ## NOTE: we need to select from only stock that are effort-limiting!
-        ## NOTE: most-limiting (min), least-limiting (max)
-        stkLim <- sapply(1:ncol(stkEff), function(x) { 
-          xx <- stkEff[,x]
-          xx[omList[[it]]$catchq[,x] == 0] <- NA
-          xx[exceptions[,x] == 0] <- NA
-          if(effortType == "min") return(which.min(xx))
-          if(effortType == "max") return(which.max(xx))
-        })
-        
-        ## Add vector of effort-limiting stock per fleet to omList
-        omList[[it]]$stkLim <- stkLim
-      }
-      
-      # If useTMB is TRUE, then we use a TMB to generate an objective function
+      # We use TMB to generate an objective function
       # and a gradient function that we pass to nlminb. The process is a little
       # more complicated because we re-organise the way we pass the parameters
       # to the function.
       
-      if(useTMB == TRUE){
-        
-        ## Redefine parameters
-        parm <- list()
-        parm$logE <- par
-        
-        ## add advice type to data
-        omList[[it]]$adviceType <- adviceType
-        omList[[it]]$objType    <- objType
-        omList[[it]]$exceptions <- exceptions
-        omList[[it]]$multiplier <- multiplier
-        omList[[it]]$stkLim     <- rep(1, nflt)
-        
-        Gobj <- TMB::MakeADFun(data = omList[[it]],
-                          parameters = parm,
-                          DLL="TMBobj", silent=TRUE)
-        
-        eff <- nlminb(start = Gobj$par, objective = Gobj$fn, gradient = Gobj$gr,
-                      adviceType = adviceType,
-                      control = list("iter.max" = 10000,
-                                     "eval.max" = 10000))
-        
-        ## Calculate resulting stock catches for each fleet and find choke stocks
-        stkEff <- (omList[[it]]$quota * multiplier) - Gobj$report()$Cfleet
-        
-        ## Find (most or least) effort-limiting stock for each fleet
-        ## NOTE: I apply over fleets (cols)
-        ## NOTE: we need to select from only stocks the fleet has catching power for!
-        ## NOTE: most-limiting (min), least-limiting (max)
-        stkLim <- sapply(1:ncol(stkEff), function(x) { 
-          xx <- stkEff[,x]
-          xx[omList[[it]]$catchq[,x] == 0] <- NA
-          xx[exceptions[,x] == 0] <- NA
-          if(effortType == "min") return(which.min(xx))
-          if(effortType == "max") return(which.max(xx))
-        })
-        
-        ## Add vector of effort-limiting stock per fleet to omList
-        omList[[it]]$stkLim <- stkLim - 1
-      }
+      ## Redefine parameters
+      parm <- list()
+      parm$logE <- par
+      
+      ## add advice type to data
+      omList[[it]]$adviceType <- adviceType
+      omList[[it]]$objType    <- objType
+      omList[[it]]$exceptions <- exceptions
+      omList[[it]]$multiplier <- multiplier
+      omList[[it]]$stkLim     <- rep(1, nflt)
+      
+      Gobj <- TMB::MakeADFun(data = omList[[it]],
+                             parameters = parm,
+                             map = map,
+                             DLL="TMBobj", silent=TRUE)
+      
+      eff <- nlminb(start = Gobj$par, objective = Gobj$fn, gradient = Gobj$gr,
+                    adviceType = adviceType,
+                    control = list("iter.max" = 10000,
+                                   "eval.max" = 10000))
+      
+      ## Calculate resulting stock catches for each fleet and find choke stocks
+      stkEff <- (omList[[it]]$quota * multiplier) - Gobj$report()$Cfleet
+      
+      ## Find (most or least) effort-limiting stock for each fleet
+      ## NOTE: I apply over fleets (cols)
+      ## NOTE: we need to select from only stocks the fleet has catching power for!
+      ## NOTE: most-limiting (min), least-limiting (max)
+      stkLim <- sapply(1:ncol(stkEff), function(x) { 
+        if(all(exceptions[,x]==0)) return(1)
+        xx <- stkEff[,x]
+        xx[omList[[it]]$catchq[,x] == 0] <- NA
+        xx[exceptions[,x] == 0] <- NA
+        if(effortType == "min") return(which.min(xx))
+        if(effortType == "max") return(which.max(xx))
+      })
+      
+      ## Add vector of effort-limiting stock per fleet to omList
+      omList[[it]]$stkLim <- stkLim - 1
       
       # ------------------------------------------------------#
       # Optimise fleet efforts to consume choke stock quota
@@ -650,77 +634,119 @@ effortBaranov <- function(omList,
       
       ## use last year effort or global optimisation output as initial values
       if(useEffortAsInit == TRUE){
-        par <- log(omList[[it]]$effort)
+        par[!sqE] <- log(omList[[it]]$effort)
       } else {
-        par <- eff$par
+        par[!sqE] <- eff$par
       }
       
-      # If useTMB is FALSE, then we use a previously defined objective function
-      # to estimate the effort required to consume choke stock quota.
-      # We check that we have correctly identified the choke stocks by comparing
-      # the inputted choke stocks with the emergent vector of highest stock quota
-      # uptake
-      
-      if(useTMB == FALSE) {
-        
-        out <- nlminb(start = par, objective = Fobj,
-                      dat = omList[[it]], 
-                      adviceType = adviceType,
-                      exceptions = exceptions,
-                      multiplier = multiplier,
-                      control = list("iter.max" = 1000,
-                                     "eval.max" = 1000))
-        
-        ## Calculate resulting stock catches for each fleet and find choke stocks
-        stkEff <- (omList[[it]]$quota * multiplier) - catchBaranov(par = exp(out$par),
-                                                                   dat = omList[[it]],
-                                                                   adviceType = adviceType)
-        
-        ## Check for mismatch in choke stocks
-        stkLimMismatch <- !all(omList[[it]]$stkLim == sapply(1:ncol(stkEff), function(x) {
-          xx <- stkEff[,x]
-          xx[omList[[it]]$catchq[,x] == 0] <- NA
-          xx[exceptions[,x] == 0] <- NA
-          if(effortType == "min") return(which.min(xx))
-          if(effortType == "max") return(which.max(xx))
-        }))
-        
-        ## Save vector of fleet choke stocks
-        out$stkLim <- omList[[it]]$stkLim
-        
-      }
-      
-      # If useTMB is TRUE, there is some reorganisation of how parameters are 
+      # There is some reorganisation of how parameters are 
       # passed, and the TMB objective and gradient functions are built. These
       # estimate the effort required to consume choke stock quota.
       # We check that we have correctly identified the choke stocks by comparing
       # the inputted choke stocks with the emergent vector of highest stock quota
       # uptake
       
-      if(useTMB == TRUE) {
+      parm$logE <- par
+      omList[[it]]$objType    <- "choke"
+      
+      Fobj <- TMB::MakeADFun(data = omList[[it]],
+                             parameters = parm,
+                             map = map,
+                             DLL="TMBobj", silent=TRUE)
+      
+      out <- nlminb(start = Fobj$par, objective = Fobj$fn, gradient = Fobj$gr,
+                    control = list("iter.max" = 10000,
+                                   "eval.max" = 10000))
+      
+      ## Calculate resulting stock catches for each fleet and find choke stocks
+      stkEff <- (omList[[it]]$quota * multiplier) - Fobj$report()$Cfleet
+      
+      ## Check for mismatch in choke stocks
+      stkLimMismatch <- !all(omList[[it]]$stkLim == sapply(1:ncol(stkEff), function(x) {
+        if(all(exceptions[,x]==0)) return(0)
+        xx <- stkEff[,x]
+        xx[omList[[it]]$catchq[,x] == 0] <- NA
+        xx[exceptions[,x] == 0] <- NA
+        if(effortType == "min") return(which.min(xx)-1)
+        if(effortType == "max") return(which.max(xx)-1)
+      }))
+      
+      ## if map is used, out does not contain fixed effort fleets
+      par[!sqE] <- out$par
+      out$par   <- par
+      
+      ## Save vector of fleet choke stocks
+      out$stkLim <- omList[[it]]$stkLim + 1
+      
+      ## attach catch matrix to out
+      out$Cfleet <- Fobj$report()$Cfleet
+      
+      ## attach TMB 
+      sdr<- TMB::sdreport(Fobj)
+      pl   <- as.list(sdr,"Est")
+      plsd <- as.list(sdr,"Std")
+      
+      out$pl <- pl
+      out$plsd <- plsd
+      
+      # ----------------------------------------------------------------#
+      # (OPTIONAL) Re-run optimisation using updated choke stock vector
+      # ----------------------------------------------------------------#
+      
+      if(stkLimMismatch == TRUE)
+        cat("\nChoke stock mis-match detected - rerunning optimisation \n")
+      mR <- maxRetry
+      
+      ## If mismatch, re-run optimisation
+      while(stkLimMismatch == TRUE & mR > 0) {
         
+        cat("\r", maxRetry - mR + 1)
+        
+        ## use last year effort or global optimisation output as initial values
+        if(useEffortAsInit == TRUE){
+          par[!sqE] <- log(omList[[it]]$effort)
+        }
+        
+        ## Update effort-limiting stock vector
+        omList[[it]]$stkLim <- sapply(1:ncol(stkEff), function(x) { 
+          if(all(exceptions[,x]==0)) return(0)
+          xx <- stkEff[,x]
+          xx[omList[[it]]$catchq[,x] == 0] <- NA
+          xx[exceptions[,x] == 0] <- NA
+          if(effortType == "min") return(which.min(xx)-1)
+          if(effortType == "max") return(which.max(xx)-1)
+        })
+        
+        ## update starting parameters
         parm$logE <- par
-        omList[[it]]$objType    <- "choke"
         
+        ## Make TMB function
         Fobj <- TMB::MakeADFun(data = omList[[it]],
-                          parameters = parm,
-                          DLL="TMBobj", silent=TRUE)
+                               parameters = parm,
+                               map = map,
+                               DLL="TMBobj", silent=TRUE)
         
+        ## optimise efforts
         out <- nlminb(start = Fobj$par, objective = Fobj$fn, gradient = Fobj$gr,
                       control = list("iter.max" = 10000,
                                      "eval.max" = 10000))
         
-        ## Calculate resulting stock catches for each fleet and find choke stocks
+        ## recalculate stock overshoots
         stkEff <- (omList[[it]]$quota * multiplier) - Fobj$report()$Cfleet
         
         ## Check for mismatch in choke stocks
-        stkLimMismatch <- !all(omList[[it]]$stkLim == sapply(1:ncol(stkEff), function(x) {
+        stkLimMismatch <- !all(omList[[it]]$stkLim == sapply(1:ncol(stkEff), function(x) { 
+          if(all(exceptions[,x]==0)) return(0)
           xx <- stkEff[,x]
           xx[omList[[it]]$catchq[,x] == 0] <- NA
           xx[exceptions[,x] == 0] <- NA
           if(effortType == "min") return(which.min(xx)-1)
           if(effortType == "max") return(which.max(xx)-1)
         }))
+        
+        ## if map is used, out does not contain fixed effort fleets
+        par[!sqE] <- out$par
+        out$par   <- par
         
         ## Save vector of fleet choke stocks
         out$stkLim <- omList[[it]]$stkLim + 1
@@ -735,117 +761,6 @@ effortBaranov <- function(omList,
         
         out$pl <- pl
         out$plsd <- plsd
-      }
-
-      # ----------------------------------------------------------------#
-      # (OPTIONAL) Re-run optimisation using updated choke stock vector
-      # ----------------------------------------------------------------#
-      
-      if(stkLimMismatch == TRUE)
-        cat("\nChoke stock mis-match detected - rerunning optimisation \n")
-      mR <- maxRetry
-
-      ## If mismatch, re-run optimisation
-      while(stkLimMismatch == TRUE & mR > 0) {
-        
-        cat("\r", maxRetry - mR + 1)
-        
-        ## use last year effort or global optimisation output as initial values
-        if(useEffortAsInit == TRUE){
-          par <- log(omList[[it]]$effort)
-        } else {
-          par <- out$par
-        }
-        
-        if(useTMB == FALSE) {
-          
-          ## Update effort-limiting stock vector
-          omList[[it]]$stkLim <- sapply(1:ncol(stkEff), function(x) { 
-            xx <- stkEff[,x]
-            xx[omList[[it]]$catchq[,x] == 0] <- NA
-            xx[exceptions[,x] == 0] <- NA
-            if(effortType == "min") return(which.min(xx))
-            if(effortType == "max") return(which.max(xx))
-          })
-          
-          ## optimise efforts
-          out <- nlminb(start = par, objective = Fobj,
-                        dat = omList[[it]],
-                        adviceType = adviceType,
-                        exceptions = exceptions,
-                        multiplier = multiplier,
-                        control = list("iter.max" = 1000,
-                                       "eval.max" = 1000))
-          
-          ## recalculate stock overshoots
-          stkEff <- (omList[[it]]$quota * multiplier) - catchBaranov(par = exp(out$par),
-                                                                     dat = omList[[it]],
-                                                                     adviceType = adviceType)
-          
-          ## Check for mismatch in choke stocks
-          stkLimMismatch <- !all(omList[[it]]$stkLim == sapply(1:ncol(stkEff), function(x) { 
-            xx <- stkEff[,x]
-            xx[omList[[it]]$catchq[,x] == 0] <- NA
-            xx[exceptions[,x] == 0] <- NA
-            if(effortType == "min") return(which.min(xx))
-            if(effortType == "max") return(which.max(xx))
-          }))
-          
-          ## Save vector of fleet choke stocks
-          out$stkLim <- omList[[it]]$stkLim
-        }
-        
-        if(useTMB == TRUE) {
-          
-          ## Update effort-limiting stock vector
-          omList[[it]]$stkLim <- sapply(1:ncol(stkEff), function(x) { 
-            xx <- stkEff[,x]
-            xx[omList[[it]]$catchq[,x] == 0] <- NA
-            xx[exceptions[,x] == 0] <- NA
-            if(effortType == "min") return(which.min(xx)-1)
-            if(effortType == "max") return(which.max(xx)-1)
-          })
-          
-          ## update starting parameters
-          parm$logE <- par
-          
-          ## Make TMB function
-          Fobj <- TMB::MakeADFun(data = omList[[it]],
-                            parameters = parm,
-                            DLL="TMBobj", silent=TRUE)
-          
-          ## optimise efforts
-          out <- nlminb(start = Fobj$par, objective = Fobj$fn, gradient = Fobj$gr,
-                        control = list("iter.max" = 10000,
-                                       "eval.max" = 10000))
-          
-          ## recalculate stock overshoots
-          stkEff <- (omList[[it]]$quota * multiplier) - Fobj$report()$Cfleet
-          
-          ## Check for mismatch in choke stocks
-          stkLimMismatch <- !all(omList[[it]]$stkLim == sapply(1:ncol(stkEff), function(x) { 
-            xx <- stkEff[,x]
-            xx[omList[[it]]$catchq[,x] == 0] <- NA
-            xx[exceptions[,x] == 0] <- NA
-            if(effortType == "min") return(which.min(xx)-1)
-            if(effortType == "max") return(which.max(xx)-1)
-          }))
-          
-          ## Save vector of fleet choke stocks
-          out$stkLim <- omList[[it]]$stkLim + 1
-          
-          ## attach catch matrix to out
-          out$Cfleet <- Fobj$report()$Cfleet
-          
-          ## attach TMB 
-          sdr<- TMB::sdreport(Fobj)
-          pl   <- as.list(sdr,"Est")
-          plsd <- as.list(sdr,"Std")
-          
-          out$pl <- pl
-          out$plsd <- plsd
-          
-        }
         
         ## incrementally decrease number of tries
         mR <- mR - 1
@@ -858,11 +773,11 @@ effortBaranov <- function(omList,
       ## Does not currently work with TMB
       if(correctResid == TRUE & useTMB == TRUE) 
         stop("correctResid does not currently work with TMB")
-
+      
       ## re-run if overshoot exceeds some value
       if(min(stkEff, na.rm =  TRUE) < -0.001 & correctResid == TRUE) {
         cat("Overquota catches > 0.001 - scaling effort \n")
-
+        
         ## scale all effort to bring overshoot to zero
         effmult <- optimise(function(x) {
           abs(min(omList[[it]]$quota - catchBaranov(par = exp(out$par)*x,
@@ -870,21 +785,21 @@ effortBaranov <- function(omList,
                                                     adviceType = adviceType),
                   na.rm = TRUE))},
           c(0,1))
-
+        
         out$par     <- log(exp(out$par)*effmult$minimum)
         out$message <- c(out$message,paste0("effort re-scaled: ",effmult$minimum))
-
+        
         return(out)
-
+        
       } else {
-
+        
         return(out)
       }
     })
   } else if(parallel == TRUE){
-
+    
     stop("parallelisation not yet implemented")
   }
-
+  
   return(out)
 }

@@ -103,8 +103,8 @@ runMixME <- function(om,
   if(any(c(ctrl_obj$fwd@args$multiplier) < 0)) stop("'multiplier' must contain positive values only")
   if(all(c(ctrl_obj$fwd@args$multiplier) == 0)) stop("'multiplier' cannot all be zero!")
   
-  if (any(apply(ctrl_obj$fwd@args$exceptions, 2, "max") == 0)) 
-    stop("'exceptions' must contain at least one '1' for each fleet")
+  # if (any(apply(ctrl_obj$fwd@args$exceptions, 2, "max") == 0)) 
+  #   stop("'exceptions' must contain at least one '1' for each fleet")
   
   ## Check that there are no NAs in critical slots
   if (!is.null(ctrl_obj$phcr))
