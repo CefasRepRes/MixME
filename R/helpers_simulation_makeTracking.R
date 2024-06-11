@@ -171,6 +171,11 @@ makeTracking <- function(om,
 
 updateTrackingOM <- function(om, tracking, args, yr) {
   
+  ## Extract landings and discards for each stock - unfortunately not the quickest
+  ## function
+  fltlandings <- FLCore::landings(om$flts, by = "catch")
+  fltdiscards <- FLCore::discards(om$flts, by = "catch")
+  
   ## Update tracking object - True Stock Properties
   for(x in om$stks@names) {
     
@@ -182,40 +187,43 @@ updateTrackingOM <- function(om, tracking, args, yr) {
                   om$stks[[x]]@wt[,ac(yr)] * 
                   om$stks[[x]]@mat$mat[,ac(yr)])
     
-    ## Extract catches for stock
-    fltcatches <- lapply(om$flts, "[[", x)
-
-    ## Calculate overall landings and discards
-    fltlandings <- sapply(1:length(fltcatches), function(y){
-      if(!is.null(fltcatches[[y]])) {
-        landings(fltcatches[[y]])[,ac(yr)]
-      } else {
-        FLQuant(0, dimnames = list(year = ac(yr), iter = dimnames(om$stks[[x]])$iter))
-      }
-    }, simplify = "array")
+    ## Extract catches for stock - unfortunately, this only works if each stock is
+    ## caught by each fleet
     
-    fltdiscards <- sapply(1:length(fltcatches), function(y){
-      if(!is.null(fltcatches[[y]])) {
-        discards(fltcatches[[y]])[,ac(yr)]
-      } else {
-        FLQuant(0, dimnames = list(year = ac(yr), iter = dimnames(om$stks[[x]])$iter))
-      }
-    }, simplify = "array")
-    
-    if(is.array(fltlandings)) {
-      fltlandings <- apply(fltlandings, c(1:6), sum)
-      fltdiscards <- apply(fltdiscards, c(1:6), sum)
-    } else {
-      fltlandings <- sum(fltlandings)
-      fltdiscards <- sum(fltdiscards)
-    }
+    # fltcatches <- lapply(om$flts, "[[", x)
+    # 
+    # ## Calculate overall landings and discards
+    # fltlandings <- sapply(1:length(fltcatches), function(y){
+    #   if(!is.null(fltcatches[[y]])) {
+    #     landings(fltcatches[[y]])[,ac(yr)]
+    #   } else {
+    #     FLQuant(0, dimnames = list(year = ac(yr), iter = dimnames(om$stks[[x]])$iter))
+    #   }
+    # }, simplify = "array")
+    # 
+    # fltdiscards <- sapply(1:length(fltcatches), function(y){
+    #   if(!is.null(fltcatches[[y]])) {
+    #     discards(fltcatches[[y]])[,ac(yr)]
+    #   } else {
+    #     FLQuant(0, dimnames = list(year = ac(yr), iter = dimnames(om$stks[[x]])$iter))
+    #   }
+    # }, simplify = "array")
+    # 
+    # if(is.array(fltlandings)) {
+    #   fltlandings <- apply(fltlandings, c(1:6), sum)
+    #   fltdiscards <- apply(fltdiscards, c(1:6), sum)
+    # } else {
+    #   fltlandings <- sum(fltlandings)
+    #   fltdiscards <- sum(fltdiscards)
+    # }
 
-
+    fltlandingsx <- fltlandings[[x]][,ac(yr)]
+    fltdiscardsx <- fltdiscards[[x]][,ac(yr)]
     
     ## update landings, discards and catch numbers in tracking object
-    tracking[[x]]$stk["L.om",  ac(yr)] <- fltlandings
-    tracking[[x]]$stk["D.om",  ac(yr)] <- fltdiscards
-    tracking[[x]]$stk["C.om",  ac(yr)] <- fltlandings + fltdiscards
+    tracking[[x]]$stk["L.om",  ac(yr)] <- fltlandingsx
+    tracking[[x]]$stk["D.om",  ac(yr)] <- fltdiscardsx
+    tracking[[x]]$stk["C.om",  ac(yr)] <- fltlandingsx + fltdiscardsx
     
     ## Update harvest
     fltFage <- sapply(1:length(om$flts), function(y){
