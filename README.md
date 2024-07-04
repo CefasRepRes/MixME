@@ -12,7 +12,7 @@ An R package for mixed fisheries Management Strategy Evaluation (MSE) using mult
 MixME depends on TMB, FLR libraries and several other packages. Install these first:
 
 ```{r}
-install.packages(c("FLCore","FLFishery,"FLasher","mse"), repos = "http://flr-project.org/R")
+install.packages(c("FLCore","FLFishery","FLasher","mse"), repos = "http://flr-project.org/R")
 install.packages(c("TMB","doParallel","foreach"))
 ```
 
