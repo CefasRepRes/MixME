@@ -25,6 +25,10 @@ test_that("estMixME single-stock (FLBiol) estimation works", {
   om$stks$`1`@mat$mat[] <- 1
   om$stks$`1`@wt[]  <- 1
   om$stks$`1`@spwn[] <- 0
+  om$stks$`1`@rec@params <- FLPar(1)
+  om$stks$`1`@rec@model  <- FLCore::geomean()$model
+  om$flts$A$`1`@landings.n[]  <- 0.5
+  om$flts$A$`1`@discards.n[]  <- 0.5
   om$flts$A$`1`@landings.wt[] <- 1
   om$flts$A$`1`@discards.wt[] <- 1
   om$flts$A$`1`@catch.q <- FLPar(1, 
@@ -40,12 +44,11 @@ test_that("estMixME single-stock (FLBiol) estimation works", {
   ## Calculate corresponding stock numbers, landings, discards
   f1 <- (om$flts$A$`1`@catch.q["alpha", ] * om$flts$A@effort) %*% om$flts$A$`1`@catch.sel
   
-  om$stks$`1`@n[1,] <- 1
-  om$stks$`1`@n[2,] <- om$stks$`1`@n[1,] * exp(-(f1[1,] + om$stks$`1`@m[1,]))
-  om$stks$`1`@n[3,] <- om$stks$`1`@n[2,] * exp(-(f1[2,] + om$stks$`1`@m[2,]))
+  om$stks$`1`@n[,1] <- c(1, 0.3328711, 0.1660896)
   
-  om$flts$A$`1`@landings.n[]  <- 0.5* (f1/(f1 + om$stks$`1`@m)) * om$stks$`1`@n * (1 - exp(-(f1 + om$stks$`1`@m)))
-  om$flts$A$`1`@discards.n[]  <- om$flts$A$`1`@landings.n
+  tt <- FLasher::fwd(om$stks, om$flts, FLasher::fwdControl(data.frame(year=2:10, value = 1, quant = "f", biol = 1, minAge = 1, maxAge = 3)))
+  om$stks <- tt$biols
+  om$flts <- tt$fisheries
   
   ## Copy to observation error model
   stk0 <- om$stks
@@ -62,9 +65,10 @@ test_that("estMixME single-stock (FLBiol) estimation works", {
   estfun <- function(stk, flt, tracking, ...) {
     
     ## Fill slots
-    stk@n[] <- c(1, 0.3328711, 0.1108032)
+    stk@n[] <- c(1, 0.3328711, 0.1660896)
     flt$A@effort[] <- 1
-    flt$A$`1`@catch.q[] <- 1
+    flt$A$`1`@catch.q["alpha",] <- 1
+    flt$A$`1`@catch.q["beta",] <- 0
     flt$A$`1`@catch.sel[] <- 1
     
     ## estimate final data year
@@ -202,6 +206,8 @@ test_that("estMixME single-stock (FLStocks) estimation works", {
   oem$stks$`1`@stock.n[] <- NA
   oem$stks$`1`@stock[]   <- NA
   oem$stks$`1`@harvest[] <- NA
+  oem$stks$`1`@m.spwn[]  <- 0
+  oem$stks$`1`@harvest.spwn[] <- 0
   
   ## Generate token stock assessment model & other arguments
   ## --------------------------------------------------------------------------#

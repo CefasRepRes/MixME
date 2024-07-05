@@ -68,6 +68,10 @@ test_that("estRun multi-stock (FLStock) estimation works", {
   oem$stks$i@stock[]   <- oem$stks$j@stock[]   <- oem$stks$k@stock[]   <- NA
   oem$stks$i@harvest[] <- oem$stks$j@harvest[] <- oem$stks$k@harvest[] <- NA
   
+  oem$stks$i@m.spwn[] <- 0
+  oem$stks$j@m.spwn[] <- 0
+  oem$stks$k@m.spwn[] <- 0
+  
   ## Generate token stock assessment model & other arguments
   ## --------------------------------------------------------------------------#
   

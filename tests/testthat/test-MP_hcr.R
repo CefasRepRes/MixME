@@ -270,6 +270,8 @@ test_that("hcrMixME single-stock (FLStocks) ICES HCR works", {
   attr(om$flts$A$i,"quotashare") <- quantSums(flq)/2
   
   stks <- FLStocks("i" = as.FLStock(om$stks$i, om$flts))
+  stks$i@m.spwn[] <- 0
+  stks$i@harvest.spwn[] <- 0
   
   ## Other arguments
   ## --------------------------------------------------------------------------#
@@ -280,7 +282,7 @@ test_that("hcrMixME single-stock (FLStocks) ICES HCR works", {
                frq = 1,
                management_lag = 1)
   
-  hcrpars1   <- list("i" = c(Ftrgt = 0.5,  Btrigger = 1,   Blim =  0.25))
+  hcrpars1   <- list("i" = c(Ftrgt = 0.5,  Btrigger = 1, Blim =  0.25))
   hcrpars2   <- list("i" = c(Ftrgt = 0.5,  Btrigger = 4, Blim =  0.25))
   hcrmethod <- list("i" = "hcrICES")
   hcrgroup  <- list("i" = "i")
@@ -289,6 +291,7 @@ test_that("hcrMixME single-stock (FLStocks) ICES HCR works", {
   ## Run function
   ## --------------------------------------------------------------------------#
   
+  ## FLStocks & SSB above Btrigger
   out1 <- hcrMixME(x = "i",
                    stk  = stks,
                    flt  = NULL,
@@ -301,6 +304,7 @@ test_that("hcrMixME single-stock (FLStocks) ICES HCR works", {
                    ftrg = NULL,
                    tracking = tracking)
   
+  ## FLStocks & SSB below Btrigger
   out2 <- hcrMixME(x = "i",
                    stk  = stks,
                    flt  = NULL,
