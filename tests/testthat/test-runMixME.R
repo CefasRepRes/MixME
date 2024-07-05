@@ -395,6 +395,110 @@ test_that("running a simple mixed fishery constant catch simulation works", {
 })
 
 ## ============================================================================#
+## Test running exceptions list
+## ============================================================================#
+
+test_that("exceptions list inputs work", {
+  
+  ## load libraries
+  library(FLCore)
+  library(FLFishery)
+  library(mse)
+  library(stockassessment)
+  library(MixME)
+  
+  ## load example data
+  data("mixedfishery_MixME_input")
+  
+  ## define exceptions list
+  mixedfishery_MixME_input$ctrl_obj$fwd@args$exceptions <- list("OTB_A" = c("cod","had"),
+                                                                "OTB_B" = "cod")
+  
+  res <- runMixME(om  = mixedfishery_MixME_input$om, 
+                  oem = mixedfishery_MixME_input$oem,
+                  ctrl_obj = mixedfishery_MixME_input$ctrl_obj,
+                  args     = mixedfishery_MixME_input$args)
+  
+  # ## Check outputs
+  expect_true(all(apply(res$tracking$iterfail, 1, mean) == 0))
+  expect_true(all(res$tracking$optim["convergence",,] == 0))
+  expect_true(all(round(res$tracking$optim["objective",,],5) == 0))
+  expect_true(all(round(apply(res$tracking$quota, c(1,3), sum),5) == 1000))
+  
+  ## expect both fleets have overquota catches 
+  expect_true(all(round(res$tracking$overquota,3)["cod",,,1] > 0))
+  expect_true(all(round(res$tracking$overquota,3)["had","OTB_A",,1] > 0))
+  expect_true(all(round(res$tracking$overquota,3)["had","OTB_B",,1] == 0))
+  
+  ## expect fleet has constant effort
+  expect_equal(sd(res$om$flts$OTB_A@effort[,as.character(res$args$iy:res$args$fy)]),0)
+  
+  expect_no_error(plot_timeseries_MixME(res, quantity = "ssb"))
+  expect_no_error(plot_timeseries_MixME(res, quantity = "fbar"))
+  expect_no_error(plot_timeseries_MixME(res, quantity = "catch"))
+  expect_no_error(plot_timeseries_MixME(res, quantity = "uptake"))
+  expect_no_error(plot_timeseries_MixME(res, quantity = "effort", minyr = 2020))
+  
+  ## Add reference points
+  hcrpars <- list(cod = c(Blim = 107000), 
+                  had = c(Blim = 9227))
+  res$ctrl_obj$phcr <- mseCtrl(args   = list(hcrpars = hcrpars))
+  
+  ## Plot risk time-series
+  expect_no_error(plot_timeseries_MixME(res, quantity = "risk"))
+  
+})
+
+## ============================================================================#
+## Test change in effort type during simulation 
+## ============================================================================#
+
+test_that("effortType matrix works", {
+  
+  ## load libraries
+  library(FLCore)
+  library(FLFishery)
+  library(mse)
+  library(stockassessment)
+  library(MixME)
+  
+  ## load example data
+  data("mixedfishery_MixME_input")
+  
+  ## change effort type during simulation
+  mixedfishery_MixME_input$ctrl_obj$fwd@args$effortType <- matrix("sqE", 
+                                                                  nrow = length(mixedfishery_MixME_input$om$flts), 
+                                                                  ncol = length(mixedfishery_MixME_input$args$iy:mixedfishery_MixME_input$args$fy),
+                                                                  dimnames = list(names(mixedfishery_MixME_input$om$flts), 
+                                                                                  mixedfishery_MixME_input$args$iy:mixedfishery_MixME_input$args$fy))
+  mixedfishery_MixME_input$ctrl_obj$fwd@args$effortType[,as.character(2030:2039)] <- "min"
+  
+  
+  res <- runMixME(om  = mixedfishery_MixME_input$om, 
+                  oem = mixedfishery_MixME_input$oem,
+                  ctrl_obj = mixedfishery_MixME_input$ctrl_obj,
+                  args     = mixedfishery_MixME_input$args)
+  
+  # ## Check outputs
+  expect_true(all(apply(res$tracking$iterfail, 1, mean) == 0))
+  expect_true(all(is.na(res$tracking$optim["convergence",as.character(2020:2029),])))
+  expect_true(all(res$tracking$optim["convergence",as.character(2030:2039),] == 0))
+  expect_true(all(round(res$tracking$optim["objective",as.character(2030:2039),],5) == 0))
+  expect_true(all(round(apply(res$tracking$quota, c(1,3), sum),5) == 1000))
+  
+  ## expect both fleets have overquota catches under sqE
+  expect_true(all(round(res$tracking$overquota,3)["cod",,as.character(2020:2029),1] > 0))
+  expect_true(all(round(res$tracking$overquota,3)["cod",,as.character(2030:2039),1] == 0))
+  expect_true(all(round(res$tracking$overquota,3)["had",,as.character(2020:2029),1] > 0))
+  expect_true(all(round(res$tracking$overquota,3)["had",,as.character(2030:2039),1] == 0))
+  
+  ## expect fleet has constant effort
+  expect_equal(sd(res$om$flts$OTB_A@effort[,as.character(2020:2029)]),0)
+  expect_equal(sd(res$om$flts$OTB_B@effort[,as.character(2020:2029)]),0)
+  
+})
+
+## ============================================================================#
 ## Test running a simple mixed fishery constant fishing mortality simulation
 ## ============================================================================#
 

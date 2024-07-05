@@ -52,6 +52,15 @@ runMixME <- function(om,
   # Run check on inputs
   # ===========================================================================#
   
+  # This first chunk of code check inputs
+  #  1. correct naming of stock and fleet input objects
+  #  2. correct class for stock and fleet input objects
+  #  3. correct naming of fleet catches
+  #  4. availability of quota-share data
+  #  5. correct dimensions for catchability parameters
+  #  6. correct control object fwd arguments
+  #  7. correct args arguments
+  
   ## om must contain "stks" and "flts"
   if (!any(names(om) == "stks") | !any(names(om) == "flts")) 
     stop("'om' must contain stock and fleet data in 'stks' and 'flts' respectively")
@@ -85,9 +94,17 @@ runMixME <- function(om,
   if (!any(names(args) == c("management_lag"))) stop("management lag 'management_lag' missing in 'args'")
   
   ## check values of critical elements
-  if (!(ctrl_obj$fwd@args$adviceType %in% c("landings","catch"))) stop("'adviceType' must be 'landings' or 'catch'")
-  if (!(ctrl_obj$fwd@args$effortType %in% c("min","max","sqE")))  stop("'effortType' must be 'min','max' or 'sqE'")
+  if (!all(ctrl_obj$fwd@args$adviceType %in% c("landings","catch"))) stop("'adviceType' must be 'landings' or 'catch'")
+  if (!all(ctrl_obj$fwd@args$effortType %in% c("min","max","sqE")))  stop("'effortType' must be 'min','max' or 'sqE'")
   if (args$iy > args$fy) stop("Final year 'fy' must be greater than intermediate year 'iy'")
+  
+  # This second chunk handles missing inputs
+  # 1. handle missing managment lag
+  # 2. handle missing advice frequency
+  # 3. handle missing exceptions
+  # 4. handle missing multiplier
+  # 5. handle non-matrix effortType
+  # 6. handle non-matrix exceptions
   
   ## handle missing arguments
   if (is.null(args$management_lag)) args$management_lag <- 1 # default management lag to 1
@@ -99,6 +116,34 @@ runMixME <- function(om,
   if (is.null(ctrl_obj$fwd@args$exceptions)) ctrl_obj$fwd@args$exceptions <- matrix(1, nrow = length(om$stks), ncol = length(om$flts), dimnames = list(names(om$stks),names(om$flts)))
   if (is.null(ctrl_obj$fwd@args$multiplier)) ctrl_obj$fwd@args$multiplier <- matrix(1, nrow = length(om$stks), ncol = length(om$flts), dimnames = list(names(om$stks),names(om$flts))) 
   
+  ## handle non-matrix effortType
+  if (!is.matrix(ctrl_obj$fwd@args$effortType)) {
+    tmp_effortType <- matrix(0, 
+           nrow = length(om$flts), 
+           ncol = length(args$iy:args$fy),
+           dimnames = list(names(om$flts), args$iy:args$fy))
+    tmp_effortType[] <- ctrl_obj$fwd@args$effortType
+    ctrl_obj$fwd@args$effortType <- tmp_effortType
+  }
+  
+  ## check that we don't have simultaneous min and max in a single year
+  if(any(apply(ctrl_obj$fwd@args$effortType, 2, function(x) "min" %in% unique(x) & "max" %in% unique(x)))) 
+    stop("'effortType' cannot be both 'min' and 'max' in a single year")
+  
+  # This third chunk handle exceptions inputs in the form of a list.
+  # The value of this is that users can simple provide a list of fleets
+  # containing a vector stocks for which the fleet is not effort constrained.
+  
+  ## handle exceptions list inputs
+  if (is.list(ctrl_obj$fwd@args$exceptions)) {
+    tmp_exception <- matrix(1, nrow = length(om$stks), ncol = length(om$flts), dimnames = list(names(om$stks),names(om$flts)))
+    for(ii in names(ctrl_obj$fwd@args$exceptions)){
+      tmp_exception[ctrl_obj$fwd@args$exceptions[[ii]],ii] <- 0
+    }
+    ctrl_obj$fwd@args$exceptions <- tmp_exception
+  }
+
+  ## handle exceptions and multiplier errors
   if(!all(c(ctrl_obj$fwd@args$exceptions) %in% c(0,1))) stop("'exceptions' must contain only 0 or 1 values") # make sure that 'exceptions' are 1 or 0
   if(any(c(ctrl_obj$fwd@args$multiplier) < 0)) stop("'multiplier' must contain positive values only")
   if(all(c(ctrl_obj$fwd@args$multiplier) == 0)) stop("'multiplier' cannot all be zero!")

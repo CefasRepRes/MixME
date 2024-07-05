@@ -158,6 +158,12 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
     # Optimise fleet activity
     # -------------------------------------------------------------------------#
     
+    ## if any effortType is status quo effort then update exceptions 
+    exceptions[,names(effortType[,as.character(yr)])[which(effortType[,as.character(yr)] == "sqE")]] <- 0
+    
+    ## condense effortType
+    effortType <- unique(effortType[,as.character(yr)])[unique(effortType[,as.character(yr)]) != "sqE"]
+    
     ## only run optimisation if at least 1 fleet has dynamic effort
     if(any(colSums(exceptions) > 0)) {
       
