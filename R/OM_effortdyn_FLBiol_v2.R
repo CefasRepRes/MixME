@@ -55,10 +55,18 @@
 #'               stock.
 #' @param useCpp (Optional) Logical. Should data be processed using faster C++ code?
 #'               Defaults to \code{TRUE}.
+#' @param avgE_nyear  Integer. Number of reference years for the calculation of average
+#'               fleet effort. 
+#' @param process_residuals Defaults to \code{NULL}.
 #'
 #' @export
 
-FLBiols2List <- function(om, year, advice, useCpp = TRUE, process_residuals = NULL) {
+FLBiols2List <- function(om, 
+                         year, 
+                         advice, 
+                         useCpp = TRUE, 
+                         avgE_nyear  = 1,
+                         process_residuals = NULL) {
   
   # NOTE! CURRENTLY ASSUMES THAT CATCH.Q IS FLPAR... MIGHT WANT TO CHANGE THIS...
   # NOTE! R version CURRENTLY ASSUMES THAT ALL FLEETS CATCH ALL STOCKS ... FIX THIS!
@@ -142,8 +150,13 @@ FLBiols2List <- function(om, year, advice, useCpp = TRUE, process_residuals = NU
   if(useCpp == TRUE) {
     
     ## Call c++ function
-    omList <- flr_to_list(om = om, advice = advice, year = year,
-                          nstock = nstk, nfleet = nflt, niter = ni)
+    omList <- flr_to_list(om     = om, 
+                          advice = advice, 
+                          year   = year,
+                          nstock = nstk, 
+                          nfleet = nflt, 
+                          niter  = ni,
+                          avgE_nyear = avgE_nyear)
     
   }
   

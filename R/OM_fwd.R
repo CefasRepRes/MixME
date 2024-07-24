@@ -15,14 +15,23 @@
 #' @param args     list of additional arguments
 #' @param tracking a named list of tracking objects to monitor emergent dynamic
 #'                 properties. Contains catch advice for each stock.
-#' @param sr_residuals_mult (Optional) Logical. Are stock recruitment residuals
-#'                          multiplicative? Defaults to \code{TRUE}.
-#' @param effort_max (Optional) Numeric value indicating the maximum allowed
-#'                   fishing effort for any fleet. Defaults to 100 and
-#'                   cannot be \code{NULL}.
+#' @param sr_residuals (Optional) \code{FLQuants} or \code{list}. Multiplicative
+#'                     stock recruitment residuals. Defaults to \code{NULL}.
 #' @param proc_res (Optional) Character. Where is process error noise stored?
 #'                 If \code{NULL}, no process error is applied to stock numbers.
 #'                 Defaults to \code{NULL}.
+#' @param adviceType Character. The basis of management advice. 
+#'                   Can be 'catch' or 'landings'.'f' is not yet possible.
+#' @param effortType Character. The basis of effort constraint. Can be 'max', 'min'
+#'                   or 'sqE'.
+#' @param exceptions Matrix (stock, fleet). Can be 0 or 1. 
+#' @param multiplier Matrix (stock, fleet). Defaults to 1.
+#' @param nyear      (Optional) Number of reference years for the calculation of
+#'                   status quo effort. Defaults to \code{NULL}.
+#' @param effort_max (Optional) Integer indicating the maximum allowed
+#'                   fishing effort for any fleet. Defaults to 100 and
+#'                   cannot be \code{NULL}.
+
 #'
 #' @return A list containing the \code{FLBiols} and \code{FLFisheries} objects
 #'         with projected stock numbers, fleet efforts, and fleet-stock landings
@@ -39,6 +48,7 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
                      effortType,
                      exceptions,
                      multiplier,
+                     nyear      = NULL,   # number of years for status quo effort
                      effort_max = 100,    # maximum allowed fishing effort
                      ...) {
 
@@ -96,6 +106,9 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
     if(is.list(sr_residuals))
       sr_residuals <- FLQuants(sr_residuals)
   
+  ## handle missing reference years for status quo effort
+  if (is.null(nyear)) nyear <- 1
+  
   # ===========================================================================#
   # Process Advice
   # ===========================================================================#
@@ -152,6 +165,7 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
                            year = yr,
                            advice = advice,
                            useCpp = TRUE,
+                           avgE_nyear = ifelse(yr > iy, 1, nyear),
                            process_residuals = proc_res)
 
     # -------------------------------------------------------------------------#

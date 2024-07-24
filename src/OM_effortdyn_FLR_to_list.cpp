@@ -2,7 +2,7 @@
 using namespace Rcpp;
 
 // [[Rcpp::export]]
-List flr_to_list(List om, List advice, int year, int nstock, int nfleet, int niter){
+List flr_to_list(List om, List advice, int year, int nstock, int nfleet, int niter, int avgE_nyear){
 
   // Clone operating model to avoid overwriting original object
   List omc = clone(om);
@@ -415,21 +415,32 @@ List flr_to_list(List om, List advice, int year, int nstock, int nfleet, int nit
       CharacterVector dimnameYear   = flt_eff_Dimnames["year"];   // year
       NumericVector flt_eff_Dims = flt_effort.attr("dim");
       
+      // create numeric vector to hold yearly efforts
+      NumericVector flt_eff_yrs(avgE_nyear);
+      
       // create index for year of interest (previous year)
       int minyr = atoi(dimnameYear[0]); // convert from element of CharacterVector to integer
       int yr = (year-minyr);
       
-      // Generate index for quotashare
-      int idx_eff =
-        (flt_eff_Dims[4] * flt_eff_Dims[3] * flt_eff_Dims[2] * flt_eff_Dims[1] * flt_eff_Dims[0] * (it)) +
-        (flt_eff_Dims[3] * flt_eff_Dims[2] * flt_eff_Dims[1] * flt_eff_Dims[0] * (1 - 1)) + // points to area (assumed to be 1)
-        (flt_eff_Dims[2] * flt_eff_Dims[1] * flt_eff_Dims[0] * (1 - 1)) + // points to season (assumed to be 1)
-        (flt_eff_Dims[1] * flt_eff_Dims[0] * (1 - 1)) + // points to unit (assumed to be 1)
-        (flt_eff_Dims[0] * (yr-1)) +
-        (0);
+      // Loop over each reference year for average effort
+      for (int refyr = 0; refyr < avgE_nyear; refyr++) {
+        
+        // Generate index for fleet effort
+        int idx_eff =
+          (flt_eff_Dims[4] * flt_eff_Dims[3] * flt_eff_Dims[2] * flt_eff_Dims[1] * flt_eff_Dims[0] * (it)) +
+          (flt_eff_Dims[3] * flt_eff_Dims[2] * flt_eff_Dims[1] * flt_eff_Dims[0] * (1 - 1)) + // points to area (assumed to be 1)
+          (flt_eff_Dims[2] * flt_eff_Dims[1] * flt_eff_Dims[0] * (1 - 1)) + // points to season (assumed to be 1)
+          (flt_eff_Dims[1] * flt_eff_Dims[0] * (1 - 1)) + // points to unit (assumed to be 1)
+          (flt_eff_Dims[0] * (yr-1-refyr)) +
+          (0);
+        
+        // Insert efforts
+        flt_eff_yrs[refyr] = flt_effort[idx_eff];
+        
+      }
       
-      // Insert efforts
-      ef_flt[fl] = flt_effort[idx_eff];
+      // Calculate mean effort
+      ef_flt[fl] = mean(flt_eff_yrs);
       
     } // END loop over fleets
     
