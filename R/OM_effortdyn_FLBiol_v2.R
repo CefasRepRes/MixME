@@ -60,6 +60,14 @@
 #' @param process_residuals Defaults to \code{NULL}.
 #'
 #' @export
+#' @examples
+#' ## load example data
+#' data("mixedfishery_MixME_input")
+#'
+#' ## run MixME simulation
+#' out <- FLBiols2List(om = mixedfishery_MixME_input$om,
+#'                     year = 2020,
+#'                     advice = list(cod = 1000, had = 1000))
 
 FLBiols2List <- function(om, 
                          year, 

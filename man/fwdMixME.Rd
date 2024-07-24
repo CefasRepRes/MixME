@@ -14,6 +14,7 @@ fwdMixME(
   effortType,
   exceptions,
   multiplier,
+  nyear = NULL,
   effort_max = 100,
   ...
 )
@@ -27,16 +28,29 @@ stock and fleet information in the Operating Model.}
 \item{tracking}{a named list of tracking objects to monitor emergent dynamic
 properties. Contains catch advice for each stock.}
 
+\item{sr_residuals}{(Optional) \code{FLQuants} or \code{list}. Multiplicative
+stock recruitment residuals. Defaults to \code{NULL}.}
+
 \item{proc_res}{(Optional) Character. Where is process error noise stored?
 If \code{NULL}, no process error is applied to stock numbers.
 Defaults to \code{NULL}.}
 
-\item{effort_max}{(Optional) Numeric value indicating the maximum allowed
+\item{adviceType}{Character. The basis of management advice.
+Can be 'catch' or 'landings'.'f' is not yet possible.}
+
+\item{effortType}{Character. The basis of effort constraint. Can be 'max', 'min'
+or 'sqE'.}
+
+\item{exceptions}{Matrix (stock, fleet). Can be 0 or 1.}
+
+\item{multiplier}{Matrix (stock, fleet). Defaults to 1.}
+
+\item{nyear}{(Optional) Number of reference years for the calculation of
+status quo effort. Defaults to \code{NULL}.}
+
+\item{effort_max}{(Optional) Integer indicating the maximum allowed
 fishing effort for any fleet. Defaults to 100 and
 cannot be \code{NULL}.}
-
-\item{sr_residuals_mult}{(Optional) Logical. Are stock recruitment residuals
-multiplicative? Defaults to \code{TRUE}.}
 }
 \value{
 A list containing the \code{FLBiols} and \code{FLFisheries} objects
