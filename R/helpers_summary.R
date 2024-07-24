@@ -336,7 +336,7 @@ summary_fbar_MixME <- function(object,
   
   ## define dimension names
   names(dimnames(res))[7] <- "stk"
-  dimnames(res)$stk       <- names(om$stks)
+  dimnames(res)$stk       <- unique(stkvector)
   
   # -------------------------------------------------
   # optional filter and return result
@@ -357,10 +357,10 @@ summary_fbar_MixME <- function(object,
   
   ## (optional) filter for specific years
   if(!is.null(minyr)) {
-    res <- res[res$year > minyr,]
+    res <- res[res$year >= minyr,]
   }
   if(!is.null(maxyr)) {
-    res <- res[res$year < maxyr,]
+    res <- res[res$year <= maxyr,]
   }
   
   return(res)

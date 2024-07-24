@@ -71,7 +71,8 @@ test_that("forward projection module for single-stock works", {
   tracking$i$advice[1, "9",] <- advice
   
   adviceType <- "catch"
-  effortType <- "min"
+  effortType <- matrix("min", nrow = 1, ncol = length(args$iy:args$fy), 
+                       dimnames = list(flt = "A", year = args$iy:args$fy))
   exceptions <- matrix(1, dimnames = list(stk = "i",
                                           flt = "A"))
   multiplier <- matrix(1, dimnames = list(stk = "i",
@@ -246,7 +247,8 @@ test_that("forward projection module for multi-stock works", {
   tracking$j$advice[1, "9",] <- advice
   
   adviceType <- "catch"
-  effortType <- "max"
+  effortType <- matrix("max", nrow = 1, ncol = length(args$iy:args$fy), 
+                       dimnames = list(flt = "A", year = args$iy:args$fy))
   exceptions <- matrix(c(1,1), dimnames = list(stk = c("i","j"),
                                           flt = "A"))
   multiplier <- matrix(c(1,1), dimnames = list(stk = c("i","j"),

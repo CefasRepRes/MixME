@@ -2,10 +2,13 @@
 % Please edit documentation in R/helpers_plotting_timeseries.R
 \name{plot_timeseries_MixME}
 \alias{plot_timeseries_MixME}
+\alias{plot_timeseries_MixME,list,missing-method}
+\alias{plot_timeseries_MixME,list,list-method}
 \title{Plot time-series of Operating Model properties}
 \usage{
 plot_timeseries_MixME(
   object,
+  alt,
   quantity,
   minyr = NULL,
   maxyr = NULL,
@@ -14,11 +17,45 @@ plot_timeseries_MixME(
   trajectories = NULL,
   quantiles = c(0.05, 0.25, 0.75, 0.95),
   addRefpts = TRUE,
-  keepFailedIters = TRUE
+  keepFailedIters = TRUE,
+  ...
+)
+
+\S4method{plot_timeseries_MixME}{list,missing}(
+  object,
+  alt,
+  quantity,
+  minyr = NULL,
+  maxyr = NULL,
+  stknames = NULL,
+  fltnames = NULL,
+  trajectories = NULL,
+  quantiles = c(0.05, 0.25, 0.75, 0.95),
+  addRefpts = TRUE,
+  keepFailedIters = TRUE,
+  ...
+)
+
+\S4method{plot_timeseries_MixME}{list,list}(
+  object,
+  alt,
+  quantity,
+  minyr = NULL,
+  maxyr = NULL,
+  stknames = NULL,
+  fltnames = NULL,
+  trajectories = NULL,
+  quantiles = c(0.05, 0.25, 0.75, 0.95),
+  addRefpts = TRUE,
+  keepFailedIters = TRUE,
+  ...
 )
 }
 \arguments{
 \item{object}{The output from a \code{MixME} simulation.}
+
+\item{alt}{(Optional) The output from an alternative \code{MixME} simulation to
+be compared}
 
 \item{quantity}{\code{Character}. The operating model property to be visualised.
 Options are "ssb", "effort", "catch", "uptake","fbar", and "f".}

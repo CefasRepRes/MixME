@@ -5,8 +5,8 @@ attach_attribute <- function(fisheries, attribute, fl, st, attribute_name) {
     .Call('_MixME_attach_attribute', PACKAGE = 'MixME', fisheries, attribute, fl, st, attribute_name)
 }
 
-flr_to_list <- function(om, advice, year, nstock, nfleet, niter) {
-    .Call('_MixME_flr_to_list', PACKAGE = 'MixME', om, advice, year, nstock, nfleet, niter)
+flr_to_list <- function(om, advice, year, nstock, nfleet, niter, avgE_nyear) {
+    .Call('_MixME_flr_to_list', PACKAGE = 'MixME', om, advice, year, nstock, nfleet, niter, avgE_nyear)
 }
 
 fwd_update_fleets <- function(om, om_fwd, tracking, year, adviceType) {

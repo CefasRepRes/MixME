@@ -27,8 +27,8 @@ BEGIN_RCPP
 END_RCPP
 }
 // flr_to_list
-List flr_to_list(List om, List advice, int year, int nstock, int nfleet, int niter);
-RcppExport SEXP _MixME_flr_to_list(SEXP omSEXP, SEXP adviceSEXP, SEXP yearSEXP, SEXP nstockSEXP, SEXP nfleetSEXP, SEXP niterSEXP) {
+List flr_to_list(List om, List advice, int year, int nstock, int nfleet, int niter, int avgE_nyear);
+RcppExport SEXP _MixME_flr_to_list(SEXP omSEXP, SEXP adviceSEXP, SEXP yearSEXP, SEXP nstockSEXP, SEXP nfleetSEXP, SEXP niterSEXP, SEXP avgE_nyearSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -38,7 +38,8 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< int >::type nstock(nstockSEXP);
     Rcpp::traits::input_parameter< int >::type nfleet(nfleetSEXP);
     Rcpp::traits::input_parameter< int >::type niter(niterSEXP);
-    rcpp_result_gen = Rcpp::wrap(flr_to_list(om, advice, year, nstock, nfleet, niter));
+    Rcpp::traits::input_parameter< int >::type avgE_nyear(avgE_nyearSEXP);
+    rcpp_result_gen = Rcpp::wrap(flr_to_list(om, advice, year, nstock, nfleet, niter, avgE_nyear));
     return rcpp_result_gen;
 END_RCPP
 }
@@ -60,7 +61,7 @@ END_RCPP
 
 static const R_CallMethodDef CallEntries[] = {
     {"_MixME_attach_attribute", (DL_FUNC) &_MixME_attach_attribute, 5},
-    {"_MixME_flr_to_list", (DL_FUNC) &_MixME_flr_to_list, 6},
+    {"_MixME_flr_to_list", (DL_FUNC) &_MixME_flr_to_list, 7},
     {"_MixME_fwd_update_fleets", (DL_FUNC) &_MixME_fwd_update_fleets, 5},
     {NULL, NULL, 0}
 };

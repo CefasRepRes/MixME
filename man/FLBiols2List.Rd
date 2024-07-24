@@ -4,7 +4,14 @@
 \alias{FLBiols2List}
 \title{Convert object into simple nested list structure}
 \usage{
-FLBiols2List(om, year, advice, useCpp = TRUE, process_residuals = NULL)
+FLBiols2List(
+  om,
+  year,
+  advice,
+  useCpp = TRUE,
+  avgE_nyear = 1,
+  process_residuals = NULL
+)
 }
 \arguments{
 \item{om}{A list of \code{FLBiols} and \code{FLFisheries} containing the relevant
@@ -17,6 +24,11 @@ stock.}
 
 \item{useCpp}{(Optional) Logical. Should data be processed using faster C++ code?
 Defaults to \code{TRUE}.}
+
+\item{avgE_nyear}{Integer. Number of reference years for the calculation of average
+fleet effort.}
+
+\item{process_residuals}{Defaults to \code{NULL}.}
 }
 \description{
 This function converts the linked \code{FLBiols} and \code{FLFisheries}
@@ -58,4 +70,13 @@ ith stock (age x fleet)
 \item \code{quotashare}: a matrix of proportional quota-share (stock x fleet)
 }
 }
+}
+\examples{
+## load example data
+data("mixedfishery_MixME_input")
+
+## run MixME simulation
+out <- FLBiols2List(om = mixedfishery_MixME_input$om,
+                    year = 2020,
+                    advice = list(cod = 1000, had = 1000))
 }

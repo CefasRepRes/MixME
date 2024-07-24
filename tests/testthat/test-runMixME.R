@@ -1,3 +1,12 @@
+# 1. Test conditioning a simple single-stock operating model works
+# 2. Test conditioning a simple mixed fishery Operating Model works
+# 3. Test running a simple mixed fishery constant catch simulation
+# 4. Test running a simple mixed fishery with exceptions to stock quota-limits
+# 5. Test change in effort type during simulation 
+# 6. Test running a simple mixed fishery constant fishing mortality simulation
+# 7. Test error catching
+# 8. Test changing number of reference years for calculation of status quo effort
+
 ## ============================================================================#
 ## Test conditioning simple single-stock Operating Model
 ## ============================================================================#
@@ -395,6 +404,110 @@ test_that("running a simple mixed fishery constant catch simulation works", {
 })
 
 ## ============================================================================#
+## Test running stock exceptions list
+## ============================================================================#
+
+test_that("exceptions list inputs work", {
+  
+  ## load libraries
+  library(FLCore)
+  library(FLFishery)
+  library(mse)
+  library(stockassessment)
+  library(MixME)
+  
+  ## load example data
+  data("mixedfishery_MixME_input")
+  
+  ## define exceptions list
+  mixedfishery_MixME_input$ctrl_obj$fwd@args$exceptions <- list("OTB_A" = c("cod","had"),
+                                                                "OTB_B" = "cod")
+  
+  res <- runMixME(om  = mixedfishery_MixME_input$om, 
+                  oem = mixedfishery_MixME_input$oem,
+                  ctrl_obj = mixedfishery_MixME_input$ctrl_obj,
+                  args     = mixedfishery_MixME_input$args)
+  
+  # ## Check outputs
+  expect_true(all(apply(res$tracking$iterfail, 1, mean) == 0))
+  expect_true(all(res$tracking$optim["convergence",,] == 0))
+  expect_true(all(round(res$tracking$optim["objective",,],5) == 0))
+  expect_true(all(round(apply(res$tracking$quota, c(1,3), sum),5) == 1000))
+  
+  ## expect both fleets have overquota catches 
+  expect_true(all(round(res$tracking$overquota,3)["cod",,,1] > 0))
+  expect_true(all(round(res$tracking$overquota,3)["had","OTB_A",,1] > 0))
+  expect_true(all(round(res$tracking$overquota,3)["had","OTB_B",,1] == 0))
+  
+  ## expect fleet has constant effort
+  expect_equal(sd(res$om$flts$OTB_A@effort[,as.character(res$args$iy:res$args$fy)]),0)
+  
+  expect_no_error(plot_timeseries_MixME(res, quantity = "ssb"))
+  expect_no_error(plot_timeseries_MixME(res, quantity = "fbar"))
+  expect_no_error(plot_timeseries_MixME(res, quantity = "catch"))
+  expect_no_error(plot_timeseries_MixME(res, quantity = "uptake"))
+  expect_no_error(plot_timeseries_MixME(res, quantity = "effort", minyr = 2020))
+  
+  ## Add reference points
+  hcrpars <- list(cod = c(Blim = 107000), 
+                  had = c(Blim = 9227))
+  res$ctrl_obj$phcr <- mseCtrl(args   = list(hcrpars = hcrpars))
+  
+  ## Plot risk time-series
+  expect_no_error(plot_timeseries_MixME(res, quantity = "risk"))
+  
+})
+
+## ============================================================================#
+## Test change in effort type during simulation 
+## ============================================================================#
+
+test_that("effortType matrix works", {
+  
+  ## load libraries
+  library(FLCore)
+  library(FLFishery)
+  library(mse)
+  library(stockassessment)
+  library(MixME)
+  
+  ## load example data
+  data("mixedfishery_MixME_input")
+  
+  ## change effort type during simulation
+  mixedfishery_MixME_input$ctrl_obj$fwd@args$effortType <- matrix("sqE", 
+                                                                  nrow = length(mixedfishery_MixME_input$om$flts), 
+                                                                  ncol = length(mixedfishery_MixME_input$args$iy:mixedfishery_MixME_input$args$fy),
+                                                                  dimnames = list(names(mixedfishery_MixME_input$om$flts), 
+                                                                                  mixedfishery_MixME_input$args$iy:mixedfishery_MixME_input$args$fy))
+  mixedfishery_MixME_input$ctrl_obj$fwd@args$effortType[,as.character(2030:2039)] <- "min"
+  
+  
+  res <- runMixME(om  = mixedfishery_MixME_input$om, 
+                  oem = mixedfishery_MixME_input$oem,
+                  ctrl_obj = mixedfishery_MixME_input$ctrl_obj,
+                  args     = mixedfishery_MixME_input$args)
+  
+  # ## Check outputs
+  expect_true(all(apply(res$tracking$iterfail, 1, mean) == 0))
+  expect_true(all(is.na(res$tracking$optim["convergence",as.character(2020:2029),])))
+  expect_true(all(res$tracking$optim["convergence",as.character(2030:2039),] == 0))
+  expect_true(all(round(res$tracking$optim["objective",as.character(2030:2039),],5) == 0))
+  expect_true(all(round(apply(res$tracking$quota, c(1,3), sum),5) == 1000))
+  
+  ## expect both fleets have overquota catches under sqE
+  expect_true(all(round(res$tracking$overquota,3)["cod",,as.character(2020:2029),1] > 0))
+  expect_true(all(round(res$tracking$overquota,3)["cod",,as.character(2030:2039),1] == 0))
+  expect_true(all(round(res$tracking$overquota,3)["had",,as.character(2020:2029),1] > 0))
+  expect_true(all(round(res$tracking$overquota,3)["had",,as.character(2030:2039),1] == 0))
+  
+  ## expect fleet has constant effort
+  expect_equal(sd(res$om$flts$OTB_A@effort[,as.character(2020:2029)]),0)
+  expect_equal(sd(res$om$flts$OTB_B@effort[,as.character(2020:2029)]),0)
+  
+})
+
+## ============================================================================#
 ## Test running a simple mixed fishery constant fishing mortality simulation
 ## ============================================================================#
 
@@ -614,5 +727,70 @@ test_that("runMixME catches errors", {
   ## Wrong simulation arguments
   t9 <- mixedfishery_MixME_input$args
   t9$fy <- 2019; expect_error(runMixME(t0$om, t0$oem, t0$ctrl_obj, t9), "Final year 'fy' must be greater than intermediate year 'iy'")
+  
+})
+
+## ============================================================================#
+## Test Change in reference year for calculation of status quo effort
+## ============================================================================#
+
+test_that("change in n years for calculation of Sq E works", {
+  
+  ## load libraries
+  library(FLCore)
+  library(FLFishery)
+  library(mse)
+  library(stockassessment)
+  library(MixME)
+  
+  ## load example data
+  data("mixedfishery_MixME_input")
+  
+  ## change effort type during simulation
+  mixedfishery_MixME_input$ctrl_obj$fwd@args$effortType <- matrix("sqE", 
+                                                                  nrow = length(mixedfishery_MixME_input$om$flts), 
+                                                                  ncol = length(mixedfishery_MixME_input$args$iy:mixedfishery_MixME_input$args$fy),
+                                                                  dimnames = list(names(mixedfishery_MixME_input$om$flts), 
+                                                                                  mixedfishery_MixME_input$args$iy:mixedfishery_MixME_input$args$fy))
+  
+  ## test biols2list
+  inputlist1 <- FLBiols2List(om = mixedfishery_MixME_input$om,
+                             year = 2020,
+                             advice = list(cod = 1000, had = 1000),
+                             useCpp = TRUE,
+                             avgE_nyear = 1,
+                             process_residuals = NULL)
+  
+  inputlist2 <- FLBiols2List(om = mixedfishery_MixME_input$om,
+                             year = 2020,
+                             advice = list(cod = 1000, had = 1000),
+                             useCpp = TRUE,
+                             avgE_nyear = 3,
+                             process_residuals = NULL)
+  
+  expect_equal(c(mixedfishery_MixME_input$om$flts$OTB_A@effort[,"2019"]), unname(inputlist1[[1]]$effort[1]))
+  expect_equal(c(mixedfishery_MixME_input$om$flts$OTB_B@effort[,"2019"]), unname(inputlist1[[1]]$effort[2]))
+  
+  expect_equal(mean(mixedfishery_MixME_input$om$flts$OTB_A@effort[,ac(2017:2019)]), unname(inputlist2[[1]]$effort[1]))
+  expect_equal(mean(mixedfishery_MixME_input$om$flts$OTB_B@effort[,ac(2017:2019)]), unname(inputlist2[[1]]$effort[2]))
+  
+  ## check that higher-level year specification works
+  res1 <- runMixME(om  = mixedfishery_MixME_input$om, 
+                   oem = mixedfishery_MixME_input$oem,
+                   ctrl_obj = mixedfishery_MixME_input$ctrl_obj,
+                   args     = mixedfishery_MixME_input$args)
+  
+  mixedfishery_MixME_input$ctrl_obj$fwd@args$nyear <- 3 # number of reference years
+  
+  res2 <- runMixME(om  = mixedfishery_MixME_input$om, 
+                   oem = mixedfishery_MixME_input$oem,
+                   ctrl_obj = mixedfishery_MixME_input$ctrl_obj,
+                   args     = mixedfishery_MixME_input$args)
+  
+  expect_equal(c(res1$om$flts$OTB_A@effort[,"2020"]), unname(inputlist1[[1]]$effort[1]))
+  expect_equal(c(res1$om$flts$OTB_B@effort[,"2020"]), unname(inputlist1[[1]]$effort[2]))
+  
+  expect_equal(c(res2$om$flts$OTB_A@effort[,"2020"]), unname(inputlist2[[1]]$effort[1]))
+  expect_equal(c(res2$om$flts$OTB_B@effort[,"2020"]), unname(inputlist2[[1]]$effort[2]))
   
 })
