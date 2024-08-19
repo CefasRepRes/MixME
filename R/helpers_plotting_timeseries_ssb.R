@@ -78,11 +78,11 @@ plot_ssb_MixME <- function(res,
   if(!is.null(Refpts)) {
     if(!is.null(Refpts$Btrigger)) {
       plot_out <- plot_out + 
-        geom_hline(aes(x = year, yintercept = Btrigger), linetype = 3, data = Refpts)
+        geom_hline(aes(yintercept = Btrigger), linetype = 3, data = Refpts)
     }
     if(!is.null(Refpts$Blim)) {
       plot_out <- plot_out + 
-        geom_hline(aes(x = year, yintercept = Blim), linetype = 3, data = Refpts)
+        geom_hline(aes(yintercept = Blim), linetype = 3, data = Refpts)
     }
   }
   

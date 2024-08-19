@@ -25,7 +25,7 @@ plot_risk_MixME <- function(res,
   
   plot_out <- plot_out +
     geom_line(aes(x = year, y = risk), colour = colour, data = res) +
-    geom_hline(aes(yintercept = 0.05), linetype = 2)
+    geom_hline(yintercept = 0.05, linetype = 2)
   
   return(plot_out)
   
