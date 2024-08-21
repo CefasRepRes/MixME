@@ -140,17 +140,23 @@ summary_catch_MixME <- function(object,
   # calculate summary quantity and correct dimensions
   # -------------------------------------------------
   
+  bb <- function(...) {
+    arglist <- (...)
+    dimx      <- c(dim(arglist[[1]]), length(arglist))
+    dimnamesx <- c(dimnames(arglist[[1]]), list(names(arglist)))
+    return(array(unlist(arglist), dim = dimx, dimnames = dimnamesx))
+  }
+  
   ## Generate 8D array
-  res <- sapply(names(om$stks), function(x){
-    catch_fleets <- sapply(names(om$flts), function(y){
+  res <- bb(lapply(names(om$stks), function(x){
+    catch_fleets <- bb(lapply(names(om$flts), function(y){
       if(!is.null(om$flts[[y]][[x]])) {
         catch(om$flts[[y]][[x]])[,ac(minyr:maxyr),drop = FALSE]
       } else {
         FLQuant(0, dimnames = list(year = ac(minyr:maxyr),
                                    iter = dimnames(om$flts[[y]])$iter))
       }
-    }, simplify = "array")}, 
-    simplify = "array")
+    }))}))
   
   ## (Optional) aggregate over fleets
   if(byfleet == TRUE) {
