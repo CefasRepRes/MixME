@@ -123,26 +123,13 @@ calcSurveyIndex <- function(stk, flt, idx, use_q = TRUE, use_time = TRUE) {
   ## extract stock numbers for requested/available dimensions
   index.n <- FLCore::n(stk)[ac(ages), ac(years),,,, ac(iter)]
   
-  ## Calculate F-at-age
-  Fa <- sapply(1:length(flt), function(f){
-    
-    ## if fleet catches stock
-    if(!is.null(flt[[f]][[stkname]])) {
-      
-      catch.q(flt[[f]][[stkname]])["alpha", ac(years), ac(iter)] %*% 
-        flt[[f]]@effort[, ac(years),,,, ac(iter)] %*% 
-        flt[[f]][[stkname]]@catch.sel[ac(ages), ac(years),,,, ac(iter)]
-      
-    } else {
-      
-      FLQuant(0, dimnames = list(age  = ages,
-                                 year = years,
-                                 iter = iter))
-      
-    }
-  }, simplify = "array")
-  
-  Fa <- FLCore::FLQuant(apply(Fa, c(1:6), sum))
+  ## Calculate F-at-age for requested ages/years
+  arr <- array(0, 
+               dim = c(dim(index.n),length(flt)), 
+               dimnames = c(dimnames(index.n), list(flt = names(flt))))
+  pFa <- fa_cpp(arr = arr, flts = flt, stockname = stkname)
+  Fa <- index.n
+  Fa[] <- apply(pFa, 1:6, sum)
   
   ## get Z = M & F
   Z <- FLCore::m(stk)[ac(ages), ac(years),,,, ac(iter)] + Fa

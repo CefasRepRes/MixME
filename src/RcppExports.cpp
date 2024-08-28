@@ -43,6 +43,19 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// fa_cpp
+NumericVector fa_cpp(NumericVector arr, S4 flts, CharacterVector stockname);
+RcppExport SEXP _MixME_fa_cpp(SEXP arrSEXP, SEXP fltsSEXP, SEXP stocknameSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericVector >::type arr(arrSEXP);
+    Rcpp::traits::input_parameter< S4 >::type flts(fltsSEXP);
+    Rcpp::traits::input_parameter< CharacterVector >::type stockname(stocknameSEXP);
+    rcpp_result_gen = Rcpp::wrap(fa_cpp(arr, flts, stockname));
+    return rcpp_result_gen;
+END_RCPP
+}
 // fwd_update_fleets
 List fwd_update_fleets(List om, List om_fwd, List tracking, int year, CharacterVector adviceType);
 RcppExport SEXP _MixME_fwd_update_fleets(SEXP omSEXP, SEXP om_fwdSEXP, SEXP trackingSEXP, SEXP yearSEXP, SEXP adviceTypeSEXP) {
@@ -62,6 +75,7 @@ END_RCPP
 static const R_CallMethodDef CallEntries[] = {
     {"_MixME_attach_attribute", (DL_FUNC) &_MixME_attach_attribute, 5},
     {"_MixME_flr_to_list", (DL_FUNC) &_MixME_flr_to_list, 7},
+    {"_MixME_fa_cpp", (DL_FUNC) &_MixME_fa_cpp, 3},
     {"_MixME_fwd_update_fleets", (DL_FUNC) &_MixME_fwd_update_fleets, 5},
     {NULL, NULL, 0}
 };
