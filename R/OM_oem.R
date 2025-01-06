@@ -324,7 +324,8 @@ oemMixME <- function(x,
     ## calculate index observations based on updated values in OM
     observations$idx[[x]] <- calculateSurvey(stk = om$stk[[x]], 
                                              flt = om$flt,
-                                             idx = observations$idx[[x]])
+                                             idx = observations$idx[[x]],
+                                             use_fastF = args$use_fastF)
     
     ## use observed survey indices
     idx0 <- observations$idx[[x]]

@@ -1,4 +1,5 @@
 #include <Rcpp.h>
+#include "getidx.h"
 using namespace Rcpp;
 
 // [[Rcpp::export]]
@@ -97,13 +98,7 @@ List flr_to_list(List om, List advice, int year, int nstock, int nfleet, int nit
         // int ai = atoi(dimnameAges[a]);
 
         // Generate index for element of interest
-        int idx =
-          (stk_n_Dims[4] * stk_n_Dims[3] * stk_n_Dims[2] * stk_n_Dims[1] * stk_n_Dims[0] * (it)) +
-          (stk_n_Dims[3] * stk_n_Dims[2] * stk_n_Dims[1] * stk_n_Dims[0] * (1 - 1)) + // points to area (assumed to be 1)
-          (stk_n_Dims[2] * stk_n_Dims[1] * stk_n_Dims[0] * (1 - 1)) + // points to season (assumed to be 1)
-          (stk_n_Dims[1] * stk_n_Dims[0] * (1 - 1)) + // points to unit (assumed to be 1)
-          (stk_n_Dims[0] * (yr)) +
-          (a);
+        int idx = getIdx_flq(stk_n_Dims, a, yr, 0, 0, 0, it);
 
         // Rcout << "extract age " << a << " element " << element << " value " << stk_n[element] << "\n";
 
@@ -222,13 +217,7 @@ List flr_to_list(List om, List advice, int year, int nstock, int nfleet, int nit
           for(int a = 0; a < stk_n_Dims[0]; a++){
 
             // Generate index for element of interest
-            int idx =
-              (stk_n_Dims[4] * stk_n_Dims[3] * stk_n_Dims[2] * stk_n_Dims[1] * stk_n_Dims[0] * (it)) +
-              (stk_n_Dims[3] * stk_n_Dims[2] * stk_n_Dims[1] * stk_n_Dims[0] * (1 - 1)) + // points to area (assumed to be 1)
-              (stk_n_Dims[2] * stk_n_Dims[1] * stk_n_Dims[0] * (1 - 1)) + // points to season (assumed to be 1)
-              (stk_n_Dims[1] * stk_n_Dims[0] * (1 - 1)) + // points to unit (assumed to be 1)
-              (stk_n_Dims[0] * (yr)) +
-              (a);
+            int idx = getIdx_flq(stk_n_Dims, a, yr, 0, 0, 0, it);
 
             // Insert value into matrix
             lw_stAgeFlt(a,fl) = cat_lw[idx];
@@ -349,23 +338,10 @@ List flr_to_list(List om, List advice, int year, int nstock, int nfleet, int nit
           // --------------------------
 
           // Generate index for catch.q
-          // int idx_cq =
-          //   (cat_cq_Dims[0] * (it)) +
-          //   (0);
-          
-          int idx_cq =
-            (cat_cq_Dims[1] * cat_cq_Dims[0] * (it)) +
-            (cat_cq_Dims[0] * (yr)) +
-            (0);
+          int idx_cq = getIdx_3D(cat_cq_Dims, 0, yr, it);
 
           // Generate index for quotashare
-          int idx_qs =
-            (cat_qs_Dims[4] * cat_qs_Dims[3] * cat_qs_Dims[2] * cat_qs_Dims[1] * cat_qs_Dims[0] * (it)) +
-            (cat_qs_Dims[3] * cat_qs_Dims[2] * cat_qs_Dims[1] * cat_qs_Dims[0] * (1 - 1)) + // points to area (assumed to be 1)
-            (cat_qs_Dims[2] * cat_qs_Dims[1] * cat_qs_Dims[0] * (1 - 1)) + // points to season (assumed to be 1)
-            (cat_qs_Dims[1] * cat_qs_Dims[0] * (1 - 1)) + // points to unit (assumed to be 1)
-            (cat_qs_Dims[0] * (yr)) +
-            (0);
+          int idx_qs = getIdx_flq(cat_qs_Dims, 0, yr, 0, 0, 0, it);
           
           // Throw an error if quota-share is NA (I need better error handling!)
           if(R_IsNA(cat_qs[idx_qs])) {
@@ -426,13 +402,7 @@ List flr_to_list(List om, List advice, int year, int nstock, int nfleet, int nit
       for (int refyr = 0; refyr < avgE_nyear; refyr++) {
         
         // Generate index for fleet effort
-        int idx_eff =
-          (flt_eff_Dims[4] * flt_eff_Dims[3] * flt_eff_Dims[2] * flt_eff_Dims[1] * flt_eff_Dims[0] * (it)) +
-          (flt_eff_Dims[3] * flt_eff_Dims[2] * flt_eff_Dims[1] * flt_eff_Dims[0] * (1 - 1)) + // points to area (assumed to be 1)
-          (flt_eff_Dims[2] * flt_eff_Dims[1] * flt_eff_Dims[0] * (1 - 1)) + // points to season (assumed to be 1)
-          (flt_eff_Dims[1] * flt_eff_Dims[0] * (1 - 1)) + // points to unit (assumed to be 1)
-          (flt_eff_Dims[0] * (yr-1-refyr)) +
-          (0);
+        int idx_eff = getIdx_flq(flt_eff_Dims, 0, (yr-1-refyr), 0, 0, 0, it);
         
         // Insert efforts
         flt_eff_yrs[refyr] = flt_effort[idx_eff];

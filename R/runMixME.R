@@ -162,6 +162,8 @@ runMixME <- function(om,
   ## Infer some simulation arguments if these are not provided
   if (is.null(args$verbose))
     args$verbose <- FALSE
+  if (is.null(args$use_fastF))
+    args$use_fastF <- TRUE
   
   ## If banking and borrowing is used make sure forecast extends to TACyr+1 
   ## --- do I really want to hard code this procedure?? Maybe better to bundle

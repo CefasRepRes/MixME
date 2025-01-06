@@ -1,4 +1,5 @@
 #include <Rcpp.h>
+#include "getidx.h"
 using namespace Rcpp;
 
 // [[Rcpp::export]]
@@ -122,27 +123,10 @@ NumericVector fa_cpp(NumericVector arr,
             }
             
             // Generate index for element of interest
-            int idx_sl =
-              (stk_Dims[4] * stk_Dims[3] * stk_Dims[2] * stk_Dims[1] * stk_Dims[0] * (it)) +
-              (stk_Dims[3] * stk_Dims[2] * stk_Dims[1] * stk_Dims[0] * (1 - 1)) + // points to area (assumed to be 1)
-              (stk_Dims[2] * stk_Dims[1] * stk_Dims[0] * (1 - 1)) + // points to season (assumed to be 1)
-              (stk_Dims[1] * stk_Dims[0] * (1 - 1)) + // points to unit (assumed to be 1)
-              (stk_Dims[0] * (yidx)) +
-              (aidx);
-            
-            int idx_ef =
-              (eff_Dims[4] * eff_Dims[3] * eff_Dims[2] * eff_Dims[1] * eff_Dims[0] * (it)) +
-              (eff_Dims[3] * eff_Dims[2] * eff_Dims[1] * eff_Dims[0] * (1 - 1)) + // points to area (assumed to be 1)
-              (eff_Dims[2] * eff_Dims[1] * eff_Dims[0] * (1 - 1)) + // points to season (assumed to be 1)
-              (eff_Dims[1] * eff_Dims[0] * (1 - 1)) + // points to unit (assumed to be 1)
-              (eff_Dims[0] * (yidx)) +
-              (0);
-            
-            int idx_cq =
-              (q_Dims[1] * q_Dims[0] * (it)) +
-              (q_Dims[0] * (yidx)) +
-              (0);
-            
+            int idx_sl = getIdx_flq(stk_Dims, aidx, yidx, 0, 0, 0, it);
+            int idx_ef = getIdx_flq(eff_Dims, 0, yidx, 0, 0, 0, it);
+            int idx_cq = getIdx_3D(q_Dims, 0, yidx, it);
+
             // Generate index for element in results array
             int idx_ans =
               (arr_Dims[5] * arr_Dims[4] * arr_Dims[3] * arr_Dims[2] * arr_Dims[1] * arr_Dims[0] * (fl)) +

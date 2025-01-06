@@ -225,23 +225,38 @@ updateTrackingOM <- function(om, tracking, args, yr) {
     tracking[[x]]$stk["D.om",  ac(yr)] <- fltdiscardsx
     tracking[[x]]$stk["C.om",  ac(yr)] <- fltlandingsx + fltdiscardsx
     
-    ## Update harvest
-    fltFage <- sapply(1:length(om$flts), function(y){
+    ## Calculate fishing mortality at age
+    if(use_fastF) {
       
-      if(!is.null(om$flts[[y]][[x]])) {
-        om$flts[[y]][[x]]@catch.q[1,ac(yr)] %*% 
-          om$flts[[y]]@effort[,ac(yr)] %*% 
-          om$flts[[y]][[x]]@catch.sel[,ac(yr)]
-      } else {
+      ## use c++ calculation of fishing mortality
+      arr <- array(0, 
+                   dim = c(dim(om$stk[[x]]),length(om$flts)), 
+                   dimnames = c(dimnames(om$stk[[x]]), list(flt = names(om$flts))))
+      pFa <- fa_cpp(arr = arr, flts = om$flts, stockname = x)
+      Fage <- om$stk[[x]]@n
+      Fage[] <- apply(pFa, 1:6, sum)
+      
+    } else {
+      
+      ## use R code calculation of fishing mortality
+      fltFage <- sapply(1:length(om$flts), function(y){
         
-        ## A bit of a hacky way to retrieve correct dimensions
-        FLQuant(0, dimnames = list(age = dimnames(om$stk[[x]])$age, 
-                                   year = yr, 
-                                   iter = dimnames(om$stk[[x]])$iter))
-      }
-    }, simplify = "array")
-    
-    Fage <- apply(fltFage, c(1:6), sum)
+        if(!is.null(om$flts[[y]][[x]])) {
+          om$flts[[y]][[x]]@catch.q[1,ac(yr)] %*% 
+            om$flts[[y]]@effort[,ac(yr)] %*% 
+            om$flts[[y]][[x]]@catch.sel[,ac(yr)]
+        } else {
+          
+          ## A bit of a hacky way to retrieve correct dimensions
+          FLQuant(0, dimnames = list(age = dimnames(om$stk[[x]])$age, 
+                                     year = yr, 
+                                     iter = dimnames(om$stk[[x]])$iter))
+        }
+      }, simplify = "array")
+      Fage <- apply(fltFage, c(1:6), sum)
+    }
+
+    ## Update harvest
     tracking[[x]]$stk["F.om",  ac(yr)] <- 
       apply(Fage[ac(args$frange[[x]][1]:args$frange[[x]][2]),,,,,,drop = FALSE], c(2:6), mean)
     

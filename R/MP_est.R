@@ -222,16 +222,27 @@ estMixME <- function(x,
         }
         
         ## Calculate fishing mortality at age
-        fltFage <- sapply(fltnames,
-                          function(y){
-                            Fage <- catch.q(flt0[[y]][[x]])["alpha", ac(ay)] *
-                              flt0[[y]]@effort[,ac(ay)] %*%
-                              flt0[[y]][[x]]@catch.sel[,ac(ay)]
-                            
-                            Fage#[drop = TRUE]
-                          }, simplify = "array")
-        
-        totFage <- apply(fltFage, c(1:6), sum)
+        if (args$use_fastF == TRUE) {
+          arr <- array(0, 
+                       dim = c(dim(FLCore::n(stk0)),length(flt0)), 
+                       dimnames = c(dimnames(FLCore::n(stk0)), list(flt = names(flt0))))
+          fltFage <- fa_cpp(arr = arr, flts = flt0, stockname = x)
+          totFage <- FLCore::n(stk0)
+          totFage[] <- apply(fltFage, 1:6, sum)
+          
+        } else {
+          fltFage <- sapply(fltnames,
+                            function(y){
+                              Fage <- catch.q(flt0[[y]][[x]])["alpha", ac(ay)] *
+                                flt0[[y]]@effort[,ac(ay)] %*%
+                                flt0[[y]][[x]]@catch.sel[,ac(ay)]
+                              
+                              Fage#[drop = TRUE]
+                            }, simplify = "array")
+          
+          totFage <- apply(fltFage, c(1:6), sum)
+        }
+
         totFbar <- apply(totFage[ac(args$frange[[x]][1]:args$frange[[x]][2]),,,,,,drop = FALSE], c(2:6), mean)
         
         ## Update tracking object

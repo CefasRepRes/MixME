@@ -23,6 +23,8 @@
 #'              at age with survey catchability? Defaults to \code{TRUE}.
 #' @param use_time Logical. Use survey timing to correct available stock numbers
 #'                 for fishing and natural mortality. Defaults to \code{TRUE}.
+#' @param use_fastF Logical. Use fast c++ function to calculate fishing mortality
+#'                  at age? Defaults to \code{TRUE}.
 #' 
 #' @return an object of class \code{FLIndices} with the survey index stored in 
 #' the \code{index} slot. 
@@ -30,7 +32,7 @@
 #' @export
 
 setGeneric("calculateSurvey", function(stk, flt, idx, 
-                                       use_q = TRUE, use_time = TRUE) {
+                                       use_q = TRUE, use_time = TRUE, use_fastF = TRUE) {
   standardGeneric("calculateSurvey")
 })
 
@@ -41,10 +43,10 @@ setMethod(f = "calculateSurvey",
                                 flt = "FLFisheries",
                                 idx = "FLIndex"),
           definition = function(stk, flt, idx, 
-                                use_q = TRUE, use_time = TRUE) {
+                                use_q = TRUE, use_time = TRUE, use_fastF = TRUE) {
             
             calcSurveyIndex(stk = stk, flt = flt, idx = idx, 
-                            use_q = use_q, use_time = use_time)
+                            use_q = use_q, use_time = use_time, use_fastF = use_fastF)
             
           })
 
@@ -55,11 +57,11 @@ setMethod(f = "calculateSurvey",
                                 flt = "FLFisheries",
                                 idx = "FLIndices"),
           definition = function(stk, flt, idx, 
-                                use_q = TRUE, use_time = TRUE) {
+                                use_q = TRUE, use_time = TRUE, use_fastF = TRUE) {
             
             FLCore::FLIndices(lapply(X = idx, 
                    FUN = calcSurveyIndex, 
-                   stk = stk, flt = flt, use_q = use_q, use_time = use_time))
+                   stk = stk, flt = flt, use_q = use_q, use_time = use_time, use_fastF = use_fastF))
             
           })
 
@@ -70,14 +72,14 @@ setMethod(f = "calculateSurvey",
                                 flt = "FLFisheries",
                                 idx = "list"),
           definition = function(stk, flt, idx, 
-                                use_q = TRUE, use_time = TRUE) {
+                                use_q = TRUE, use_time = TRUE, use_fastF = TRUE) {
             
             Sidx <- lapply(X = names(stk),
                    function(x) {
                      calculateSurvey(stk = stk[[x]], 
                                      flt = flt,
                                      idx = idx[[x]],
-                                     use_q = use_q, use_time = use_time)
+                                     use_q = use_q, use_time = use_time, use_fastF = use_fastF)
                    })
             
             names(Sidx) <- names(stk)
@@ -86,7 +88,7 @@ setMethod(f = "calculateSurvey",
           })
 
 
-calcSurveyIndex <- function(stk, flt, idx, use_q = TRUE, use_time = TRUE) {
+calcSurveyIndex <- function(stk, flt, idx, use_q = TRUE, use_time = TRUE, use_fastF = TRUE) {
   
   ## extract stock name
   stkname <- name(stk)
@@ -124,12 +126,37 @@ calcSurveyIndex <- function(stk, flt, idx, use_q = TRUE, use_time = TRUE) {
   index.n <- FLCore::n(stk)[ac(ages), ac(years),,,, ac(iter)]
   
   ## Calculate F-at-age for requested ages/years
-  arr <- array(0, 
-               dim = c(dim(index.n),length(flt)), 
-               dimnames = c(dimnames(index.n), list(flt = names(flt))))
-  pFa <- fa_cpp(arr = arr, flts = flt, stockname = stkname)
-  Fa <- index.n
-  Fa[] <- apply(pFa, 1:6, sum)
+  if(use_fastF) {
+    
+    arr <- array(0, 
+                 dim = c(dim(index.n),length(flt)), 
+                 dimnames = c(dimnames(index.n), list(flt = names(flt))))
+    pFa <- fa_cpp(arr = arr, flts = flt, stockname = stkname)
+    Fa <- index.n
+    Fa[] <- apply(pFa, 1:6, sum)
+    
+  } else {
+    
+    Fa <- sapply(1:length(flt), function(f){
+      
+      ## if fleet catches stock
+      if(!is.null(flt[[f]][[stkname]])) {
+        
+        catch.q(flt[[f]][[stkname]])["alpha", ac(years), ac(iter)] %*% 
+          flt[[f]]@effort[, ac(years),,,, ac(iter)] %*% 
+          flt[[f]][[stkname]]@catch.sel[ac(ages), ac(years),,,, ac(iter)]
+        
+      } else {
+        
+        FLQuant(0, dimnames = list(age  = ages,
+                                   year = years,
+                                   iter = iter))
+        
+      }
+    }, simplify = "array")
+    
+    Fa <- FLCore::FLQuant(apply(Fa, c(1:6), sum))
+  }
   
   ## get Z = M & F
   Z <- FLCore::m(stk)[ac(ages), ac(years),,,, ac(iter)] + Fa
