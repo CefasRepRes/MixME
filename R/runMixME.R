@@ -164,6 +164,8 @@ runMixME <- function(om,
     args$verbose <- FALSE
   if (is.null(args$use_fastF))
     args$use_fastF <- TRUE
+  if (is.null(args$use_fastfwd))
+    args$use_fastfwd <- TRUE
   
   ## If banking and borrowing is used make sure forecast extends to TACyr+1 
   ## --- do I really want to hard code this procedure?? Maybe better to bundle

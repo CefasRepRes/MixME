@@ -9,6 +9,10 @@ flr_to_list <- function(om, advice, year, nstock, nfleet, niter, avgE_nyear) {
     .Call('_MixME_flr_to_list', PACKAGE = 'MixME', om, advice, year, nstock, nfleet, niter, avgE_nyear)
 }
 
+fast_fwd <- function(om, year, effort, recType, popType) {
+    .Call('_MixME_fast_fwd', PACKAGE = 'MixME', om, year, effort, recType, popType)
+}
+
 fa_cpp <- function(arr, flts, stockname) {
     .Call('_MixME_fa_cpp', PACKAGE = 'MixME', arr, flts, stockname)
 }
