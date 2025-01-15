@@ -23,9 +23,15 @@
 
 getFage <- function(stks, flts, stkname, yr = NULL, use_fastF = TRUE) {
   
+  if (class(stks)[1] =="FLBiols") {
+    stk <- stks[[stkname]]
+  } else {
+    stk <- stks
+  }
+  
   ## define year range for output
   if (is.null(yr)) {
-    yr <- dimnames(stks[[stkname]])$year
+    yr <- dimnames(stk)$year
   }
   
   # There are two methods that could be applied here:
@@ -38,10 +44,10 @@ getFage <- function(stks, flts, stkname, yr = NULL, use_fastF = TRUE) {
     
     ## use c++ calculation of fishing mortality
     arr <- array(0, 
-                 dim = c(dim(stks[[stkname]]),length(flts)), 
-                 dimnames = c(dimnames(stks[[stkname]]), list(flt = names(flts))))
+                 dim = c(dim(stk),length(flts)), 
+                 dimnames = c(dimnames(stk), list(flt = names(flts))))
     pFa <- fa_cpp(arr = arr, flts = flts, stockname = stkname)
-    Fage <- stks[[stkname]]@n
+    Fage <- stk@n
     Fage[] <- apply(pFa, 1:6, sum)
     Fage   <- Fage[,ac(yr)]
     
@@ -61,9 +67,9 @@ getFage <- function(stks, flts, stkname, yr = NULL, use_fastF = TRUE) {
     } else {
       
       ## A bit of a hacky way to retrieve correct dimensions
-      FLQuant(0, dimnames = list(age = dimnames(stks[[stkname]])$age, 
+      FLQuant(0, dimnames = list(age = dimnames(stk)$age, 
                                  year = yr, 
-                                 iter = dimnames(stks[[stkname]])$iter))
+                                 iter = dimnames(stk)$iter))
     }
   }, simplify = "array")
   

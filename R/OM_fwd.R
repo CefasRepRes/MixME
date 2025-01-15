@@ -301,7 +301,8 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
     out <- projectFastfwd(om       = om,
                           tracking = tracking,
                           pars     = exp(pars),
-                          yr       = yr)
+                          yr       = yr,
+                          sr_residuals = sr_residuals)
     om       <- out$om
     tracking <- out$tracking
   }

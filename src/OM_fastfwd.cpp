@@ -9,7 +9,10 @@ List fast_fwd(List om,                    // [0] = FLBiols, [1] = FLFisheries
               int year,                   // 4-digit year
               NumericMatrix effort,       // effort for each fleet [nf,ni]
               CharacterVector recType,    // stock recruitment code for each stock
-              IntegerVector   popType) {  // population dynamics code for each stock
+              IntegerVector   popType,    // population dynamics code for each stock
+              List sr_residuals) {
+  
+  // Population Dynamics Code
   // - 0: age-structured
   // - 1: biomass-dynamics
   // - 2: fixed population
@@ -367,17 +370,23 @@ List fast_fwd(List om,                    // [0] = FLBiols, [1] = FLFisheries
           // - survsrr
           // - bevholtsig
           // - mixedsrr
-          //
-          // TO DO: Add recruitment deviances
+
+          // We want to pick up the SSB consistent with the age of the recruitment
+          // age group. So next year SSB if age=0, current year SSB if age=1,
+          // last year SSB if age=2.
+          
+          // Calculate recruitment lag
+          int minage = atoi(dimnameAges[0]);
           
           // Calculate spawning stock biomass
-          for (int a = 0; a < stk_n_Dims[0]; a++) {
-            int idx_get = getIdx_flq(stk_n_Dims, a, yr, 0, 0, 0, it);
+          ssb = 0;
+          for (int a = 1; a < stk_n_Dims[0]; a++) {
+            int idx_get = getIdx_flq(stk_n_Dims, a, yr+1-minage, 0, 0, 0, it);
             ssb += stk_n[idx_get] * stk_mat[idx_get] * stk_wt[idx_get];
           }
           
           // print SSB
-          // Rcout << "SSB " << ssb << "\n";
+          Rcout << "SSB " << ssb << "\n";
           
           // Extract parameters
           NumericVector params_rec  = stk_rec.slot("params");
@@ -391,13 +400,51 @@ List fast_fwd(List om,                    // [0] = FLBiols, [1] = FLFisheries
           }
           
           // print SR params
-          // Rcout << "SR params " << params << "\n";
+          Rcout << "SR params " << params << "\n";
           
           double rec = getRec(params, ssb, st, recType);
           
           // Index to insert results
           int idx_insert = getIdx_flq(stk_n_Dims, 0, yr+1, 0, 0, 0, it);
-          stk_n[idx_insert] = rec;
+          
+          // Recruitment Noise
+          // -------------------------------------------------------------------//
+          //
+          // We might have cases where recruitment error has a different year
+          // dimension compared to the Operating model. Hence, we need to match
+          // year indices to extract the correct values.
+          
+          // Extract stock-recruitment noise
+          NumericVector SRres = sr_residuals[st];
+          
+          // Extract stock-recruitment noise dimensions
+          NumericVector SRres_Dims = SRres.attr("dim");
+          List SRres_Dimnames      = SRres.attr("dimnames");
+          CharacterVector SRres_dimnameyear = SRres_Dimnames["year"];
+          
+          // Find year index
+          int yr_sr = -99;
+          for(int yr_id = 0; yr_id < SRres_Dims[1]; yr_id++) {
+            if(dimnameYear[yr] == SRres_dimnameyear[yr_id]) {
+              yr_sr = yr_id;
+            }
+          }
+          
+          if (yr_sr == -99) {stop("SR noise year dimensions do not match operating model dimensions!");}
+
+          int idx_SRres =
+            (SRres_Dims[4] * SRres_Dims[3] * SRres_Dims[2] * SRres_Dims[1] * SRres_Dims[0] * (it)) +
+            (SRres_Dims[3] * SRres_Dims[2] * SRres_Dims[1] * SRres_Dims[0] * (1-1)) + // points to area (assumed to be 1)
+            (SRres_Dims[2] * SRres_Dims[1] * SRres_Dims[0] * (1 - 1)) + // points to season (assumed to be 1)
+            (SRres_Dims[1] * SRres_Dims[0] * (1 - 1)) + // points to unit (assumed to be 1)
+            (SRres_Dims[0] * (yr_sr+1)) +
+            (0);
+          double SRresi = SRres[idx_SRres];
+          
+          // print SR residual
+          Rcout << "SR residual " << SRresi << "\n";
+          
+          stk_n[idx_insert] = rec * SRresi;
           
           // print recruitment
           // Rcout << "rec " << rec << "\n";
