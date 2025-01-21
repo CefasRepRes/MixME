@@ -152,7 +152,7 @@ NumericVector fa_cpp(NumericVector arr,
                 idx_ans =
                   (arr_Dims[5] * arr_Dims[4] * arr_Dims[3] * arr_Dims[2] * arr_Dims[1] * arr_Dims[0] * (fl)) +
                   (arr_Dims[4] * arr_Dims[3] * arr_Dims[2] * arr_Dims[1] * arr_Dims[0] * (it)) +
-                  (arr_Dims[3] * arr_Dims[2] * arr_Dims[1] * arr_Dims[0] * (mt)) + 
+                  (arr_Dims[3] * arr_Dims[2] * arr_Dims[1] * arr_Dims[0] * (1-1)) + 
                   (arr_Dims[2] * arr_Dims[1] * arr_Dims[0] * (1 - 1)) + // points to season (assumed to be 1)
                   (arr_Dims[1] * arr_Dims[0] * (1 - 1)) + // points to unit (assumed to be 1)
                   (arr_Dims[0] * (yr)) +
@@ -160,7 +160,7 @@ NumericVector fa_cpp(NumericVector arr,
               } else if (arr_Dimsize == 6) {
                 idx_ans =
                   (arr_Dims[4] * arr_Dims[3] * arr_Dims[2] * arr_Dims[1] * arr_Dims[0] * (it)) +
-                  (arr_Dims[3] * arr_Dims[2] * arr_Dims[1] * arr_Dims[0] * (mt)) + 
+                  (arr_Dims[3] * arr_Dims[2] * arr_Dims[1] * arr_Dims[0] * (1-1)) + 
                   (arr_Dims[2] * arr_Dims[1] * arr_Dims[0] * (1 - 1)) + // points to season (assumed to be 1)
                   (arr_Dims[1] * arr_Dims[0] * (1 - 1)) + // points to unit (assumed to be 1)
                   (arr_Dims[0] * (yr)) +

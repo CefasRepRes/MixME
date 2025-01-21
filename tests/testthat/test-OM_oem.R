@@ -4,6 +4,8 @@
 
 test_that("oemMixME outputs from FLStock oem", {
   
+  require(FLCore)
+  
   ## Generate token OM
   ## --------------------------------------------------------------------------#
   flq <- FLCore::FLQuant(1, 
@@ -27,22 +29,22 @@ test_that("oemMixME outputs from FLStock oem", {
   om$flts$A$`1`@landings.wt[] <- 1
   om$flts$A$`1`@discards.n[]  <- 1
   om$flts$A$`1`@discards.wt[] <- 1
-  om$flts$A$`1`@catch.q <- FLPar(1, 
+  om$flts$A$`1`@catch.q <- FLCore::FLPar(1, 
                              dimnames=list(params=c('alpha','beta'), 
                                            year = dimnames(flq)$year, 
                                            iter = dimnames(flq)$iter),
                              units='NA')
   om$flts$A$`1`@catch.sel[] <- 1
   om$flts$A@effort[] <- 1
-  attr(om$flts$A$`1`,"quotashare") <- quantSums(flq)/2
+  attr(om$flts$A$`1`,"quotashare") <- FLCore::quantSums(flq)/2
   
   ## Generate token observation and deviance structure
   ## --------------------------------------------------------------------------#
   
-  stk_oem <- FLStocks(FLStock(flq))
+  stk_oem <- FLCore::FLStocks(FLCore::FLStock(flq))
   stk_oem$`1`@catch.wt[] <- 1
   
-  idx_oem <- FLIndices(FLIndex(flq[2,]))
+  idx_oem <- FLCore::FLIndices(FLCore::FLIndex(flq[2,]))
   names(idx_oem) <- "X"
   idx_oem$X@index.q[] <- 0.5
   idx_oem$X@index[]   <- 1
@@ -64,7 +66,7 @@ test_that("oemMixME outputs from FLStock oem", {
   
   ## define additional inputs
   x  = "1"
-  args         = list(iy = 9, ay = 9, management_lag = 1)
+  args         = list(iy = 9, ay = 9, management_lag = 1, use_fastF = TRUE)
   tracking     = makeTracking(om, projyrs = c("9","10"))
   catch_timing = sapply(om$stks@names, function(x) -1, USE.NAMES = TRUE, simplify = FALSE)
   idx_timing   = sapply(om$stks@names, function(x) 
@@ -146,19 +148,19 @@ test_that("oemMixME outputs from OM", {
   om$flts$A$`1`@landings.wt[] <- 1
   om$flts$A$`1`@discards.n[]  <- 1
   om$flts$A$`1`@discards.wt[] <- 1
-  om$flts$A$`1`@catch.q <- FLPar(1, 
+  om$flts$A$`1`@catch.q <- FLCore::FLPar(1, 
                                  dimnames=list(params=c('alpha','beta'), 
                                                year = dimnames(flq)$year, 
                                                iter = dimnames(flq)$iter),
                                  units='NA')
   om$flts$A$`1`@catch.sel[] <- 1
   om$flts$A@effort[] <- 1
-  attr(om$flts$A$`1`,"quotashare") <- quantSums(flq)/2
+  attr(om$flts$A$`1`,"quotashare") <- FLCore::quantSums(flq)/2
   
   ## Generate token observation and deviance structure
   ## --------------------------------------------------------------------------#
   
-  idx_oem <- FLIndices(FLIndex(flq[2,]))
+  idx_oem <- FLCore::FLIndices(FLCore::FLIndex(flq[2,]))
   names(idx_oem) <- "X"
   idx_oem$X@index.q[] <- 0.5
   idx_oem$X@index[]   <- 1

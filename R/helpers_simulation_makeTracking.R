@@ -173,8 +173,8 @@ updateTrackingOM <- function(om, tracking, args, yr) {
   
   ## Extract landings and discards for each stock - unfortunately not the quickest
   ## function
-  fltlandings <- FLCore::landings(om$flts, by = "catch")
-  fltdiscards <- FLCore::discards(om$flts, by = "catch")
+  # fltlandings <- FLCore::landings(om$flts, by = "catch")
+  # fltdiscards <- FLCore::discards(om$flts, by = "catch")
   
   ## Update tracking object - True Stock Properties
   for(x in om$stks@names) {
@@ -187,8 +187,9 @@ updateTrackingOM <- function(om, tracking, args, yr) {
                   om$stks[[x]]@wt[,ac(yr)] * 
                   om$stks[[x]]@mat$mat[,ac(yr)])
     
-    ## Extract catches for stock - unfortunately, this only works if each stock is
-    ## caught by each fleet
+    ## Extract catches for stock
+    fltlandingsx <- getCW(om$flts, x, "landings", TRUE)[,ac(yr)]
+    fltdiscardsx <- getCW(om$flts, x, "discards", TRUE)[,ac(yr)]
     
     # fltcatches <- lapply(om$flts, "[[", x)
     # 
@@ -217,8 +218,8 @@ updateTrackingOM <- function(om, tracking, args, yr) {
     #   fltdiscards <- sum(fltdiscards)
     # }
 
-    fltlandingsx <- fltlandings[[x]][,ac(yr)]
-    fltdiscardsx <- fltdiscards[[x]][,ac(yr)]
+    # fltlandingsx <- fltlandings[[x]][,ac(yr)]
+    # fltdiscardsx <- fltdiscards[[x]][,ac(yr)]
     
     ## update landings, discards and catch numbers in tracking object
     tracking[[x]]$stk["L.om",  ac(yr)] <- fltlandingsx

@@ -87,25 +87,28 @@ oemMixME <- function(x,
     ## use observations object
     stk0 <- observations$stk[[x]]
     
-    ## Extract all catches for this stock
-    fltcatches <- lapply(om$flts, "[[", x)
+    ## Extract overall landings and discards for this stock
+    # fltcatches <- lapply(om$flts, "[[", x)
+    fltlandings <- getC(om$flts, x, sl = "landings.n", FALSE)
+    fltdiscards <- getC(om$flts, x, sl = "discards.n", FALSE)
     
     ## Extract names with catches
-    fltcatchesnames <- names(fltcatches)[!sapply(fltcatches, is.null)]
+    # fltcatchesnames <- names(fltcatches)[!sapply(fltcatches, is.null)]
     
     ## Calculate overall landings and discards
-    fltlandings <- sapply(fltcatchesnames, function(y){
-      fltcatches[[y]]@landings.n           
-    }, simplify = "array", USE.NAMES = TRUE)
+    # fltlandings <- sapply(fltcatchesnames, function(y){
+    #   fltcatches[[y]]@landings.n           
+    # }, simplify = "array", USE.NAMES = TRUE)
     
-    fltdiscards <- sapply(fltcatchesnames, function(y){
-      fltcatches[[y]]@discards.n
-    }, simplify = "array")
+    # fltdiscards <- sapply(fltcatchesnames, function(y){
+    #   fltcatches[[y]]@discards.n
+    # }, simplify = "array")
     
     ## Extract overall catch numbers-at-age
-    fltcatchn <- sapply(fltcatchesnames, function(y){
-      catch.n(fltcatches[[y]])
-    }, simplify = "array", USE.NAMES = TRUE)
+    fltcatchn <- fltlandings + fltdiscards
+    # fltcatchn <- sapply(fltcatchesnames, function(y){
+    #   catch.n(fltcatches[[y]])
+    # }, simplify = "array", USE.NAMES = TRUE)
     
     # If perfect observations
     # -----------------------#
@@ -116,19 +119,24 @@ oemMixME <- function(x,
       stk0discards <- apply(fltdiscards, c(1:6), sum)
       
       ## calculate updated weighted mean discards weights based on operating model
-      fltdiscardwts <- sapply(fltcatchesnames, function(y){
-        
-        ## calculate the proportional fleet contribution to overall discards
-        fltdiscardprop <- sweep(fltcatches[[y]]@discards.n, 
-                                c(1:6), 
-                                stk0discards, 
-                                "/") 
-        ## handle cases where no fleets discard
-        fltdiscardprop[is.nan(fltdiscardprop)] <- 0
-        
-        ## calculate weighted contribution of fleet to discards weights
-        fltdiscardprop * fltcatches[[y]]@discards.wt
-      }, simplify = "array")
+      # fltdiscardwts <- sapply(fltcatchesnames, function(y){
+      #   
+      #   ## calculate the proportional fleet contribution to overall discards
+      #   fltdiscardprop <- sweep(fltcatches[[y]]@discards.n, 
+      #                           c(1:6), 
+      #                           stk0discards, 
+      #                           "/") 
+      #   ## handle cases where no fleets discard
+      #   fltdiscardprop[is.nan(fltdiscardprop)] <- 0
+      #   
+      #   ## calculate weighted contribution of fleet to discards weights
+      #   fltdiscardprop * fltcatches[[y]]@discards.wt
+      # }, simplify = "array")
+      fltdiscardwts_all <- getC(om$flts, x,"discards.wt", FALSE)
+      fltdiscardprop    <- sweep(fltdiscards, 1:6, apply(fltdiscards,1:6,sum),"/")
+      fltdiscardwts_all[is.nan(fltdiscardwts_all)] <- 0
+      fltdiscardprop[is.nan(fltdiscardprop)]       <- 0
+      fltdiscardwts <- apply(fltdiscardprop * fltdiscardwts_all, 1:6, sum)
       
       stk0@discards.wt[] <- apply(fltdiscardwts, c(1:6), sum, na.rm = TRUE)
       

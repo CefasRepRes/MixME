@@ -334,6 +334,7 @@ List fast_fwd(List om,                    // [0] = FLBiols, [1] = FLFisheries
           // Survival
           // -------------------------------------------------------------------//
           
+          // loop over post-recruitment ages
           for (int a = 1; a < stk_n_Dims[0]; a++) {
             
             // Calculate index to extract total fishing mortality, natural mortality, numbers
@@ -378,15 +379,22 @@ List fast_fwd(List om,                    // [0] = FLBiols, [1] = FLFisheries
           // Calculate recruitment lag
           int minage = atoi(dimnameAges[0]);
           
+          // first zero-out recruitment-age numbers in yr+1 - this is important
+          // for handling age-0 recruitment SSB calculations
+          
+          // Index to insert results
+          int idx_insert = getIdx_flq(stk_n_Dims, 0, yr+1, 0, 0, 0, it);
+          stk_n[idx_insert] = 0;
+          
           // Calculate spawning stock biomass
           ssb = 0;
-          for (int a = 1; a < stk_n_Dims[0]; a++) {
+          for (int a = 0; a < stk_n_Dims[0]; a++) {
             int idx_get = getIdx_flq(stk_n_Dims, a, yr+1-minage, 0, 0, 0, it);
             ssb += stk_n[idx_get] * stk_mat[idx_get] * stk_wt[idx_get];
           }
           
           // print SSB
-          Rcout << "SSB " << ssb << "\n";
+          // Rcout << "SSB " << ssb << "\n";
           
           // Extract parameters
           NumericVector params_rec  = stk_rec.slot("params");
@@ -400,12 +408,9 @@ List fast_fwd(List om,                    // [0] = FLBiols, [1] = FLFisheries
           }
           
           // print SR params
-          Rcout << "SR params " << params << "\n";
+          // Rcout << "SR params " << params << "\n";
           
           double rec = getRec(params, ssb, st, recType);
-          
-          // Index to insert results
-          int idx_insert = getIdx_flq(stk_n_Dims, 0, yr+1, 0, 0, 0, it);
           
           // Recruitment Noise
           // -------------------------------------------------------------------//
@@ -442,7 +447,7 @@ List fast_fwd(List om,                    // [0] = FLBiols, [1] = FLFisheries
           double SRresi = SRres[idx_SRres];
           
           // print SR residual
-          Rcout << "SR residual " << SRresi << "\n";
+          // Rcout << "SR residual " << SRresi << "\n";
           
           stk_n[idx_insert] = rec * SRresi;
           
