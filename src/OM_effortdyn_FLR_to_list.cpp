@@ -67,8 +67,8 @@ List flr_to_list(List om, List advice, int year, int nstock, int nfleet, int nit
       List stk_n_Dimnames = stk_n.attr("dimnames");
       CharacterVector dimnameAges   = stk_n_Dimnames["age"];    // age
       CharacterVector dimnameYear   = stk_n_Dimnames["year"];   // year
-      CharacterVector dimnameUnit   = stk_n_Dimnames["unit"];   // unit
-      CharacterVector dimnameSeason = stk_n_Dimnames["season"]; // season
+      // CharacterVector dimnameUnit   = stk_n_Dimnames["unit"];   // unit
+      // CharacterVector dimnameSeason = stk_n_Dimnames["season"]; // season
 
       // Extract dimensions for natural mortality-at-age
       // List stk_m_Dimnames = stk_m.attr("dimnames");
@@ -153,8 +153,8 @@ List flr_to_list(List om, List advice, int year, int nstock, int nfleet, int nit
       List stk_n_Dimnames = stk_n.attr("dimnames");
       CharacterVector dimnameAges   = stk_n_Dimnames["age"];    // age
       CharacterVector dimnameYear   = stk_n_Dimnames["year"];   // year
-      CharacterVector dimnameUnit   = stk_n_Dimnames["unit"];   // unit
-      CharacterVector dimnameSeason = stk_n_Dimnames["season"]; // season
+      // CharacterVector dimnameUnit   = stk_n_Dimnames["unit"];   // unit
+      // CharacterVector dimnameSeason = stk_n_Dimnames["season"]; // season
 
       // Extract dimensions sizes
       NumericVector stk_n_Dims = stk_n.attr("dim");
@@ -164,6 +164,10 @@ List flr_to_list(List om, List advice, int year, int nstock, int nfleet, int nit
       NumericMatrix dw_stAgeFlt(stk_n_Dims[0], nfleet);
       NumericMatrix lf_stAgeFlt(stk_n_Dims[0], nfleet);
       NumericMatrix sl_stAgeFlt(stk_n_Dims[0], nfleet);
+      
+      // create index for year of interest
+      int minyr = atoi(dimnameYear[0]); // convert from element of CharacterVector to integer
+      int yr = (year-minyr);
 
       // Loop over fleets to process each variable
       for(int fl = 0; fl < nfleet; fl++){
@@ -188,6 +192,31 @@ List flr_to_list(List om, List advice, int year, int nstock, int nfleet, int nit
         }
 
         if(catsCheck != -99){
+          
+          // If the fleet catches the stock, we need to extract fleet effort and
+          // calculate the proportional effort-share across metiers to weight
+          // averages
+          
+          // Extract fleet effort slot
+          NumericVector flt_effort = fltS4.slot("effort");
+          
+          // Extract fleet effort dimensions
+          NumericVector flt_effort_Dims = flt_effort.attr("dim");
+          
+          // Generate object to store proportional effort-share
+          NumericVector effshare_flMet(flt_effort_Dims[4]);
+          
+          // Loop over each metier and extract the effort
+          for (int mt = 0; mt < flt_effort_Dims[4]; mt++) {
+            int idx = getIdx_flq(flt_effort_Dims, 0, yr, 0, 0, mt, it);
+            effshare_flMet[mt] = flt_effort[idx];
+          }
+          
+          // Calculate proportional effortshare
+          effshare_flMet = effshare_flMet/sum(effshare_flMet);
+          
+          // Next, I need to extract the catches themselves. I need the landings
+          // and discards numbers and weights, and the selectivity.
 
           // Extract data for stock catches
           List catsList = fltS4.slot(".Data");
@@ -201,45 +230,145 @@ List flr_to_list(List om, List advice, int year, int nstock, int nfleet, int nit
           NumericVector cat_lf = catS4.slot("landings.n");
           NumericVector cat_df = catS4.slot("discards.n");
           NumericVector cat_sl = catS4.slot("catch.sel");
+          NumericVector cat_cq = catS4.slot("catch.q");
+          
+          // Extract catch dimensions
+          NumericVector cat_Dims    = cat_lf.attr("dim");
+          NumericVector cat_cq_Dims = cat_cq.attr("dim");
 
           // --------------------------
           // HERE I'M ASSUMING THAT THE AGE DIMENSION IS THE SAME IN THE CATCH
           // AND THE STOCK OBJECTS --- THIS SHOULD BE TRUE 99% OF THE TIME
           // --------------------------
 
-          // create index for year of interest
-          int minyr = atoi(dimnameYear[0]); // convert from element of CharacterVector to integer
-          int yr = (year-minyr);
-
           // Rprintf("... calculated year index \n");
 
           // Loop over each age of interest
           for(int a = 0; a < stk_n_Dims[0]; a++){
+            
+            // generate temporary objects to store metier-resolved values for subsequent averaging
+            NumericVector cat_lw_stMet(cat_Dims[4]);
+            NumericVector cat_dw_stMet(cat_Dims[4]);
+            NumericVector cat_lf_stMet(cat_Dims[4]);
+            NumericVector cat_df_stMet(cat_Dims[4]);
+            NumericVector cat_sl_stMet(cat_Dims[4]);
+            NumericVector cat_cn_stMet(cat_Dims[4]);
+            NumericVector cat_cq_stMet(cat_Dims[4]);
+            
+            // generate temporary object to store weighting for subsequent averaging
+            NumericVector cat_wt_lw(cat_Dims[4]);
+            NumericVector cat_wt_dw(cat_Dims[4]);
+            NumericVector cat_wt_lf(cat_Dims[4]);
+            NumericVector cat_wt_sl(cat_Dims[4]);
 
+            // Loop over each area (metier)
+            for ( int mt = 0; mt < cat_Dims[4]; mt++) {
+            
             // Generate index for element of interest
-            int idx = getIdx_flq(stk_n_Dims, a, yr, 0, 0, 0, it);
-
+            int idx = getIdx_flq(stk_n_Dims, a, yr, 0, 0, mt, it);
+              
+              int idx_cq;
+              if (cat_cq_Dims.size() > 3) {
+                idx_cq = getIdx_4D(cat_cq_Dims, 0, yr, mt, it);
+              } else {
+                idx_cq = getIdx_3D(cat_cq_Dims, 0, yr, it);
+              }
+              
+              // Insert value into vector
+              cat_lw_stMet(mt) = cat_lw[idx];
+              cat_dw_stMet(mt) = cat_dw[idx];
+              cat_lf_stMet(mt) = cat_lf[idx];
+              cat_df_stMet(mt) = cat_df[idx];
+              cat_sl_stMet(mt) = cat_sl[idx];
+              cat_cn_stMet(mt) = cat_lf[idx] + cat_df[idx];
+              cat_cq_stMet(mt) = cat_cq[idx_cq];
+              
+              // if weights are NA, use zero
+              if(NumericVector::is_na(cat_lw[idx])) {
+                cat_lw_stMet(mt) = 0;
+              }
+              if(NumericVector::is_na(cat_dw[idx])) {
+                cat_dw_stMet(mt) = 0;
+              }
+              
+              // if landings fraction are NA, use zero
+              if(NumericVector::is_na(cat_lf[idx])) {
+                cat_lf_stMet(mt) = 0;
+              }
+              if(NumericVector::is_na(cat_df[idx])) {
+                cat_df_stMet(mt) = 0;
+              }
+              
+              // if catchability is NA, use zero
+              if(NumericVector::is_na(cat_cq[idx_cq])) {
+                cat_cq_stMet(mt) = 0;
+              }
+              
+              // If total catch fraction is zero, use 1 
+              if(cat_cn_stMet[mt] == 0) {
+                cat_cn_stMet(mt) = 1;
+              }
+              
+              // Landings and discards weights are a weighted-average over metiers
+              // where the weighting is:
+              //
+              // (lf(i)*efs(i)*q(i)*sel(i))/sum(lf(i)*efs(i)*q(i)*sel(i))
+              //
+              // where:
+              // lf(i)  = landings fraction in i'th metier
+              // efs(i) = effortshare in i'th metier
+              // q(i)   = catchability in i'th metier
+              // sel(i) = selectivity in i'th metier
+              
+              cat_wt_lw(mt) = cat_lf_stMet(mt) * effshare_flMet(mt) * cat_cq_stMet(mt) * cat_sl_stMet(mt);
+              cat_wt_dw(mt) = cat_df_stMet(mt) * effshare_flMet(mt) * cat_cq_stMet(mt) * cat_sl_stMet(mt);
+              
+              // Selectivity at age is weighted by:
+              //
+              // efs(i)*q(i)/sum(efs(i)*q(i))
+              
+              cat_wt_sl(mt) = effshare_flMet(mt) * cat_cq_stMet(mt);
+              
+              // Landings fraction at age is weighted by:
+              // 
+              // efs(i)*q(i)*sel(i))/sum(efs(i)*q(i)*sel(i))
+              
+              cat_wt_lf(mt) = effshare_flMet(mt) * cat_cq_stMet(mt) * cat_sl_stMet(mt);
+              
+            } // END loop over area (metier)
+            
+            // Sum weightings over metier
+            double cat_wt_lw_tot = sum(cat_wt_lw);
+            double cat_wt_dw_tot = sum(cat_wt_dw);
+            double cat_wt_sl_tot = sum(cat_wt_sl);
+            double cat_wt_lf_tot = sum(cat_wt_lf);
+            
+            // if summed weightings are 0, use 1
+            if(cat_wt_lw_tot == 0) {cat_wt_lw_tot = 1;}
+            if(cat_wt_dw_tot == 0) {cat_wt_dw_tot = 1;}
+            if(cat_wt_sl_tot == 0) {cat_wt_sl_tot = 1;}
+            if(cat_wt_lf_tot == 0) {cat_wt_lf_tot = 1;}
+            
+            // Calculate Weightings
+            NumericVector cat_lw_weight = cat_wt_lw/cat_wt_lw_tot;
+            NumericVector cat_dw_weight = cat_wt_dw/cat_wt_dw_tot;
+            NumericVector cat_sl_weight = cat_wt_sl/cat_wt_sl_tot;
+            NumericVector cat_lf_weight = cat_wt_lf/cat_wt_lf_tot;
+            
             // Insert value into matrix
-            lw_stAgeFlt(a,fl) = cat_lw[idx];
-            dw_stAgeFlt(a,fl) = cat_dw[idx];
+            lw_stAgeFlt(a,fl) = sum(cat_lw_stMet * cat_lw_weight);
+            dw_stAgeFlt(a,fl) = sum(cat_dw_stMet * cat_dw_weight);
             
-            // avoid divide by zero problems
-            int cn = (cat_lf[idx] + cat_df[idx]);
-            if (cn == 0) {
-              cn = 1;
-            }
+            // So the next step is to get the mean landings fraction across 
+            // metiers.
             
-            lf_stAgeFlt(a,fl) = cat_lf[idx] / cn; // recalculate landings fraction
-            sl_stAgeFlt(a,fl) = cat_sl[idx];
+            // renormalise to catch instances of != 1 total catch fraction
+            cat_lf_stMet = cat_lf_stMet/cat_cn_stMet;
             
-            // if weights are NA, use zero
-            if(NumericVector::is_na(cat_lw[idx])) {
-              lw_stAgeFlt(a,fl) = 0;
-            }
-            if(NumericVector::is_na(cat_dw[idx])) {
-              dw_stAgeFlt(a,fl) = 0;
-            }
-
+            // weighted averages
+            lf_stAgeFlt(a,fl) = sum(cat_lf_stMet * cat_lf_weight);
+            sl_stAgeFlt(a,fl) = sum(cat_sl_stMet * cat_sl_weight);
+            
           } // END loop over ages
         } // END if stock is caught
       } // END loop over fleets
@@ -320,6 +449,12 @@ List flr_to_list(List om, List advice, int year, int nstock, int nfleet, int nit
           // Extract slots of interest
           NumericVector cat_cq = catS4.slot("catch.q");
           NumericVector cat_qs = catS4.attr("quotashare");
+          
+          // Extract effort slot for weighted averaging and 
+          // generate object to store proportional effort-share
+          NumericVector flt_effort = fltS4.slot("effort");
+          NumericVector flt_effort_Dims = flt_effort.attr("dim");
+          NumericVector effshare_flMet(flt_effort_Dims[4]);
 
           // Extract dimensions for quotashare
           List cat_qs_Dimnames = cat_qs.attr("dimnames");
@@ -328,17 +463,52 @@ List flr_to_list(List om, List advice, int year, int nstock, int nfleet, int nit
           // Extract dimensions sizes
           NumericVector cat_cq_Dims = cat_cq.attr("dim");
           NumericVector cat_qs_Dims = cat_qs.attr("dim");
+          
+          // Prepare object to store metier-resolved catchability
+          NumericVector cq_flMet(flt_effort_Dims[4]);
 
           // create index for year of interest
           int minyr = atoi(dimnameYear[0]); // convert from element of CharacterVector to integer
           int yr = (year-minyr);
-
+          
           // --------------------------
-          // HERE I'M ASSUMING THAT THE CATCH.Q IS AN FLPAR WITHOUT YEAR DIMENSION
+          // Process catchability
           // --------------------------
-
-          // Generate index for catch.q
-          int idx_cq = getIdx_3D(cat_cq_Dims, 0, yr, it);
+          
+          // Loop over each metier
+          for (int mt = 0; mt < flt_effort_Dims[4]; mt++) {
+            
+            // Generate index for effort
+            int idx = getIdx_flq(flt_effort_Dims, 0, yr, 0, 0, mt, it);
+            
+            // Generate index for catch.q
+            int idx_cq;
+            if (cat_cq_Dims.size() > 3) {
+              idx_cq = getIdx_4D(cat_cq_Dims, 0, yr, mt, it);
+            } else {
+              idx_cq = getIdx_3D(cat_cq_Dims, 0, yr, it);
+            }
+            
+            // Throw an error if catch-q is NA
+            if(R_IsNA(cat_cq[idx_cq])) {
+              Rcout << "Fleet: " << fltsNames[fl] << "; Catch: " << catsNames[catsCheck] << "\n";
+              stop("catchq is NA");
+            }
+            
+            // Insert value into vector
+            effshare_flMet[mt] = flt_effort[idx];
+            cq_flMet[mt] = cat_cq[idx_cq];
+          }
+          
+          // Calculate proportional effortshare
+          effshare_flMet = effshare_flMet/sum(effshare_flMet);
+          
+          // Insert value into matrix
+          cq_stFlt(st,fl) = sum(cq_flMet * effshare_flMet);
+          
+          // --------------------------
+          // Process quotashare
+          // --------------------------
 
           // Generate index for quotashare
           int idx_qs = getIdx_flq(cat_qs_Dims, 0, yr, 0, 0, 0, it);
@@ -348,15 +518,8 @@ List flr_to_list(List om, List advice, int year, int nstock, int nfleet, int nit
             Rcout << "Fleet: " << fltsNames[fl] << "; Catch: " << catsNames[catsCheck] << "\n";
             stop("quotashare is NA");
           }
-          
-          // Throw an error if catch-q is NA
-          if(R_IsNA(cat_cq[idx_cq])) {
-            Rcout << "Fleet: " << fltsNames[fl] << "; Catch: " << catsNames[catsCheck] << "\n";
-            stop("catchq is NA");
-          }
 
           // Insert value into matrix
-          cq_stFlt(st,fl) = cat_cq[idx_cq];
           qs_stFlt(st,fl) = cat_qs[idx_qs] * adv_st[it];
 
         } // END if fleet catches stock
@@ -401,13 +564,21 @@ List flr_to_list(List om, List advice, int year, int nstock, int nfleet, int nit
       // Loop over each reference year for average effort
       for (int refyr = 0; refyr < avgE_nyear; refyr++) {
         
-        // Generate index for fleet effort
-        int idx_eff = getIdx_flq(flt_eff_Dims, 0, (yr-1-refyr), 0, 0, 0, it);
+        // Temporary object to store metier-resolved effort
+        NumericVector eff_flMet(flt_eff_Dims[4]);
+        
+        // Loop over each metier
+        for (int mt = 0; mt < flt_eff_Dims[4]; mt++) {
+          
+          // Generate index for fleet effort
+          int idx_eff = getIdx_flq(flt_eff_Dims, 0, (yr-1-refyr), 0, 0, mt, it);
+          eff_flMet[mt] = flt_effort[idx_eff];
+        } // END loop over metier
         
         // Insert efforts
-        flt_eff_yrs[refyr] = flt_effort[idx_eff];
+        flt_eff_yrs[refyr] = sum(eff_flMet);
         
-      }
+      } // END loop over reference year
       
       // Calculate mean effort
       ef_flt[fl] = mean(flt_eff_yrs);
