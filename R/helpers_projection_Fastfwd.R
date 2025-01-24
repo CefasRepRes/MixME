@@ -18,7 +18,7 @@ projectFastfwd <- function(om,
   
   ## Handle unknown population types and recruitment function types
   recType <- sapply(om$stks, function(x) FLCore::SRModelName(x@rec@model))
-  popType <- sapply(om$stks, function(x) ifelse(dim(x)[1] > 1, 0, 1))
+  popType <- sapply(om$stks, function(x) ifelse(dim(x@n)[1] > 1, 0, 1))
   
   ## Handle Null stock-recruit residuals
   if(is.null(sr_residuals)) {
