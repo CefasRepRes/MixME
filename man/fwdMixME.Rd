@@ -16,6 +16,8 @@ fwdMixME(
   multiplier,
   nyear = NULL,
   effort_max = 100,
+  effsharemethod = NULL,
+  effshareargs = NULL,
   ...
 )
 }
@@ -51,6 +53,13 @@ status quo effort. Defaults to \code{NULL}.}
 \item{effort_max}{(Optional) Integer indicating the maximum allowed
 fishing effort for any fleet. Defaults to 100 and
 cannot be \code{NULL}.}
+
+\item{effsharemethod}{(Optional) User-supplied function to carry out redistribution
+of effort-share across metiers. Must take \code{om} and
+\code{yr} as minimum inputs.}
+
+\item{effshareargs}{(Optional) List of additional arguments required by effort-share
+redistribution function.}
 }
 \value{
 A list containing the \code{FLBiols} and \code{FLFisheries} objects

@@ -31,7 +31,11 @@
 #' @param effort_max (Optional) Integer indicating the maximum allowed
 #'                   fishing effort for any fleet. Defaults to 100 and
 #'                   cannot be \code{NULL}.
-
+#' @param effsharemethod (Optional) User-supplied function to carry out redistribution
+#'                       of effort-share across metiers. Must take \code{om} and
+#'                       \code{yr} as minimum inputs.
+#' @param effshareargs (Optional) List of additional arguments required by effort-share
+#'                     redistribution function.
 #'
 #' @return A list containing the \code{FLBiols} and \code{FLFisheries} objects
 #'         with projected stock numbers, fleet efforts, and fleet-stock landings
@@ -50,6 +54,8 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
                      multiplier,
                      nyear      = NULL,   # number of years for status quo effort
                      effort_max = 100,    # maximum allowed fishing effort
+                     effsharemethod = NULL,
+                     effshareargs   = NULL,
                      ...) {
 
   # CURRENTLY ASSUMES THAT PROJECTION IS A SINGLE YEAR... PROBABLY UNAVOIDABLE
@@ -155,6 +161,16 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
 
   ## Advice is a TAC per stock
   if(adviceType %in% c("catch","landings")) {
+    
+    # -------------------------------------------------------------------------#
+    # (Optional) Effort-share re-weighting
+    # -------------------------------------------------------------------------#
+    
+    if (!is.null(effsharemethod)) {
+      if (is.function(effsharemethod)) {
+        om <- do.call(effsharemethod, c(list(om = om, yr = yr),effshareargs))
+      }
+    }
 
     # -------------------------------------------------------------------------#
     # Reorganise data for optimisation
