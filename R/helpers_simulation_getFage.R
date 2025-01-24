@@ -44,8 +44,8 @@ getFage <- function(stks, flts, stkname, yr = NULL, use_fastF = TRUE) {
     
     ## use c++ calculation of fishing mortality
     arr <- array(0, 
-                 dim = c(dim(stk),length(flts)), 
-                 dimnames = c(dimnames(stk), list(flt = names(flts))))
+                 dim = c(dim(stk@n),length(flts)), 
+                 dimnames = c(dimnames(stk@n), list(flt = names(flts))))
     pFa <- fa_cpp(arr = arr, flts = flts, stockname = stkname)
     Fage <- stk@n
     Fage[] <- apply(pFa, 1:6, sum)
