@@ -198,11 +198,14 @@ stfMixME <- function(om,
         ## The catch.q FLPar may need to be extended manually
         if (dim(catch.q(stkflt_ext))["year"] != dims(stkflt_ext)$year) {
           
+          ## Generate updated dimensions
+          dnames <- dimnames(fishery[[y]]@catch.q)
+          posyr  <- match("year",names(fishery[[y]]@catch.q))
+          dnames[[posyr]] <- dimnames(stkflt_ext)$year
+          
           ## generate new FLPar with correct year extent
           catchq_ext <- FLPar(0, 
-                              dimnames=list(params=c('alpha','beta'), 
-                                            year = dimnames(stkflt_ext)$year, 
-                                            iter = dimnames(stkflt_ext)$iter),
+                              dimnames=dnames,
                               units='NA')
           ## insert historic data
           catchq_ext[,dimnames(catch.q(stkflt_ext))$year] <- catch.q(stkflt_ext)
@@ -234,12 +237,37 @@ stfMixME <- function(om,
         if (method == "resample") {
           
           catchq_new <- lapply(1:ni, function(x) {
+            
+            ## Get year from samples vector
             xx <- ((x-1)* (length(sel_samples)/ni)) + (1:(length(sel_samples)/ni))
-            return(c(catch.q(stkflt_ext)["alpha", sel_samples[xx], x]))
+            
+            ## Get dimensions to read from
+            dnames <- dimnames(catch.q(stkflt_ext))
+            dnames$year <- sel_samples[xx]
+            dnames$iter <- x
+            posv   <- c(match("year", names(catch.q(stkflt_ext))),
+                        match("area", names(catch.q(stkflt_ext))),
+                        match("iter", names(catch.q(stkflt_ext))))
+            posv <- posv[!is.na(posv)]
+            names(dnames) <- c('i', c('i', 'j', 'k', 'l', 'm', 'n')[posv])
+            
+            return(c(do.call('[', c(list(x = catch.q(stkflt_ext)), dnames))))
+            # return(c(catch.q(stkflt_ext)["alpha", sel_samples[xx], x]))
           })
-          catchq_new <- unlist(catchq_new)
-          catch.q(stkflt_ext)["alpha", year_proj] <- catchq_new
+          # catchq_new <- unlist(catchq_new)
+          # catch.q(stkflt_ext)["alpha", year_proj] <- catchq_new
           
+          dnames <- dimnames(catch.q(stkflt_ext))
+          dnames$year <- year_proj
+          posv   <- c(match("year", names(catch.q(stkflt_ext))),
+                      match("area", names(catch.q(stkflt_ext))),
+                      match("iter", names(catch.q(stkflt_ext))))
+          posv <- posv[!is.na(posv)]
+          names(dnames) <- c('i', c('i', 'j', 'k', 'l', 'm', 'n')[posv])
+          
+          catch.q(stkflt_ext) <- do.call('[<-', c(list(x     = catch.q(stkflt_ext), 
+                                                       value = unlist(catchq_new)),
+                                                  dnames))
         } # END if "resample"
         
         # Quota-share
