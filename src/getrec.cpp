@@ -13,6 +13,19 @@ double getRec(Rcpp::NumericVector params,
   // Initialise recruitment
   double rec = 0;
   
+  // Check that recruitment model exists
+  if ((recType[st] != "ricker") &
+      (recType[st] != "bevholt") &
+      (recType[st] != "constant") &
+      (recType[st] != "bevholtSS3") &
+      (recType[st] != "cushing") &
+      (recType[st] != "segreg") &
+      (recType[st] != "survsrr") &
+      (recType[st] != "bevholtsig") &
+      (recType[st] != "mean")) {
+    Rcpp::stop("SR model not found\n");
+  }
+  
   // Ricker SR model
   if (recType[st] == "ricker") {
     
@@ -36,7 +49,7 @@ double getRec(Rcpp::NumericVector params,
   }
   
   // Constant recruitment
-  if (recType[st] == "constant") {
+  if (recType[st] == "constant" | recType[st] == "mean") {
     rec = params[0]; 
   }
   
@@ -83,9 +96,7 @@ double getRec(Rcpp::NumericVector params,
     }
     
     double z0 = log(1.0 / (params[3] / params[0]));
-    
     double zmax = z0 + params[1] * (0.0 - z0);
-    
     double zsurv = exp((1.0 - pow((ssb / params[3]), params[2])) * (zmax - z0) + z0);
     
     // Sex ratio at recruitment set at 1:1

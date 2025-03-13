@@ -260,7 +260,7 @@ List fast_fwd(List om,                    // [0] = FLBiols, [1] = FLFisheries
               if (q_Dims.size() > 3) {
                 idx_cq = getIdx_4D(q_Dims, 0, yr, mt, it);
               } else {
-                idx_cq = getIdx_3D(q_Dims, 0, yr, it);;
+                idx_cq = getIdx_3D(q_Dims, 0, yr, it);
               }
               double cq = cat_cq[idx_cq];
               
@@ -364,7 +364,7 @@ List fast_fwd(List om,                    // [0] = FLBiols, [1] = FLFisheries
           //
           // - Ricker (ricker)
           // - Beverton-Holt (bevholt)
-          // - constant
+          // - constant (or mean)
           // - bevholtSS3
           // - cushing
           // - segreg
@@ -399,16 +399,35 @@ List fast_fwd(List om,                    // [0] = FLBiols, [1] = FLFisheries
           // Extract parameters
           NumericVector params_rec  = stk_rec.slot("params");
           NumericVector params_Dims = params_rec.attr("dim");
+          List params_rec_Dimnames  = params_rec.attr("dimnames");
+          CharacterVector params_rec_dimnameyear = params_rec_Dimnames["year"];
           
           // Extract parameters for this iteration
           NumericVector params(params_Dims[0]);
+          
+          // handle optional year dimension in recruitment parameters 
           for (int pi=0; pi < params_Dims[0]; pi++) {
-            int pi_idx = (params_Dims[0] * (it)) + (pi);
-            params[pi] = params_rec[pi_idx];
+            if (params_Dims.size() > 2) {
+              
+              // We need to handle cases where we have a truncated timeseries
+              // so we need to find the correct year index
+              int yr_rec = -99;
+              for(int yr_id = 0; yr_id < params_Dims[1]; yr_id++) {
+                if(dimnameYear[yr+1] == params_rec_dimnameyear[yr_id]) {
+                  yr_rec = yr_id;
+                }
+              }
+              
+              int pi_idx = getIdx_3D(params_Dims, pi, yr_rec, it);
+              params[pi] = params_rec[pi_idx];
+            } else {
+              int pi_idx = (params_Dims[0] * (it)) + (pi);
+              params[pi] = params_rec[pi_idx];
+            }
           }
           
           // print SR params
-          // Rcout << "SR params " << params << "\n";
+          Rcout << "SR params " << params << "\n";
           
           double rec = getRec(params, ssb, st, recType);
           
