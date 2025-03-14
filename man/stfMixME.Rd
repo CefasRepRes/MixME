@@ -15,6 +15,73 @@ stfMixME(
   seed = NULL
 )
 }
+\arguments{
+\item{om}{A list of \code{FLBiols} and \code{FLFisheries} containing the relevant stock and fleet information in the Operating Model.}
+
+\item{method}{Character. The method to estimate future biological and fishery parameters. See details.}
+
+\item{nyears}{Integer. The number of projection years to extend each fleet and stock slot.}
+
+\item{wts.nyears}{Integer. The number of recent data years from which future
+biological (stock weights \code{wt}, natural mortality \code{m},
+maturity \code{mat}, fecundity \code{fec}), fishery
+(landings weight \code{landings.wt}, discards weight \code{discards.wt},
+landed fraction \code{landings.n}, discarded fraction \code{discards.n})
+parameters are estimated.}
+
+\item{sel.nyears}{Integer. The number of recent data years from which future fishery
+(catch selectivity \code{catch.sel}, catchability \code{catch.q},
+\code{capacity}, \code{effort}) and survey (survey catchability \code{index.q})
+parameters are estimated.}
+
+\item{qs.nyears}{Integer. The number of recent data years from which future
+quota-shares (\code{quotashare}) are estimated.}
+
+\item{verbose}{Logical. Should progress be reported? Defaults to \code{TRUE}.}
+
+\item{seed}{(Optional) Integer. Random seed for reproducibility if using RNG.}
+}
+\value{
+A list containing the \code{FLBiols} and \code{FLFisheries} objects with projection
+years and estimated biological and fishery parameters.
+}
 \description{
-Function to extend a MixME Operating Model to future years for forecasting
+This function extends the \code{FLBiols} and \code{FLFisheries} comprising
+the operationg model by a user-specified number of years and populates the
+data slots for biological and fishery parameters using estimates from recent
+data years.
+}
+\details{
+\code{stfMixME} contains two methods to estimate future biological and fishery parameters.
+\itemize{
+\item \emph{'yearMeans'}: values in each projection year are the mean value from a reference year range.
+\item \emph{'resample'}: values in each projection year are resampled with replacement from a reference year range in the same iteration.
+}
+
+In both cases, operations are performed on the same strata of 'quant', 'unit',
+'season', 'area' and 'iteration'. This means that \emph{'yearMeans'} will
+reflect any variation in these dimensions and \emph{'resample'} will yield
+a consistent set of values over the 'quant' dimension for any combination of
+'unit', 'season', 'area' and 'iteration'.
+}
+\examples{
+## load data
+data("singlestock_MixME_om")
+
+## check year dimensions for stock and fleet
+dimnames(singlestock_MixME_om$stks$had)$year
+dimnames(singlestock_MixME_om$flts$fleet)$year
+
+## prepare operating model for a 3-year forecast 
+om1 <- stfMixME(singlestock_MixME_om, method = "yearMeans", 
+                nyears = 3,
+                wts.nyears = 3,
+                sel.nyears = 5,
+                qs.nyears = 5,
+                verbose = FALSE)
+
+## historical weights in black. projected weights in red
+matplot(t(om1$stks$had@wt[drop=TRUE]), lty=1,col="red",type="l",ylab="weight-at-age (kg)")
+matplot(t(singlestock_MixME_om$stks$had@wt[drop=TRUE]), lty=1,col="black",type="l",add=TRUE)
+
 }
