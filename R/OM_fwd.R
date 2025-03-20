@@ -318,6 +318,7 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
                           tracking = tracking,
                           pars     = exp(pars),
                           yr       = yr,
+                          popType  = args$popType,
                           sr_residuals = sr_residuals)
     om       <- out$om
     tracking <- out$tracking

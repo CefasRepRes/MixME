@@ -371,7 +371,7 @@ List fast_fwd(List om,                    // [0] = FLBiols, [1] = FLFisheries
           // - survsrr
           // - bevholtsig
           // - mixedsrr
-
+          
           // We want to pick up the SSB consistent with the age of the recruitment
           // age group. So next year SSB if age=0, current year SSB if age=1,
           // last year SSB if age=2.
@@ -400,7 +400,6 @@ List fast_fwd(List om,                    // [0] = FLBiols, [1] = FLFisheries
           NumericVector params_rec  = stk_rec.slot("params");
           NumericVector params_Dims = params_rec.attr("dim");
           List params_rec_Dimnames  = params_rec.attr("dimnames");
-          CharacterVector params_rec_dimnameyear = params_rec_Dimnames["year"];
           
           // Extract parameters for this iteration
           NumericVector params(params_Dims[0]);
@@ -408,6 +407,7 @@ List fast_fwd(List om,                    // [0] = FLBiols, [1] = FLFisheries
           // handle optional year dimension in recruitment parameters 
           for (int pi=0; pi < params_Dims[0]; pi++) {
             if (params_Dims.size() > 2) {
+              CharacterVector params_rec_dimnameyear = params_rec_Dimnames["year"];
               
               // We need to handle cases where we have a truncated timeseries
               // so we need to find the correct year index
@@ -420,6 +420,7 @@ List fast_fwd(List om,                    // [0] = FLBiols, [1] = FLFisheries
               
               int pi_idx = getIdx_3D(params_Dims, pi, yr_rec, it);
               params[pi] = params_rec[pi_idx];
+              
             } else {
               int pi_idx = (params_Dims[0] * (it)) + (pi);
               params[pi] = params_rec[pi_idx];
@@ -427,7 +428,7 @@ List fast_fwd(List om,                    // [0] = FLBiols, [1] = FLFisheries
           }
           
           // print SR params
-          Rcout << "SR params " << params << "\n";
+          // Rcout << "SR params " << params << "\n";
           
           double rec = getRec(params, ssb, st, recType);
           
@@ -455,7 +456,7 @@ List fast_fwd(List om,                    // [0] = FLBiols, [1] = FLFisheries
           }
           
           if (yr_sr == -99) {stop("SR noise year dimensions do not match operating model dimensions!");}
-
+          
           int idx_SRres =
             (SRres_Dims[4] * SRres_Dims[3] * SRres_Dims[2] * SRres_Dims[1] * SRres_Dims[0] * (it)) +
             (SRres_Dims[3] * SRres_Dims[2] * SRres_Dims[1] * SRres_Dims[0] * (1-1)) + // points to area (assumed to be 1)
@@ -475,6 +476,32 @@ List fast_fwd(List om,                    // [0] = FLBiols, [1] = FLFisheries
           
         } // END loop over iteration
       } // END age-structured population
+      
+      // Fixed populations
+      if (popType[st] == 2) {
+        
+        // Calculate survivors for each age
+        for (int it = 0; it < stk_n_Dims[5]; it++) {
+          
+          // loop over all ages
+          for (int a = 0; a < stk_n_Dims[0]; a++) {
+            
+            // -------------------------------------------------------------------//
+            // Survival
+            // -------------------------------------------------------------------//
+            
+            // Calculate index to extract total fishing mortality, natural mortality, numbers
+            int idx_get = getIdx_flq(stk_n_Dims, a, yr, 0, 0, 0, it);
+            
+            // Calculate index to insert total fishing mortality, natural mortality, numbers
+            int idx_insert = getIdx_flq(stk_n_Dims, a, yr+1, 0, 0, 0, it);
+            
+            // insert numbers into next year
+            stk_n[idx_insert] = stk_n[idx_get];
+            
+          } // END loop over ages
+        } // END loop over iteration
+      } // END fixed population
     } // END if yr < maxyear
   } // END loop over stock
   

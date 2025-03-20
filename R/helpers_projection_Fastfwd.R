@@ -13,12 +13,17 @@ projectFastfwd <- function(om,
                            tracking,
                            pars,
                            yr,
+                           popType = NULL,
                            sr_residuals = NULL,
                            proc_res = NULL) {
   
   ## Handle unknown population types and recruitment function types
   recType <- sapply(om$stks, function(x) FLCore::SRModelName(x@rec@model))
-  popType <- sapply(om$stks, function(x) ifelse(dim(x@n)[1] > 1, 0, 1))
+  if(is.null(popType)) {
+    popType <- sapply(om$stks, function(x) ifelse(dim(x@n)[1] > 1, 0, 1))
+  } else {
+    popType <- popType[names(om$stks)] # reorder to match stock ordering
+  }
   
   ## Handle Null stock-recruit residuals
   if(is.null(sr_residuals)) {
