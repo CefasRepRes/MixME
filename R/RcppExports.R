@@ -5,6 +5,10 @@ attach_attribute <- function(fisheries, attribute, fl, st, attribute_name) {
     .Call('_MixME_attach_attribute', PACKAGE = 'MixME', fisheries, attribute, fl, st, attribute_name)
 }
 
+MP_est_perfectObs_FLBiol <- function(stks, flts, stk0, flts0, stk_obs_name, years_oem) {
+    .Call('_MixME_MP_est_perfectObs_FLBiol', PACKAGE = 'MixME', stks, flts, stk0, flts0, stk_obs_name, years_oem)
+}
+
 flr_to_list <- function(om, advice, year, nstock, nfleet, niter, avgE_nyear) {
     .Call('_MixME_flr_to_list', PACKAGE = 'MixME', om, advice, year, nstock, nfleet, niter, avgE_nyear)
 }
@@ -19,5 +23,9 @@ fa_cpp <- function(arr, flts, stockname) {
 
 fwd_update_fleets <- function(om, om_fwd, tracking, year, adviceType) {
     .Call('_MixME_fwd_update_fleets', PACKAGE = 'MixME', om, om_fwd, tracking, year, adviceType)
+}
+
+insertNA_FLFisheries <- function(flts, fltsNames, stksNames, years) {
+    .Call('_MixME_insertNA_FLFisheries', PACKAGE = 'MixME', flts, fltsNames, stksNames, years)
 }
 

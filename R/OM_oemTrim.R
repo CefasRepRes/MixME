@@ -83,7 +83,7 @@ oemTrimFLBiol <- function(stk0,
   # time-scale, then this is not accounted for.
   
   ## We probably want to remove years preceding the data period - find minimum data year
-  stkcatch <- Reduce("+",catch(flt0))
+  stkcatch <- getCW(flt0,x, "landings", summarise = TRUE)+getCW(flt0,x, "discards", summarise = TRUE)
   checkCatch <- iterSums(stkcatch > 0)
   checkCatch[is.na(checkCatch)] <- 0
   mindatayr <- dims(stk0@n[,checkCatch > 0])$minyear
@@ -99,12 +99,7 @@ oemTrimFLBiol <- function(stk0,
     yrs_remove <- (ay + catch_timing[[x]] + 1):ay
     
     ## loop over each fleet that catches x
-    for(i in names(flt0)[fltnames]) {
-      landings.n(flt0[[i]][[x]])[, ac(yrs_remove)] <- NA
-      landings.wt(flt0[[i]][[x]])[,ac(yrs_remove)] <- NA
-      discards.n(flt0[[i]][[x]])[, ac(yrs_remove)] <- NA
-      discards.wt(flt0[[i]][[x]])[,ac(yrs_remove)] <- NA
-    }
+    flt0 <- insertNA_FLFisheries(flts = flt0, names(flt0)[fltnames], x, yrs_remove)
     
   } else {
     

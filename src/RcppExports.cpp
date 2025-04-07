@@ -26,6 +26,22 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// MP_est_perfectObs_FLBiol
+List MP_est_perfectObs_FLBiol(S4 stks, S4 flts, S4 stk0, List flts0, CharacterVector stk_obs_name, IntegerVector years_oem);
+RcppExport SEXP _MixME_MP_est_perfectObs_FLBiol(SEXP stksSEXP, SEXP fltsSEXP, SEXP stk0SEXP, SEXP flts0SEXP, SEXP stk_obs_nameSEXP, SEXP years_oemSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< S4 >::type stks(stksSEXP);
+    Rcpp::traits::input_parameter< S4 >::type flts(fltsSEXP);
+    Rcpp::traits::input_parameter< S4 >::type stk0(stk0SEXP);
+    Rcpp::traits::input_parameter< List >::type flts0(flts0SEXP);
+    Rcpp::traits::input_parameter< CharacterVector >::type stk_obs_name(stk_obs_nameSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type years_oem(years_oemSEXP);
+    rcpp_result_gen = Rcpp::wrap(MP_est_perfectObs_FLBiol(stks, flts, stk0, flts0, stk_obs_name, years_oem));
+    return rcpp_result_gen;
+END_RCPP
+}
 // flr_to_list
 List flr_to_list(List om, List advice, int year, int nstock, int nfleet, int niter, int avgE_nyear);
 RcppExport SEXP _MixME_flr_to_list(SEXP omSEXP, SEXP adviceSEXP, SEXP yearSEXP, SEXP nstockSEXP, SEXP nfleetSEXP, SEXP niterSEXP, SEXP avgE_nyearSEXP) {
@@ -87,13 +103,29 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// insertNA_FLFisheries
+S4 insertNA_FLFisheries(S4 flts, CharacterVector fltsNames, CharacterVector stksNames, IntegerVector years);
+RcppExport SEXP _MixME_insertNA_FLFisheries(SEXP fltsSEXP, SEXP fltsNamesSEXP, SEXP stksNamesSEXP, SEXP yearsSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< S4 >::type flts(fltsSEXP);
+    Rcpp::traits::input_parameter< CharacterVector >::type fltsNames(fltsNamesSEXP);
+    Rcpp::traits::input_parameter< CharacterVector >::type stksNames(stksNamesSEXP);
+    Rcpp::traits::input_parameter< IntegerVector >::type years(yearsSEXP);
+    rcpp_result_gen = Rcpp::wrap(insertNA_FLFisheries(flts, fltsNames, stksNames, years));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_MixME_attach_attribute", (DL_FUNC) &_MixME_attach_attribute, 5},
+    {"_MixME_MP_est_perfectObs_FLBiol", (DL_FUNC) &_MixME_MP_est_perfectObs_FLBiol, 6},
     {"_MixME_flr_to_list", (DL_FUNC) &_MixME_flr_to_list, 7},
     {"_MixME_fast_fwd", (DL_FUNC) &_MixME_fast_fwd, 6},
     {"_MixME_fa_cpp", (DL_FUNC) &_MixME_fa_cpp, 3},
     {"_MixME_fwd_update_fleets", (DL_FUNC) &_MixME_fwd_update_fleets, 5},
+    {"_MixME_insertNA_FLFisheries", (DL_FUNC) &_MixME_insertNA_FLFisheries, 4},
     {NULL, NULL, 0}
 };
 
