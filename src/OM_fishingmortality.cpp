@@ -13,6 +13,9 @@ NumericVector fa_cpp(NumericVector arr,
   // Extract list of fleets
   List fltsList = flts.slot(".Data");
   
+  // Extract fleet names
+  CharacterVector fltsNames = flts.slot("names");
+  
   // find fleet size
   int nflts = fltsList.size();
   
@@ -95,13 +98,16 @@ NumericVector fa_cpp(NumericVector arr,
       
       // Rcout << "Dims " << stk_Dims << "\n";
       if(arr_Dims[0] != stk_Dims[0]) {
-        stop("array iterations do not match stock dimensions: age");
+        Rprintf("for stock %s and fleet %s: \n", stockname[0], fltsNames[fl]);
+        stop(": array iterations do not match stock dimensions: age");
       }
       if(arr_Dims[1] != stk_Dims[1]) {
-        stop("array iterations do not match stock dimensions: year");
+        Rprintf("for stock %s and fleet %s: \n", stockname[0], fltsNames[fl]);
+        stop(": array iterations do not match stock dimensions: year");
       }
       if(arr_Dims[5] != stk_Dims[5]) {
-        stop("array iterations do not match stock dimensions: iter");
+        Rprintf("for stock %s and fleet %s: \n", stockname[0], fltsNames[fl]);
+        stop(": array iterations do not match stock dimensions: iter");
       }
       
       // carry out crazy loop over each element of array
@@ -128,10 +134,12 @@ NumericVector fa_cpp(NumericVector arr,
               }
               
               if(aidx == -99){
-                stop("array ages do not match stock dimensions");
+                Rprintf("for stock %s, fleet %s and age %s: \n", stockname[0], fltsNames[fl], arrAges[a]);
+                stop(": array ages do not match stock dimensions");
               }
               if(yidx == -99){
-                stop("array years do not match stock dimensions");
+                Rprintf("for stock %s, fleet %s and year %s: \n", stockname[0], fltsNames[fl], arrYear[yr]);
+                stop(": array years do not match stock dimensions");
               }
               
               // Generate index for element of interest
