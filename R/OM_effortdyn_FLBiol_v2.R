@@ -579,6 +579,14 @@ effortBaranov <- function(omList,
         par <- log(omList[[it]]$effort)
       }
       
+      ## if a fleet has no catchability for any stock, throw a warning and set
+      ## to status quo effort
+      checkZeroQ <- colSums(omList[[it]]$catchq) == 0
+      if (any(checkZeroQ)) {
+        warning(paste0(colnames(omList[[it]]$catchq)[checkZeroQ]," has no catchability for any stocks. Fixing fleet effort to status quo effort!"))
+        exceptions[,colnames(omList[[it]]$catchq)[checkZeroQ]] <- 0
+      }
+      
       # ------------------------------------------------------#
       # Handle Status quo effort
       # ------------------------------------------------------#
