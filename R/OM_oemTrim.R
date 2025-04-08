@@ -125,36 +125,19 @@ oemTrimFLBiol <- function(stk0,
 
 oemTrimFLFisheries <- function(object, minyr, maxyr) {
   
-  for(x in names(object)) {
+  for(x in 1:length(object)) {
     fishery <- object[[x]]
     stknames <- names(fishery)
-    object[[x]] <- FLFishery::FLFishery(
-      lapply(names(fishery), function(y){
-        
-        ## trim FLCatch
-        catchobj <- window(fishery[[y]], start = as.character(minyr), end = as.character(maxyr))
-        
-        ## trim catch.q
-        catchobj@catch.q <- fishery[[y]]@catch.q[, as.character(minyr:maxyr)]
-        
-        ## trim quota shares
-        attr(catchobj,"quotashare") <- window(attr(fishery[[y]],"quotashare"), 
-                                              start = as.character(minyr), 
-                                              end = as.character(maxyr))
-        
-        return(catchobj)
-      }) # end lapply
-    ) # close FLFishery
     
-    ## Insert capacity. If NA replace with 1
-    FLFishery::capacity(object[[x]]) <- FLFishery::capacity(fishery)[,as.character(minyr:maxyr)]
-    FLFishery::effort(object[[x]])   <- fishery@effort[,as.character(minyr:maxyr)]
-    FLFishery::hperiod(object[[x]])  <- FLFishery::hperiod(fishery)[,as.character(minyr:maxyr)]
-    FLFishery::vcost(object[[x]])    <- FLFishery::vcost(fishery)[,as.character(minyr:maxyr)]
-    FLFishery::fcost(object[[x]])    <- FLFishery::fcost(fishery)[,as.character(minyr:maxyr)]
-    FLFishery::orevenue(object[[x]]) <- FLFishery::orevenue(fishery)[,as.character(minyr:maxyr)]
-    
-    names(object[[x]]) <- stknames
+    for (y in stknames) {
+      
+      ## trim quota shares
+      attr(fishery[[y]],"quotashare") <- window(attr(fishery[[y]],"quotashare"), 
+                                                start = as.character(minyr), 
+                                                end = as.character(maxyr))
+    }
+    ## trim FLFishery
+    object@.Data[[x]] <- window(fishery, start = as.character(minyr), end = as.character(maxyr))
   }
   return(object)
 }
