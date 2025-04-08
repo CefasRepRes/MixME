@@ -156,7 +156,7 @@ runMixME <- function(om,
     if(all(is.na(unlist(ctrl_obj$phcr@args$hcrpars))))
       stop("'hcrpars' elements are all NA in 'ctrl_obj'")
   
-  if(any(is.na(sapply(om$flts, function(x) FLCore::effort(x), simplify = "array")[,as.character(args$iy:args$fy),,,,,])))
+  if(any(is.na(sapply(om$flts, function(x) FLCore::effort(x)[,as.character(args$iy:args$fy),,,,,], simplify = "array"))))
     stop("fleet effort slots cannot contain NA values in the projection period")
   
   ## Infer some simulation arguments if these are not provided
