@@ -122,7 +122,7 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
   ## extract advice from tracking object
   advice <- lapply(om$stks@names, function(x) {
     adv_x <- c(tracking[[x]]$advice[1,ac(yr),])
-    adv_x[adv_x == 0] <- 0.01 # impute small catch target to help convergence
+    if (!args$use_fastfwd) {adv_x[adv_x == 0] <- 0.01} # impute small catch target to help convergence
     return(adv_x)
   })
   names(advice) <- om$stks@names
