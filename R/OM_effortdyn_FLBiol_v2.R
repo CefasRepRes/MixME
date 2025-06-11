@@ -682,7 +682,8 @@ effortBaranov <- function(omList,
       
       if (verbose == TRUE) {
         cat("\nInit stkLim", omList[[it]]$stkLim)
-        cat("\nNew stkLim",  stkLimNew)
+        cat("\nNew stkLim")
+        print(stkLimNew)
       }
       
       ## if map is used, out does not contain fixed effort fleets
