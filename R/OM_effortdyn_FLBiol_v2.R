@@ -568,6 +568,9 @@ effortBaranov <- function(omList,
         par[sqE] <- log(omList[[it]]$effort)[sqE]
         par[exclFleets] <- log(0)
         
+        if(any(exclFleets))
+          print(par)
+        
         mapfactors <- par
         mapfactors[sqE|exclFleets] <- NA
         mapfactors[!sqE & !exclFleets] <- seq_along(par[!sqE & !exclFleets])
