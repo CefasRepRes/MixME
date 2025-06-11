@@ -206,7 +206,8 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
                                     maxRetry     = maxRetry,
                                     useEffortAsInit = useEffortAsInit,
                                     useTMB       = useTMB,
-                                    correctResid = FALSE)
+                                    correctResid = FALSE,
+                                    verbose      = args$verbose)
       
       ## Extract effort parameters for each fleet
       pars <- sapply(1:ni, function(x) { effOptimised[[x]]$par})

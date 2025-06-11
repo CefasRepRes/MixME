@@ -479,7 +479,8 @@ effortBaranov <- function(omList,
                           useEffortAsInit = FALSE,
                           useTMB          = TRUE,
                           correctResid    = FALSE,
-                          parallel        = FALSE){
+                          parallel        = FALSE,
+                          verbose         = FALSE){
   
   # ======================================================#
   # Define dimensions
@@ -669,14 +670,20 @@ effortBaranov <- function(omList,
       stkEff <- (omList[[it]]$quota * multiplier) - Fobj$report()$Cfleet
       
       ## Check for mismatch in choke stocks
-      stkLimMismatch <- !all(omList[[it]]$stkLim == sapply(1:ncol(stkEff), function(x) {
+      stkLimNew <- sapply(1:ncol(stkEff), function(x) {
         if(all(tmp_exceptions[,x]==0)) return(0)
         xx <- stkEff[,x]
         xx[omList[[it]]$catchq[,x] == 0] <- NA
         xx[tmp_exceptions[,x] == 0] <- NA
         if(effortType == "min") return(which.min(xx)-1)
         if(effortType == "max") return(which.max(xx)-1)
-      }))
+      })
+      stkLimMismatch <- !all(omList[[it]]$stkLim == stkLimNew)
+      
+      if (verbose == TRUE) {
+        cat("\nInit stkLim", omList[[it]]$stkLim)
+        cat("\nNew stkLim",  stkLimNew)
+      }
       
       ## if map is used, out does not contain fixed effort fleets
       par[!sqE & !exclFleets] <- out$par
@@ -742,14 +749,19 @@ effortBaranov <- function(omList,
         stkEff <- (omList[[it]]$quota * multiplier) - Fobj$report()$Cfleet
         
         ## Check for mismatch in choke stocks
-        stkLimMismatch <- !all(omList[[it]]$stkLim == sapply(1:ncol(stkEff), function(x) { 
+        stkLimNew <- sapply(1:ncol(stkEff), function(x) { 
           if(all(tmp_exceptions[,x]==0)) return(0)
           xx <- stkEff[,x]
           xx[omList[[it]]$catchq[,x] == 0] <- NA
           xx[tmp_exceptions[,x] == 0] <- NA
           if(effortType == "min") return(which.min(xx)-1)
           if(effortType == "max") return(which.max(xx)-1)
-        }))
+        })
+        stkLimMismatch <- !all(omList[[it]]$stkLim == stkLimNew)
+        
+        if (verbose == TRUE) {
+          cat("\nUpdated stkLim",  stkLimNew)
+        }
         
         ## if map is used, out does not contain fixed effort fleets
         par[!sqE & !exclFleets] <- out$par
@@ -782,7 +794,7 @@ effortBaranov <- function(omList,
         stop("correctResid does not currently work with TMB")
       
       ## re-run if overshoot exceeds some value
-      if(min(stkEff, na.rm =  TRUE) < -0.001 & correctResid == TRUE) {
+      if(min(stkEff, na.rm =  TRUE) < -0.001 & correctResid == TRUE & verbose == TRUE) {
         cat("Overquota catches > 0.001 - scaling effort \n")
         
         ## scale all effort to bring overshoot to zero
