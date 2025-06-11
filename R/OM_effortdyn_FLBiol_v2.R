@@ -539,7 +539,8 @@ effortBaranov <- function(omList,
       ## to status quo effort
       checkZeroQ <- colSums(omList[[it]]$catchq) == 0
       if (any(checkZeroQ)) {
-        warning(paste0(colnames(omList[[it]]$catchq)[checkZeroQ]," has no catchability for any stocks. Fixing fleet effort to status quo effort!"))
+        warning(paste0("In iter ",it,": ",
+                       colnames(omList[[it]]$catchq)[checkZeroQ]," has no catchability for any stocks. Fixing fleet effort to status quo effort!"))
         tmp_exceptions[,colnames(omList[[it]]$catchq)[checkZeroQ]] <- 0
       }
       
@@ -552,6 +553,14 @@ effortBaranov <- function(omList,
       
       zeroTAC <- rowSums(omList[[it]]$quota) == 0
       exclFleets <- colSums(omList[[it]]$catchq[zeroTAC,,drop=FALSE] * tmp_exceptions[zeroTAC,,drop=FALSE]) > 0
+      
+      # ------------------------------------------------------#
+      # Warning if non-zero catch target is very small
+      # ------------------------------------------------------#
+      
+      if (any(omList[[it]]$quota[,!exclFleets] < 1e-8)) {
+        warning(paste0("In iter ",it,": quota target < 1e-8. Optimisation may be unstable."))
+      }
       
       # ------------------------------------------------------#
       # Handle Status quo effort
@@ -684,21 +693,21 @@ effortBaranov <- function(omList,
       stkLimMismatch <- !all(omList[[it]]$stkLim == stkLimNew)
       
       ## Some helpful debug code
-      if (verbose == TRUE) {
-        if(!is.numeric(stkLimNew)) {
-          cat("\nInit stkLim", omList[[it]]$stkLim)
-          cat("\nNew stkLim")
-          print(stkLimNew)
-          print(sapply(1:ncol(stkEff), function(x) {
-            if(all(tmp_exceptions[,x]==0)) return(0)
-            xx <- stkEff[,x]
-            xx[omList[[it]]$catchq[,x] == 0] <- NA
-            xx[tmp_exceptions[,x] == 0] <- NA
-            return(xx)
-          }))
-          browser()
-        }
-      }
+      # if (verbose == TRUE) {
+      #   if(!is.numeric(stkLimNew)) {
+      #     cat("\nInit stkLim", omList[[it]]$stkLim)
+      #     cat("\nNew stkLim")
+      #     print(stkLimNew)
+      #     print(sapply(1:ncol(stkEff), function(x) {
+      #       if(all(tmp_exceptions[,x]==0)) return(0)
+      #       xx <- stkEff[,x]
+      #       xx[omList[[it]]$catchq[,x] == 0] <- NA
+      #       xx[tmp_exceptions[,x] == 0] <- NA
+      #       return(xx)
+      #     }))
+      #     browser()
+      #   }
+      # }
       
       ## if map is used, out does not contain fixed effort fleets
       par[!sqE & !exclFleets] <- out$par
@@ -723,7 +732,7 @@ effortBaranov <- function(omList,
       # ----------------------------------------------------------------#
       
       if(stkLimMismatch == TRUE)
-        cat("\nChoke stock mis-match detected - rerunning optimisation \n")
+        cat("\n",it,": Choke stock mis-match detected - rerunning optimisation \n")
       mR <- maxRetry
       
       ## If mismatch, re-run optimisation
@@ -773,10 +782,6 @@ effortBaranov <- function(omList,
           if(effortType == "max") return(which.max(xx)-1)
         })
         stkLimMismatch <- !all(omList[[it]]$stkLim == stkLimNew)
-        
-        if (verbose == TRUE) {
-          cat("\nUpdated stkLim",  stkLimNew)
-        }
         
         ## if map is used, out does not contain fixed effort fleets
         par[!sqE & !exclFleets] <- out$par
