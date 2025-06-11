@@ -680,10 +680,20 @@ effortBaranov <- function(omList,
       })
       stkLimMismatch <- !all(omList[[it]]$stkLim == stkLimNew)
       
+      ## Some helpful debug code
       if (verbose == TRUE) {
         cat("\nInit stkLim", omList[[it]]$stkLim)
         cat("\nNew stkLim")
         print(stkLimNew)
+        if(!is.numeric(stkLimNew)) {
+          print(sapply(1:ncol(stkEff), function(x) {
+            if(all(tmp_exceptions[,x]==0)) return(0)
+            xx <- stkEff[,x]
+            xx[omList[[it]]$catchq[,x] == 0] <- NA
+            xx[tmp_exceptions[,x] == 0] <- NA
+            return(xx)
+          }))
+        }
       }
       
       ## if map is used, out does not contain fixed effort fleets
