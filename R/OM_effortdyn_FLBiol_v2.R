@@ -682,10 +682,10 @@ effortBaranov <- function(omList,
       
       ## Some helpful debug code
       if (verbose == TRUE) {
-        cat("\nInit stkLim", omList[[it]]$stkLim)
-        cat("\nNew stkLim")
-        print(stkLimNew)
         if(!is.numeric(stkLimNew)) {
+          cat("\nInit stkLim", omList[[it]]$stkLim)
+          cat("\nNew stkLim")
+          print(stkLimNew)
           print(sapply(1:ncol(stkEff), function(x) {
             if(all(tmp_exceptions[,x]==0)) return(0)
             xx <- stkEff[,x]
@@ -693,6 +693,7 @@ effortBaranov <- function(omList,
             xx[tmp_exceptions[,x] == 0] <- NA
             return(xx)
           }))
+          browser()
         }
       }
       
