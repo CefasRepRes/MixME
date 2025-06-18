@@ -51,7 +51,7 @@ getC <- function(object, x, sl, summarise = TRUE) {
 getCW <- function(object, x, sl = "landings", summarise = TRUE) {
   
   ## loop over each fleet
-  res <- lapply(seq_along(object), function(ii) {
+  res <- sapply(seq_along(object), function(ii) {
     
     ## subset object
     i = object[[ii]]
@@ -66,15 +66,25 @@ getCW <- function(object, x, sl = "landings", summarise = TRUE) {
       
       ## return slot aggregated over area
       return(apply(slot(i[[x]], paste0(sl,".n")) * slot(i[[x]], paste0(sl,".wt")), 
-                   c(2:4,6), sum))
+                   c(2:4,6), sum, na.rm=TRUE))
     }
-  })
+  },simplify = FALSE, USE.NAMES = TRUE)
   
   ## remove list elements where stock is not caught
   id <- !sapply(res, is.null)
+  
   if (summarise) {
     return(Reduce("+", res[id]))
+    
   } else {
-    return(simplify2array(res[id]))
+    
+    ## simplify to a 7D array
+    res = simplify2array(res[id])
+    
+    ## add fleet names
+    dn = c(dimnames(res)[1:6], list(fleet = names(object)[id]))
+    dimnames(res) <- dn
+    
+    return(res)
   }
 }

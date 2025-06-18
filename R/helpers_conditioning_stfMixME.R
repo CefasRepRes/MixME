@@ -217,11 +217,11 @@ stfMixME <- function(om,
         FLFishery::landings.wt(stkflt_ext)[,year_proj] <- stfQuant(landings.wt(fishery[[y]])[,year_wts], 
                                                                    method  = method, 
                                                                    samples = wts_samples,
-                                                                   ni      = ni)
+                                                                   ni      = ni, ignoreZero = TRUE)
         FLFishery::discards.wt(stkflt_ext)[,year_proj] <- stfQuant(discards.wt(fishery[[y]])[,year_wts], 
                                                                    method  = method, 
                                                                    samples = wts_samples,
-                                                                   ni      = ni)
+                                                                   ni      = ni, ignoreZero = TRUE)
         FLFishery::catch.sel(stkflt_ext)  [,year_proj] <- stfQuant(catch.sel(fishery[[y]])[,year_sel],   
                                                                    method  = method, 
                                                                    samples = sel_samples,
@@ -422,9 +422,12 @@ stfMixME <- function(om,
 #' Function to handle different methods of extending stock/fleet properties to future years
 #' ----------------------------------------------------------------------------------------
 
-stfQuant <- function(object, method, samples = NULL, ni = NULL) {
+stfQuant <- function(object, method, samples = NULL, ni = NULL, ignoreZero = FALSE) {
   
   if (method == "yearMeans") {
+    if (ignoreZero & !all(object==0,na.rm = TRUE)) {
+      object[object==0] <- NA
+    }
     return(yearMeans(object))
   }
   if (method == "resample") {

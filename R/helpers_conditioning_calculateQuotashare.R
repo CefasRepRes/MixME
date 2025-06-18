@@ -69,7 +69,7 @@ calculateQuotashare <- function(stks,             # Not currently used
     ## extract the landings for stock s for each fleet
     land_s <- sapply(names(flts), function(x){
       if(!is.null(flts[[x]][[st]])) {
-        landings(flts[[x]][[st]])
+        areaSums(landings(flts[[x]][[st]]))
       } else {
         FLQuant(0, dimnames = list(age = "all",
                                    year = yvector,
@@ -84,14 +84,11 @@ calculateQuotashare <- function(stks,             # Not currently used
     ## Replace cases of NaN (resulting from divide by zero) with 0
     qshare_s[is.nan(qshare_s)] <- 0
     
-    ## logical vector of catches for each fleet
-    f_catch <- apply(qshare_s, c(7), sum, na.rm = TRUE)
-    
     ## loop over each fleet and attach the proportional share for stock s as an attribute
     for(fl in dimnames(qshare_s)$fishery){
       
       ## Only process fleets with catches
-      if(f_catch[fl] > 0) {
+      if(st %in% names(flts[[fl]])) {
         
         ## print fleet name
         if(verbose) cat(fl,"; ")

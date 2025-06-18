@@ -554,6 +554,10 @@ effortBaranov <- function(omList,
       zeroTAC <- rowSums(omList[[it]]$quota) == 0
       exclFleets <- colSums(omList[[it]]$catchq[zeroTAC,,drop=FALSE] * tmp_exceptions[zeroTAC,,drop=FALSE]) > 0
       
+      if (effortType == "max") {
+        exclFleets[] <- FALSE
+      }
+      
       # ------------------------------------------------------#
       # Warning if non-zero catch target is very small
       # ------------------------------------------------------#
