@@ -26,11 +26,13 @@ getC <- function(object, x, sl, summarise = TRUE) {
         return(apply(slot(i[[x]], sl), c(1:4,6), sum))
       }
       if (sl == "landings.wt") {
-        LF <- sweep(slot(i[[x]], "landings.n"),c(1:6),apply(slot(i[[x]],"landings.n"),c(1:6),sum),"/")
+        LF <- sweep(slot(i[[x]], "landings.n"),c(1:4,6),apply(slot(i[[x]],"landings.n"),c(1:4,6),sum),"/")
+        LF[is.na(LF)] <- 0
         return(apply(slot(i[[x]],"landings.wt")*LF,c(1:4,6),sum))
       }
       if (sl == "discards.wt") {
-        DF <- sweep(slot(i[[x]], "discards.n"),c(1:6),apply(slot(i[[x]],"discards.n"),c(1:6),sum),"/")
+        DF <- sweep(slot(i[[x]], "discards.n"),c(1:4,6),apply(slot(i[[x]],"discards.n"),c(1:4,6),sum),"/")
+        DF[is.na(DF)] <- 0
         return(apply(slot(i[[x]],"discards.wt")*DF,c(1:4,6),sum))
       }
     }
