@@ -60,11 +60,16 @@ oemMixME <- function(x,
   # 2. Iterative stock observation
   # 2.1 ... Observed stock catches
   #   I ...... Use oem observation structure (FLStock) 
-  #     ......... If perfect observations
-  #     ......... If observations with uncertainty
   #  II ...... Use oem observation structure (FLBiol & FLFishery) [NOT YET IMPLEMENTED]
-  # III ...... Use OM structure (FLStock)                         [OBSOLETE]
-  #  IV ...... Use OM structure (FLBiols & FLFisheries)
+  # III ...... Use OM structure (FLStock)
+  #  IV ...... Use OM structure (FLBiols & FLFisheries)           [OBSOLETE]
+  # 2.2 ... Populate observation slots
+  #   I ...... FLStock 
+  #     ............ perfect observations
+  #     ............ observations with uncertainty 
+  #  II ...... FLBiols & FLFisheries
+  #     ............ perfect observations
+  #     ............ observations with uncertainty 
   # 2.2 ... Trim to data period
   # 2.3 ... Observed survey indices
   # --------------------------------#
@@ -82,36 +87,122 @@ oemMixME <- function(x,
   # This allows for different biological parameters
   # (weights, maturity, mortality)
   
-  if(use_stk_oem[x] == TRUE & is.null(observations$flt)) {
+  if(!is.null(observations$stk) & is.null(observations$flt)) {
     
     ## use observations object
     stk0 <- observations$stk[[x]]
     
     ## Extract overall landings and discards for this stock
-    # fltcatches <- lapply(om$flts, "[[", x)
     fltlandings <- getC(om$flts, x, sl = "landings.n", FALSE)
     fltdiscards <- getC(om$flts, x, sl = "discards.n", FALSE)
     
-    ## Extract names with catches
-    # fltcatchesnames <- names(fltcatches)[!sapply(fltcatches, is.null)]
+    ## Extract overall catch numbers-at-age
+    fltcatchn <- fltlandings + fltdiscards
     
-    ## Calculate overall landings and discards
-    # fltlandings <- sapply(fltcatchesnames, function(y){
-    #   fltcatches[[y]]@landings.n           
-    # }, simplify = "array", USE.NAMES = TRUE)
+  } ## END if use oem FLStock
+  
+  # ---------------------------------------------------------------#
+  # (OPTION II) Use oem observation structure (FLBiol & FLFishery) #
+  # ---------------------------------------------------------------#
+  
+  if(!is.null(observations$stk) & !is.null(observations$flt)) {
     
-    # fltdiscards <- sapply(fltcatchesnames, function(y){
-    #   fltcatches[[y]]@discards.n
-    # }, simplify = "array")
+    stop("In 'oemMixME': fleet observations not currently implemented")
+    
+    ## use observations object
+    stk0 <- observations$stk[[x]]
+    flt0 <- lapply(observations$flt, "[[", x)
+    
+  } ## END if use oem FLBiols 
+  
+  # ----------------------------------------#
+  # (OPTION III) Use OM structure (FLStock) #
+  # ----------------------------------------#
+  
+  # For simplicity, if an observation error model structure is not supplied,
+  # then I will return an FLStock for each stock supplied - this should be
+  # valid for 99% of users
+  
+  ## N.B. MixME does not allow stk to be FLStocks. Only FLBiols allowed
+  ## N.B. Option III is now replaced by Option IV
+  ## N.B. Option IV has issues. Reverting to Option III.
+  
+  if(is.null(observations$stk)) {
+    # stop("In 'oemMixME': Automatic definition of stock structure not yet implemented")
+    
+    ## coerce to FLStock
+    stk0 <- as(om$stks[[x]],"FLStock")
+    units(stk0)$harvest <- "f"
+    
+    ## Extract fleet landings and discards for this stock
+    fltlandings <- getC(om$flts, x, sl = "landings.n", FALSE)
+    fltdiscards <- getC(om$flts, x, sl = "discards.n", FALSE)
     
     ## Extract overall catch numbers-at-age
     fltcatchn <- fltlandings + fltdiscards
-    # fltcatchn <- sapply(fltcatchesnames, function(y){
-    #   catch.n(fltcatches[[y]])
-    # }, simplify = "array", USE.NAMES = TRUE)
     
-    # If perfect observations
-    # -----------------------#
+    ## Extract fleet landings and discards weights for this stock 
+    fltlandingswts <- getC(om$flts, x, sl = "landings.wt", FALSE)
+    fltdiscardswts <- getC(om$flts, x, sl = "discards.wt", FALSE)
+    
+    ## Calculate fleet-weighted average for landings and discards weights
+    LF <- sweep(fltlandings, c(1:6), apply(fltlandings, c(1:6), sum), "/")
+    fltlandingswts0 <- apply(fltlandingswts * LF, c(1:6), sum)
+    
+    DF <- sweep(fltdiscards, c(1:6), apply(fltdiscards, c(1:6), sum), "/")
+    fltdiscardswts0 <- apply(fltdiscardswts * DF, c(1:6), sum)
+    
+    CF <- sweep(apply(fltlandings, c(1:6), sum), c(1:6), apply(fltcatchn, c(1:6), sum), "/")
+    LW0 <- fltlandingswts0 * CF
+    LW0[is.na(LW0)] <- 0
+    DW0 <- fltdiscardswts0 * (1-CF)
+    DW0[is.na(DW0)] <- 0
+    fltcatchwts0 <- LW0+DW0
+    
+    stk0@landings.wt[] <- fltlandingswts0 
+    stk0@discards.wt[] <- fltdiscardswts0
+    stk0@catch.wt[]    <- fltcatchwts0
+    
+    ## update Fbar range
+    range(stk0)["minfbar"] <- args$frange[[x]]["minfbar"]
+    range(stk0)["maxfbar"] <- args$frange[[x]]["maxfbar"]
+    
+  } ## END if use om FLStock
+  
+  # -----------------------------------------------------#
+  # (OPTION IV) Use OM structure (FLBiols & FLFisheries) #
+  # -----------------------------------------------------#
+  
+  # This replaces Option III. If an observation error model structure is not
+  # supplied, then I return an FLBiols and FLFisheries. This allows for much better
+  # flexibility when evaluating mixed fisheries management. It is then up to the
+  # user to define functions that handle these objects.
+  
+  # if(use_stk_oem[x] == FALSE) {
+  #   
+  #   stk0 <- om$stks[[x]]
+  #   flt0 <- om$flts
+  #   
+  #   ## remove stock numbers
+  #   stk0@n[] <- NA
+  # }
+  
+  # ----------------------------------------#
+  # SECTION 2.2: Populate observation slots #
+  # ----------------------------------------#
+  #
+  # In this next section, we populate the missing observation slots in the
+  # stock structure. This differs depending on whether the observation
+  # structure is an FLStock or an FLBiol/FLFisheries.
+  #
+  # ------------------- #
+  # (Option I) FLStock  #
+  # ------------------- #
+  
+  if (class(stk0)[1] == "FLStock") {
+    
+    # If prefect observation
+    # --------------------------------#
     
     if(use_om_weights[x] == TRUE) {
       
@@ -146,7 +237,7 @@ oemMixME <- function(x,
       ## calculate updated weighted mean catch weights
       stk0@catch.wt[] <- (stk0@discards.wt * stk0discfrac) + (stk0@landings.wt * (1 - stk0discfrac))
       
-    }
+    } ## END if use OM weights
     
     if(use_catch_residuals[x] == FALSE){
       
@@ -209,100 +300,17 @@ oemMixME <- function(x,
     tracking[[x]]$stk["C.obs", ac(iy:ay)] <- catch(stk0)[,ac(iy:ay)]
     tracking[[x]]$stk["L.obs", ac(iy:ay)] <- landings(stk0)[,ac(iy:ay)]
     tracking[[x]]$stk["D.obs", ac(iy:ay)] <- discards(stk0)[,ac(iy:ay)]
-  }
+  } ## END if FLStock
   
-  # ---------------------------------------------------------------#
-  # (OPTION II) Use oem observation structure (FLBiol & FLFishery) #
-  # ---------------------------------------------------------------#
+  # --------------------------------- #
+  # (Option II) FLBiol / FLFisheries  #
+  # --------------------------------- #
   
-  if(use_stk_oem[x] == TRUE & !is.null(observations$flt)) {
-    
-    stop("In 'oemMixME': fleet observations not currently implemented")
-    
-    ## use observations object
-    stk0 <- observations$stk[[x]]
-    flt0 <- lapply(observations$flt, "[[", x)
-    
-  }
-  
-  # ----------------------------------------#
-  # (OPTION III) Use OM structure (FLStock) #
-  # ----------------------------------------#
-  
-  # For simplicity, if an observation error model structure is not supplied,
-  # then I will return an FLStock for each stock supplied - this should be
-  # valid for 99% of users
-  
-  ## N.B. MixME does not allow stk to be FLStocks. Only FLBiols allowed
-  ## N.B. Option III is now replaced by Option IV
-  
-  # if(use_stk_oem[x] == FALSE) {
-  #   stop("In 'oemMixME': Automatic definition of stock structure not yet implemented")
-  # 
-  #   if(class(om$stks[[x]]) == "FLStock") {
-  # 
-  #     stk0 <- om$stks[[x]]
-  #     flt0 <- om$flts
-  # 
-  #   } else if(class(om$stks[[x]]) == "FLBiol") {
-  # 
-  #     ## coerce to FLStock
-  #     stk0 <- as(om$stks[[x]],"FLStock")
-  # 
-  #     ## populate missing slots with data from stock object in tracking
-  #     units(stk0) <- units(tracking[[x]][["stk"]])
-  # 
-  #     ## Fill missing slots
-  #     stk0@landings.n  <- tracking[[x]][["stk"]]@landings.n
-  #     stk0@landings.wt <- tracking[[x]][["stk"]]@landings.wt
-  #     stk0@discards.n  <- tracking[[x]][["stk"]]@discards.n
-  #     stk0@discards.wt <- tracking[[x]][["stk"]]@discards.wt
-  #     stk0@catch.n  <- tracking[[x]][["stk"]]@catch.n
-  #     stk0@catch.wt <- tracking[[x]][["stk"]]@catch.wt
-  #     stk0@harvest  <- tracking[[x]][["stk"]]@harvest
-  # 
-  #     ## update Fbar range
-  #     range(stk0)["minfbar"] <- range(tracking[[x]][["stk"]])["minfbar"]
-  #     range(stk0)["maxfbar"] <- range(tracking[[x]][["stk"]])["maxfbar"]
-  # 
-  #     ## compute properties
-  #     stock(stk0)    <- computeStock(stk0)
-  #     landings(stk0) <- computeLandings(stk0)
-  #     discards(stk0) <- computeDiscards(stk0)
-  #     catch(stk0)    <- computeCatch(stk0)
-  # 
-  #     ## truncate to min data year
-  #     minyr <- dims(stk0@stock[!is.na(stk0@stock)])$minyear # min year where data exists
-  #     stk0  <- window(stk0, start = minyr)
-  # 
-  #     ## Generate SR of correct dimensions
-  #     sr0        <- as.FLSR(stk0, model = om1$stks[[x]]@rec@model)
-  #     sr0@rec    <- rec(stk0)
-  #     sr0@ssb    <- ssb(stk0)
-  #     sr0@params <- om1$stks[[x]]@rec@params
-  #   }
-  # }
-  
-  # -----------------------------------------------------#
-  # (OPTION IV) Use OM structure (FLBiols & FLFisheries) #
-  # -----------------------------------------------------#
-  
-  # This replaces Option III. If an observation error model structure is not
-  # supplied, then I return an FLBiols and FLFisheries. This allows for much better
-  # flexibility when evaluating mixed fisheries management. It is then up to the
-  # user to define functions that handle these objects.
-  
-  if(use_stk_oem[x] == FALSE) {
-    
-    stk0 <- om$stks[[x]]
-    flt0 <- om$flts
-    
-    ## remove stock numbers
-    stk0@n[] <- NA
+  if (class(stk0)[1] == "FLBiol") {
   }
   
   # ---------------------------------#
-  # SECTION 2.2: Trim to data period #
+  # SECTION 2.3: Trim to data period #
   # ---------------------------------#
   
   # In this next section, we trim the data objects to the period for which we have
@@ -324,7 +332,7 @@ oemMixME <- function(x,
   }
   
   # -------------------------------------#
-  # SECTION 2.3: Observed survey indices #
+  # SECTION 2.4: Observed survey indices #
   # -------------------------------------#
   
   if(!is.null(observations$idx[[x]])) {
