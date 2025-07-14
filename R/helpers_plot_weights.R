@@ -60,21 +60,27 @@ plot_weights <- function(FLFisheries, fisheries = "all", stocks = "all", years =
     CWt <- dplyr::filter(CWt, year %in% as.numeric(years))  
   }
   
-
+  
   ### Now choose which to plot
   if(type == "catch.wt") {
-  print(ggplot(data = CWt, aes(x = age, y = catch.wt, group = year)) + geom_point(aes(colour = year), alpha = 0.2) + 
-    geom_smooth(aes(colour = year)) + facet_wrap(~stock, scale = "free") + theme_bw())
+    print(ggplot(data = CWt, aes(x = age, y = catch.wt, group = year)) + 
+            geom_smooth(aes(colour = year), alpha = 0.2) + 
+            geom_point(aes(colour = year), alpha = 0.2) +
+            facet_wrap(~stock, scale = "free") + theme_bw())
   }
   
   if(type == "landings.wt") {
-    print(ggplot(data = CWt, aes(x = age, y = landings.wt, group = year)) + geom_point(aes(colour = year), alpha = 0.2) + 
-      geom_smooth(aes(colour = year)) + facet_wrap(~stock, scale = "free") + theme_bw())
+    print(ggplot(data = CWt, aes(x = age, y = landings.wt, group = year)) + 
+            geom_smooth(aes(colour = year), alpha = 0.2) + 
+            geom_point(aes(colour = year), alpha = 0.2) + 
+            facet_wrap(~stock, scale = "free") + theme_bw())
   }
-   
+  
   if(type == "discards.wt") {
-    print(ggplot(data = CWt, aes(x = age, y = discards.wt, group = year)) + geom_point(aes(colour = year), alpha = 0.2) + 
-      geom_smooth(aes(colour = year)) + facet_wrap(~stock, scale = "free") + theme_bw())
+    print(ggplot(data = CWt, aes(x = age, y = discards.wt, group = year)) + 
+            geom_smooth(aes(colour = year), alpha = 0.2) + 
+            geom_point(aes(colour = year), alpha = 0.2) +
+            facet_wrap(~stock, scale = "free") + theme_bw())
   }
   
   return(filter(CWt, !landings.wt == 0 & discards.wt==0))

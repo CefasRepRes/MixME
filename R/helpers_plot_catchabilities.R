@@ -63,6 +63,9 @@ plot_catchability <- function(FLFisheries, fisheries = "all", stocks = "all", ye
     q <- left_join(q, q_out, by = c("stock"))
     q$outlier <- ifelse((q$logq > q$upper | q$logq < q$lower) & is.finite(q$logq), TRUE,FALSE)
     
+    ## coerce year to integer
+    q$year <- as.integer(as.character(q$year))
+    
     ## If there are catchabilities > 0.1 these are suspicious.
     ## So we draw a rectangle round those
    

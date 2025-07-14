@@ -28,24 +28,34 @@
 plot_quotashare <- function(FLFisheries, fisheries = "all", stocks = "all", years = "all") {
   require(dplyr); require(ggplot2)
   
+  ## check fishery names
+  if(fisheries != "all" & !all(fisheries %in% names(FLFisheries))) {
+    stop("'fisheries' must correspond to named FLFisheries or 'all'")
+  }
+  
   qs   <- do.call(rbind, lapply(FLFisheries, function(x) do.call(rbind, lapply(x, function(q) cbind(fishery = x@name, stock = q@name, as.data.frame(attr(q, "quotashare")))))))
   
   qs   <- qs |> group_by(fishery, stock, year) |> summarise(q50 = quantile(data, 0.5, na.rm = TRUE),
                                                             q05 = quantile(data, 0.05, na.rm = TRUE),
                                                             q95 = quantile(data, 0.95, na.rm = TRUE))
   
-    ## Filters
+  ## Check stock names
+  if (stocks != "all" & !all(stocks %in% unique(qs$stock))) {
+    stop("'stocks' must correspond to named FLCatches or 'all'")
+  }
+  
+  ## Filters
   if(all(fisheries != "all") | length(fisheries)>1) {
     qs   <- dplyr::filter(qs, fishery %in% fisheries)
-      }
+  }
   
   if(all(stocks != "all") | length(stocks)>1) {
     qs  <- dplyr::filter(qs, stock %in% stocks)
-      }
+  }
   
   
   if(all(years != "all") | length(years)>1) {
-  qs   <- dplyr::filter(qs, year %in% as.numeric(years))  
+    qs   <- dplyr::filter(qs, year %in% as.numeric(years))  
   }
   
   print(ggplot(qs, aes(x = year, y = q50)) + geom_line() + 
