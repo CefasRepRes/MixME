@@ -646,6 +646,12 @@ effortBaranov <- function(omList,
         if(effortType == "max") return(which.max(xx))
       })
       
+      ## Check if stkLim is a vector
+      if (is.list(stkLim)) {
+        print(stkLim)
+        stop("'stkLim' is not a vector. Check that 'exceptions' matrix has been set up correctly")
+      }
+      
       ## Add vector of effort-limiting stock per fleet to omList
       omList[[it]]$stkLim <- stkLim - 1
       

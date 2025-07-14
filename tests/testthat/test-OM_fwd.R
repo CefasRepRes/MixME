@@ -4,6 +4,8 @@
 
 test_that("forward projection module for single-stock works", {
   
+  require(FLCore)
+  
   ## Generate token OM & estimated stock
   ## --------------------------------------------------------------------------#
   flq <- FLCore::FLQuant(1, 
@@ -22,13 +24,13 @@ test_that("forward projection module for single-stock works", {
   om$stks$i@mat$mat[] <- 0; om$stks$i@mat$mat[2:3,] <- 1
   om$stks$i@wt[]  <- 1
   om$stks$i@spwn[] <- 0
-  om$stks$i@rec <- predictModel(model="geomean", params=FLPar(a=100, iter = 1))
+  om$stks$i@rec <- FLCore::predictModel(model="geomean", params=FLCore::FLPar(a=100, iter = 1))
 
   om$flts$A$i@landings.n[] <- 0.5
   om$flts$A$i@discards.n[] <- 0.5
   om$flts$A$i@landings.wt[] <- 1
   om$flts$A$i@discards.wt[] <- 1
-  om$flts$A$i@catch.q <- FLPar(1, 
+  om$flts$A$i@catch.q <- FLCore::FLPar(1, 
                                dimnames=list(params=c('alpha','beta'), 
                                              year = dimnames(flq)$year, 
                                              iter = dimnames(flq)$iter),
