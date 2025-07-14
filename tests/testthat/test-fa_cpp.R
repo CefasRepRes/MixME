@@ -22,8 +22,6 @@ test_that("fa_cpp works", {
                    mixedfishery_MixME_om$flts$OTB_A@effort[,"2019"] %*%
                    mixedfishery_MixME_om$flts$OTB_A$cod@catch.sel[,"2019"]))
   
-  ## check that function work with truncated input
-  fa2 <- MixME:::fa_cpp(arr[,"2019",,,,,1,drop=FALSE], mixedfishery_MixME_om$flts, stockname = "cod")
-  expect_equal(fa[,"2019",,,,,1], 
-               fa2[,,,,,,1])
+  ## check that function throws error if year dimensions do not match
+  expect_error(MixME:::fa_cpp(arr[,"2019",,,,,1,drop=FALSE], mixedfishery_MixME_om$flts, stockname = "cod"))
 })

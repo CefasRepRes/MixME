@@ -353,7 +353,8 @@ test_that("estMixME single-stock perfect observation works", {
   args <- list(ay = 10,
                iy = 9,
                management_lag = 1,
-               frange = list("1" = c(1,3)))
+               frange = list("1" = c(1,3)),
+               use_fastF = TRUE)
   estmethod <- list("1" = "perfectObs")
   estgroup  <- list("1" = "1")
   tracking  <- makeTracking(om, c("9","10"))
