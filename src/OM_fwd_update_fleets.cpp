@@ -1,4 +1,5 @@
 #include <Rcpp.h>
+#include "getidx.h"
 using namespace Rcpp;
 
 // [[Rcpp::export]]
@@ -118,14 +119,8 @@ List fwd_update_fleets(List om, List om_fwd, List tracking, int year, CharacterV
     for(int it = 0; it < effort_Dims[5]; it++){
       
       // Generate index for element of interest
-      int idx =
-        (effort_Dims[4] * effort_Dims[3] * effort_Dims[2] * effort_Dims[1] * effort_Dims[0] * (it)) +
-        (effort_Dims[3] * effort_Dims[2] * effort_Dims[1] * effort_Dims[0] * (1 - 1)) + // points to area (assumed to be 1)
-        (effort_Dims[2] * effort_Dims[1] * effort_Dims[0] * (1 - 1)) + // points to season (assumed to be 1)
-        (effort_Dims[1] * effort_Dims[0] * (1 - 1)) + // points to unit (assumed to be 1)
-        (effort_Dims[0] * (yr)) +
-        (0);
-      
+      int idx = getIdx_flq(effort_Dims, 0, yr, 0, 0, 0, it);
+
       // extract elements
       effort[idx] = effort_fwd[idx];
     }
@@ -223,14 +218,8 @@ List fwd_update_fleets(List om, List om_fwd, List tracking, int year, CharacterV
         for(int a = 0; a < ln_Dims[0]; a++){
           
           // Generate index for element of interest
-          int idx =
-            (ln_Dims[4] * ln_Dims[3] * ln_Dims[2] * ln_Dims[1] * ln_Dims[0] * (it)) +
-            (ln_Dims[3] * ln_Dims[2] * ln_Dims[1] * ln_Dims[0] * (1 - 1)) + // points to area (assumed to be 1)
-            (ln_Dims[2] * ln_Dims[1] * ln_Dims[0] * (1 - 1)) + // points to season (assumed to be 1)
-            (ln_Dims[1] * ln_Dims[0] * (1 - 1)) + // points to unit (assumed to be 1)
-            (ln_Dims[0] * (yr)) +
-            (a);
-          
+          int idx = getIdx_flq(ln_Dims, a, yr, 0, 0, 0, it);
+
           // check if any landings or discards are missing weight information.
           // If yes: throw error.
           
@@ -284,11 +273,7 @@ List fwd_update_fleets(List om, List om_fwd, List tracking, int year, CharacterV
         }
         
         // Generate index for quota array
-        int q_idx = 
-          (quota_Dims[2] * quota_Dims[1] * quota_Dims[0] * (it)) +
-          (quota_Dims[1] * quota_Dims[0] * (q_yr)) +
-          (quota_Dims[0] * (q_flt)) +
-          (q_stk);
+        int q_idx = getIdx_4D(quota_Dims, q_stk, q_flt, q_yr, it);
         
         // extract available quota
         double quota = q_array[q_idx];
@@ -323,11 +308,7 @@ List fwd_update_fleets(List om, List om_fwd, List tracking, int year, CharacterV
         }
         
         // Generate index for overquota array
-        int oq_idx = 
-          (overquota_Dims[2] * overquota_Dims[1] * overquota_Dims[0] * (it)) +
-          (overquota_Dims[1] * overquota_Dims[0] * (oq_yr)) +
-          (overquota_Dims[0] * (oq_flt)) +
-          (oq_stk);
+        int oq_idx = getIdx_4D(overquota_Dims, oq_stk, oq_flt, oq_yr, it);
         
         // Calculations if advice is landings-based
         // ----------------------------------------
@@ -384,13 +365,7 @@ List fwd_update_fleets(List om, List om_fwd, List tracking, int year, CharacterV
             for(int a = 0; a < ln_Dims[0]; a++){
               
               // Generate index for element of interest
-              int idx =
-                (ln_Dims[4] * ln_Dims[3] * ln_Dims[2] * ln_Dims[1] * ln_Dims[0] * (it)) +
-                (ln_Dims[3] * ln_Dims[2] * ln_Dims[1] * ln_Dims[0] * (1 - 1)) + // points to area (assumed to be 1)
-                (ln_Dims[2] * ln_Dims[1] * ln_Dims[0] * (1 - 1)) + // points to season (assumed to be 1)
-                (ln_Dims[1] * ln_Dims[0] * (1 - 1)) + // points to unit (assumed to be 1)
-                (ln_Dims[0] * (yr)) +
-                (a);
+              int idx = getIdx_flq(ln_Dims, a, yr, 0, 0, 0, it);
               
               // insert elements
               ln[idx] = ln_new[a];
@@ -410,13 +385,7 @@ List fwd_update_fleets(List om, List om_fwd, List tracking, int year, CharacterV
             for(int a = 0; a < ln_Dims[0]; a++){
               
               // Generate index for element of interest
-              int idx =
-                (ln_Dims[4] * ln_Dims[3] * ln_Dims[2] * ln_Dims[1] * ln_Dims[0] * (it)) +
-                (ln_Dims[3] * ln_Dims[2] * ln_Dims[1] * ln_Dims[0] * (1 - 1)) + // points to area (assumed to be 1)
-                (ln_Dims[2] * ln_Dims[1] * ln_Dims[0] * (1 - 1)) + // points to season (assumed to be 1)
-                (ln_Dims[1] * ln_Dims[0] * (1 - 1)) + // points to unit (assumed to be 1)
-                (ln_Dims[0] * (yr)) +
-                (a);
+              int idx = getIdx_flq(ln_Dims, a, yr, 0, 0, 0, it);
               
               // insert elements
               ln[idx] = ln_vector[a];
@@ -493,13 +462,7 @@ List fwd_update_fleets(List om, List om_fwd, List tracking, int year, CharacterV
             for(int a = 0; a < ln_Dims[0]; a++){
               
               // Generate index for element of interest
-              int idx =
-                (ln_Dims[4] * ln_Dims[3] * ln_Dims[2] * ln_Dims[1] * ln_Dims[0] * (it)) +
-                (ln_Dims[3] * ln_Dims[2] * ln_Dims[1] * ln_Dims[0] * (1 - 1)) + // points to area (assumed to be 1)
-                (ln_Dims[2] * ln_Dims[1] * ln_Dims[0] * (1 - 1)) + // points to season (assumed to be 1)
-                (ln_Dims[1] * ln_Dims[0] * (1 - 1)) + // points to unit (assumed to be 1)
-                (ln_Dims[0] * (yr)) +
-                (a);
+              int idx = getIdx_flq(ln_Dims, a, yr, 0, 0, 0, it);
               
               // insert elements
               ln[idx] = ln_new[a];
@@ -519,13 +482,7 @@ List fwd_update_fleets(List om, List om_fwd, List tracking, int year, CharacterV
             for(int a = 0; a < ln_Dims[0]; a++){
               
               // Generate index for element of interest
-              int idx =
-                (ln_Dims[4] * ln_Dims[3] * ln_Dims[2] * ln_Dims[1] * ln_Dims[0] * (it)) +
-                (ln_Dims[3] * ln_Dims[2] * ln_Dims[1] * ln_Dims[0] * (1 - 1)) + // points to area (assumed to be 1)
-                (ln_Dims[2] * ln_Dims[1] * ln_Dims[0] * (1 - 1)) + // points to season (assumed to be 1)
-                (ln_Dims[1] * ln_Dims[0] * (1 - 1)) + // points to unit (assumed to be 1)
-                (ln_Dims[0] * (yr)) +
-                (a);
+              int idx = getIdx_flq(ln_Dims, a, yr, 0, 0, 0, it);
               
               // insert elements
               ln[idx] = ln_vector[a];

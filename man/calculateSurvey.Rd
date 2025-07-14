@@ -7,13 +7,13 @@
 \alias{calculateSurvey,FLBiols,FLFisheries,list-method}
 \title{Calculate survey indices from \code{FLStocks} and \code{FLIndices}}
 \usage{
-calculateSurvey(stk, flt, idx, use_q = TRUE, use_time = TRUE)
+calculateSurvey(stk, flt, idx, use_q = TRUE, use_time = TRUE, use_fastF = TRUE)
 
-\S4method{calculateSurvey}{FLBiol,FLFisheries,FLIndex}(stk, flt, idx, use_q = TRUE, use_time = TRUE)
+\S4method{calculateSurvey}{FLBiol,FLFisheries,FLIndex}(stk, flt, idx, use_q = TRUE, use_time = TRUE, use_fastF = TRUE)
 
-\S4method{calculateSurvey}{FLBiol,FLFisheries,FLIndices}(stk, flt, idx, use_q = TRUE, use_time = TRUE)
+\S4method{calculateSurvey}{FLBiol,FLFisheries,FLIndices}(stk, flt, idx, use_q = TRUE, use_time = TRUE, use_fastF = TRUE)
 
-\S4method{calculateSurvey}{FLBiols,FLFisheries,list}(stk, flt, idx, use_q = TRUE, use_time = TRUE)
+\S4method{calculateSurvey}{FLBiols,FLFisheries,list}(stk, flt, idx, use_q = TRUE, use_time = TRUE, use_fastF = TRUE)
 }
 \arguments{
 \item{stk}{Object of class \code{FLBiol} or \code{FLBiols} containing
@@ -30,6 +30,9 @@ at age with survey catchability? Defaults to \code{TRUE}.}
 
 \item{use_time}{Logical. Use survey timing to correct available stock numbers
 for fishing and natural mortality. Defaults to \code{TRUE}.}
+
+\item{use_fastF}{Logical. Use fast c++ function to calculate fishing mortality
+at age? Defaults to \code{TRUE}.}
 }
 \value{
 an object of class \code{FLIndices} with the survey index stored in

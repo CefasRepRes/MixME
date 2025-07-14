@@ -168,9 +168,9 @@ summary_catch_MixME <- function(object,
   }
   
   if(byfleet == FALSE) {
-    res <- apply(res, c(1:6,8), sum)
+    res <- apply(res, c(1:4,6,8), sum, na.rm = TRUE)
     
-    names(dimnames(res))[7] <- "stk"
+    names(dimnames(res))[6] <- "stk"
     dimnames(res)$stk       <- names(om$stks)
   }
   

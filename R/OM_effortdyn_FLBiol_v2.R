@@ -479,7 +479,8 @@ effortBaranov <- function(omList,
                           useEffortAsInit = FALSE,
                           useTMB          = TRUE,
                           correctResid    = FALSE,
-                          parallel        = FALSE){
+                          parallel        = FALSE,
+                          verbose         = FALSE){
   
   # ======================================================#
   # Define dimensions
@@ -508,58 +509,7 @@ effortBaranov <- function(omList,
   # ======================================================#
   
   if (useTMB == FALSE){
-    
     stop("non-TMB optimisation is no longer supported")
-    
-    # ------------------------------------------------------#
-    # Define a function to globally optimise effort
-    # ------------------------------------------------------#
-    
-    Gobj <- function(par, dat, adviceType, objType, exceptions, multiplier) {
-      
-      ## Calculate Catch given effort
-      Cfleet <- catchBaranov(par = par, dat = dat, adviceType = adviceType, islog = TRUE)
-      
-      ## Check that fleet catches are within quota limits
-      overundershoot <- ((dat$quota * multiplier) - Cfleet) * exceptions
-      
-      ## Add an extra penalty to the overshoot
-      overshoot <- overundershoot[which(overundershoot < 0)]
-      undershoot <- overundershoot[which(overundershoot > 0)]
-      
-      ## Calculate output
-      if(objType == "globalMin") {
-        Gout <- sum(overshoot^2) + sum(undershoot)
-      }
-      if(objType == "globalMax") {
-        Gout <- sum(overshoot) + sum(undershoot^2)
-      }
-      return(Gout)
-    }
-    
-    # ------------------------------------------------------#
-    # Define a function to optimise effort for selected stocks
-    # ------------------------------------------------------#
-    
-    Fobj <- function(par, dat, adviceType, exceptions, multiplier) {
-      
-      ## Calculate Catch given effort
-      Cfleet <- catchBaranov(par = par, dat = dat, adviceType = adviceType, islog = TRUE)
-      
-      # extract discrepancy between fleet catches and quota
-      quotaResid <- ((dat$quota * multiplier) - Cfleet) * exceptions
-      
-      ## replace NAs with 0 (cases where no catchability)
-      quotaResid[is.na(quotaResid)] <- 0
-      
-      ## extract discrepancy for effort limiting stocks
-      quotaResid_lim <- sapply(1:length(dat$stkLim), function(x){
-        quotaResid[dat$stkLim[x],x]
-      })
-      
-      return(sum(quotaResid_lim^2))
-    }
-    
   }
   
   # ======================================================#
@@ -570,6 +520,12 @@ effortBaranov <- function(omList,
   if (parallel == FALSE){
     out <- lapply(1:ni, function(it) {
       
+      # make a copy of exceptions and multiplier matrices 
+      # (so that we don't overwrite the original matrices)
+      
+      tmp_exceptions <- exceptions
+      tmp_multiplier <- multiplier
+      
       ## define default initial log-effort values if not defined
       if(is.null(par) & useEffortAsInit == FALSE){
         par <- rep(log(0.5), nflt)
@@ -577,6 +533,37 @@ effortBaranov <- function(omList,
       
       if(is.null(par) & useEffortAsInit == TRUE){
         par <- log(omList[[it]]$effort)
+      }
+      
+      ## if a fleet has no catchability for any stock, throw a warning and set
+      ## to status quo effort
+      checkZeroQ <- colSums(omList[[it]]$catchq) == 0
+      if (any(checkZeroQ)) {
+        warning(paste0("In iter ",it,": ",
+                       colnames(omList[[it]]$catchq)[checkZeroQ]," has no catchability for any stocks. Fixing fleet effort to status quo effort!"))
+        tmp_exceptions[,colnames(omList[[it]]$catchq)[checkZeroQ]] <- 0
+      }
+      
+      # ------------------------------------------------------#
+      # Handle zero TAC stocks
+      # ------------------------------------------------------#
+      
+      # find fleets that have 0 quota and >0 catchability for one or more stocks.
+      # fix logE to -Inf.
+      
+      zeroTAC <- rowSums(omList[[it]]$quota) == 0
+      exclFleets <- colSums(omList[[it]]$catchq[zeroTAC,,drop=FALSE] * tmp_exceptions[zeroTAC,,drop=FALSE]) > 0
+      
+      if (effortType == "max") {
+        exclFleets[] <- FALSE
+      }
+      
+      # ------------------------------------------------------#
+      # Warning if non-zero catch target is very small
+      # ------------------------------------------------------#
+      
+      if (any(omList[[it]]$quota[,!exclFleets] < 1e-8)) {
+        warning(paste0("In iter ",it,": quota target < 1e-8. Optimisation may be unstable."))
       }
       
       # ------------------------------------------------------#
@@ -587,13 +574,26 @@ effortBaranov <- function(omList,
       # exceptions matrix.
       
       ## find status quo effort fleet
-      sqE <- colSums(exceptions) == 0
+      sqE <- colSums(tmp_exceptions) == 0
       
-      if(sum(sqE) > 0) {
+      ## fix effort for status quo effort fleets and zero TAC fleets
+      if(any(sqE) | any(exclFleets)) {
         par[sqE] <- log(omList[[it]]$effort)[sqE]
+        par[exclFleets] <- log(0)
+        
         mapfactors <- par
-        mapfactors[sqE] <- NA
-        mapfactors[!sqE] <- seq_along(par[!sqE])
+        mapfactors[sqE|exclFleets] <- NA
+        mapfactors[!sqE & !exclFleets] <- seq_along(par[!sqE & !exclFleets])
+        
+        ## If there is no free effort, return effort vector
+        if (all(is.na(mapfactors))) {
+          return(list(par         = par,
+                      objective   = 0,
+                      convergence = 0,
+                      message     = c("all fixed effort",""),
+                      stkLim      = sapply(1:nflt, function(x) which.max(omList[[it]]$catchq[zeroTAC,x,drop=FALSE] * tmp_exceptions[zeroTAC,x,drop=FALSE])),
+                      Cfleet      = catchBaranov(par, omList[[it]],adviceType, TRUE)))
+        }
         
         map <- list(logE = factor(mapfactors))
       } else {
@@ -616,8 +616,8 @@ effortBaranov <- function(omList,
       ## add advice type to data
       omList[[it]]$adviceType <- adviceType
       omList[[it]]$objType    <- objType
-      omList[[it]]$exceptions <- exceptions
-      omList[[it]]$multiplier <- multiplier
+      omList[[it]]$exceptions <- tmp_exceptions
+      omList[[it]]$multiplier <- tmp_multiplier
       omList[[it]]$stkLim     <- rep(1, nflt)
       
       Gobj <- TMB::MakeADFun(data = omList[[it]],
@@ -638,13 +638,19 @@ effortBaranov <- function(omList,
       ## NOTE: we need to select from only stocks the fleet has catching power for!
       ## NOTE: most-limiting (min), least-limiting (max)
       stkLim <- sapply(1:ncol(stkEff), function(x) { 
-        if(all(exceptions[,x]==0)) return(1)
+        if(all(tmp_exceptions[,x]==0)) return(1)
         xx <- stkEff[,x]
         xx[omList[[it]]$catchq[,x] == 0] <- NA
-        xx[exceptions[,x] == 0] <- NA
+        xx[tmp_exceptions[,x] == 0] <- NA
         if(effortType == "min") return(which.min(xx))
         if(effortType == "max") return(which.max(xx))
       })
+      
+      ## Check if stkLim is a vector
+      if (is.list(stkLim)) {
+        print(stkLim)
+        stop("'stkLim' is not a vector. Check that 'exceptions' matrix has been set up correctly")
+      }
       
       ## Add vector of effort-limiting stock per fleet to omList
       omList[[it]]$stkLim <- stkLim - 1
@@ -655,9 +661,9 @@ effortBaranov <- function(omList,
       
       ## use last year effort or global optimisation output as initial values
       if(useEffortAsInit == TRUE){
-        par[!sqE] <- log(omList[[it]]$effort)
+        par[!sqE & !exclFleets] <- log(omList[[it]]$effort)
       } else {
-        par[!sqE] <- eff$par
+        par[!sqE & !exclFleets] <- eff$par
       }
       
       # There is some reorganisation of how parameters are 
@@ -683,17 +689,35 @@ effortBaranov <- function(omList,
       stkEff <- (omList[[it]]$quota * multiplier) - Fobj$report()$Cfleet
       
       ## Check for mismatch in choke stocks
-      stkLimMismatch <- !all(omList[[it]]$stkLim == sapply(1:ncol(stkEff), function(x) {
-        if(all(exceptions[,x]==0)) return(0)
+      stkLimNew <- sapply(1:ncol(stkEff), function(x) {
+        if(all(tmp_exceptions[,x]==0)) return(0)
         xx <- stkEff[,x]
         xx[omList[[it]]$catchq[,x] == 0] <- NA
-        xx[exceptions[,x] == 0] <- NA
+        xx[tmp_exceptions[,x] == 0] <- NA
         if(effortType == "min") return(which.min(xx)-1)
         if(effortType == "max") return(which.max(xx)-1)
-      }))
+      })
+      stkLimMismatch <- !all(omList[[it]]$stkLim == stkLimNew)
+      
+      ## Some helpful debug code
+      # if (verbose == TRUE) {
+      #   if(!is.numeric(stkLimNew)) {
+      #     cat("\nInit stkLim", omList[[it]]$stkLim)
+      #     cat("\nNew stkLim")
+      #     print(stkLimNew)
+      #     print(sapply(1:ncol(stkEff), function(x) {
+      #       if(all(tmp_exceptions[,x]==0)) return(0)
+      #       xx <- stkEff[,x]
+      #       xx[omList[[it]]$catchq[,x] == 0] <- NA
+      #       xx[tmp_exceptions[,x] == 0] <- NA
+      #       return(xx)
+      #     }))
+      #     browser()
+      #   }
+      # }
       
       ## if map is used, out does not contain fixed effort fleets
-      par[!sqE] <- out$par
+      par[!sqE & !exclFleets] <- out$par
       out$par   <- par
       
       ## Save vector of fleet choke stocks
@@ -715,7 +739,7 @@ effortBaranov <- function(omList,
       # ----------------------------------------------------------------#
       
       if(stkLimMismatch == TRUE)
-        cat("\nChoke stock mis-match detected - rerunning optimisation \n")
+        cat("\n",it,": Choke stock mis-match detected - rerunning optimisation \n")
       mR <- maxRetry
       
       ## If mismatch, re-run optimisation
@@ -725,15 +749,15 @@ effortBaranov <- function(omList,
         
         ## use last year effort or global optimisation output as initial values
         if(useEffortAsInit == TRUE){
-          par[!sqE] <- log(omList[[it]]$effort)
+          par[!sqE & !exclFleets] <- log(omList[[it]]$effort)
         }
         
         ## Update effort-limiting stock vector
         omList[[it]]$stkLim <- sapply(1:ncol(stkEff), function(x) { 
-          if(all(exceptions[,x]==0)) return(0)
+          if(all(tmp_exceptions[,x]==0)) return(0)
           xx <- stkEff[,x]
           xx[omList[[it]]$catchq[,x] == 0] <- NA
-          xx[exceptions[,x] == 0] <- NA
+          xx[tmp_exceptions[,x] == 0] <- NA
           if(effortType == "min") return(which.min(xx)-1)
           if(effortType == "max") return(which.max(xx)-1)
         })
@@ -756,17 +780,18 @@ effortBaranov <- function(omList,
         stkEff <- (omList[[it]]$quota * multiplier) - Fobj$report()$Cfleet
         
         ## Check for mismatch in choke stocks
-        stkLimMismatch <- !all(omList[[it]]$stkLim == sapply(1:ncol(stkEff), function(x) { 
-          if(all(exceptions[,x]==0)) return(0)
+        stkLimNew <- sapply(1:ncol(stkEff), function(x) { 
+          if(all(tmp_exceptions[,x]==0)) return(0)
           xx <- stkEff[,x]
           xx[omList[[it]]$catchq[,x] == 0] <- NA
-          xx[exceptions[,x] == 0] <- NA
+          xx[tmp_exceptions[,x] == 0] <- NA
           if(effortType == "min") return(which.min(xx)-1)
           if(effortType == "max") return(which.max(xx)-1)
-        }))
+        })
+        stkLimMismatch <- !all(omList[[it]]$stkLim == stkLimNew)
         
         ## if map is used, out does not contain fixed effort fleets
-        par[!sqE] <- out$par
+        par[!sqE & !exclFleets] <- out$par
         out$par   <- par
         
         ## Save vector of fleet choke stocks
@@ -785,7 +810,8 @@ effortBaranov <- function(omList,
         
         ## incrementally decrease number of tries
         mR <- mR - 1
-      }
+      } ## END while
+      if(mR < maxRetry) cat("\n")
       
       # -------------------------------------------------------------#
       # (Optional) Rescale effort down if residual overshoot remains
@@ -796,7 +822,7 @@ effortBaranov <- function(omList,
         stop("correctResid does not currently work with TMB")
       
       ## re-run if overshoot exceeds some value
-      if(min(stkEff, na.rm =  TRUE) < -0.001 & correctResid == TRUE) {
+      if(min(stkEff, na.rm =  TRUE) < -0.001 & correctResid == TRUE & verbose == TRUE) {
         cat("Overquota catches > 0.001 - scaling effort \n")
         
         ## scale all effort to bring overshoot to zero

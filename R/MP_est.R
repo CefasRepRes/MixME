@@ -200,38 +200,33 @@ estMixME <- function(x,
       ## If FLBiol
       if (class(stk[[x]]) == "FLBiol") {
         
-        ## insert stock numbers
-        FLCore::n(stk0)[,ac(yrs_oem)] <- FLCore::n(om$stks[[x]])[,ac(yrs_oem)]
-        
-        ## insert stock recruitment data (currently redundant - but good to keep)
-        stk0@rec@params <- om$stks[[x]]@rec@params
-        stk0@rec@model  <- om$stks[[x]]@rec@model
-        
-        ## insert stock recruitment information
+        ## generate null stock recruitment object
         sr0 <- NULL
         
-        ## extract vector of fleets catching stocks
-        flt0 <- flt[[x]]
-        fltnames <- sapply(flt0, function(xx) x %in% names(xx))
+        out0 <- MP_est_perfectObs_FLBiol(om$stks, om$flts, stk0, flt, x, yrs_oem)
+        stk0 <- out0$stk0
+        flt0 <- out0$flt0
         
-        ## insert parameters/variables to calculate fishing mortality
-        for (i in names(flt0)[fltnames]) {
-          effort(flt0[[i]])[, ac(yrs_oem)]              <- om$flts[[i]]@effort[, ac(yrs_oem)]
-          catch.q(flt0[[i]][[x]])["alpha", ac(yrs_oem)] <- catch.q(om$flts[[i]][[x]])["alpha", ac(yrs_oem)]
-          catch.sel(flt0[[i]][[x]])[, ac(yrs_oem)]      <- catch.sel(om$flts[[i]][[x]])[, ac(yrs_oem)]
-        }
+        # ## insert stock numbers
+        # FLCore::n(stk0)[,ac(yrs_oem)] <- FLCore::n(om$stks[[x]])[,ac(yrs_oem)]
+        # 
+        # ## insert stock recruitment data (currently redundant - but good to keep)
+        # stk0@rec@params <- om$stks[[x]]@rec@params
+        # stk0@rec@model  <- om$stks[[x]]@rec@model
+        # 
+        # ## extract vector of fleets catching stocks
+        # flt0 <- flt[[x]]
+        # fltnames <- sapply(flt0, function(xx) x %in% names(xx))
+        # 
+        # ## insert parameters/variables to calculate fishing mortality
+        # for (i in names(flt0)[fltnames]) {
+        #   effort(flt0[[i]])[, ac(yrs_oem)]              <- om$flts[[i]]@effort[, ac(yrs_oem)]
+        #   catch.q(flt0[[i]][[x]])["alpha", ac(yrs_oem)] <- catch.q(om$flts[[i]][[x]])["alpha", ac(yrs_oem)]
+        #   catch.sel(flt0[[i]][[x]])[, ac(yrs_oem)]      <- catch.sel(om$flts[[i]][[x]])[, ac(yrs_oem)]
+        # }
         
         ## Calculate fishing mortality at age
-        fltFage <- sapply(fltnames,
-                          function(y){
-                            Fage <- catch.q(flt0[[y]][[x]])["alpha", ac(ay)] *
-                              flt0[[y]]@effort[,ac(ay)] %*%
-                              flt0[[y]][[x]]@catch.sel[,ac(ay)]
-                            
-                            Fage#[drop = TRUE]
-                          }, simplify = "array")
-        
-        totFage <- apply(fltFage, c(1:6), sum)
+        totFage <- getFage(stks = stk0, flts = flt0, stkname = x, yr = ay, use_fastF = args$use_fastF)
         totFbar <- apply(totFage[ac(args$frange[[x]][1]:args$frange[[x]][2]),,,,,,drop = FALSE], c(2:6), mean)
         
         ## Update tracking object
@@ -239,9 +234,9 @@ estMixME <- function(x,
         tracking[[x]]$stk["B.est", ac(ay)]  <- FLCore::tsb(stk0)[,ac(ay)]
         tracking[[x]]$stk["SB.est", ac(ay)] <- FLCore::ssb(stk0)[,ac(ay)]
         
-        tracking[[x]]$stk["C.est", ac(ay)] <- Reduce("+",lapply(FLCore::catch(flt0, sum = FALSE), "[[", x))[,ac(ay)]
-        tracking[[x]]$stk["L.est", ac(ay)] <- Reduce("+",lapply(FLCore::landings(flt0, sum = FALSE), "[[", x))[,ac(ay)]
-        tracking[[x]]$stk["D.est", ac(ay)] <- Reduce("+",lapply(FLCore::discards(flt0, sum = FALSE), "[[", x))[,ac(ay)]
+        tracking[[x]]$stk["L.est", ac(ay)] <- getCW(flt0,x, "landings", summarise = TRUE)[,ac(ay)]
+        tracking[[x]]$stk["D.est", ac(ay)] <- getCW(flt0,x, "landings", summarise = TRUE)[,ac(ay)]
+        tracking[[x]]$stk["C.est", ac(ay)] <- tracking[[x]]$stk["L.est", ac(ay)] + tracking[[x]]$stk["D.est", ac(ay)]
         
         tracking[[x]]$sel_est[,ac(ay)] <- sweep(totFage, c(2:6), totFbar, "/")
         
@@ -258,16 +253,9 @@ estMixME <- function(x,
         fltnames <- names(om$flts)[sapply(om$flts, function(ii) any(names(ii) %in% x))]
         
         ## insert fishing mortality
-        fltFage <- sapply(fltnames,
-                          function(y){
-                            Fage <- catch.q(om$flts[[y]][[x]])["alpha", ac(yrs_oem)] *
-                              om$flts[[y]]@effort[,ac(yrs_oem)] %*%
-                              om$flts[[y]][[x]]@catch.sel[,ac(yrs_oem)]
-                            
-                            Fage#[drop = TRUE]
-                          }, simplify = "array")
-        
-        FLCore::harvest(stk0)[,ac(yrs_oem)] <- apply(fltFage, c(1:6), sum)
+        fltFage <- getFage(stks = om$stks, flts = om$flts, stkname = x, yr = yrs_oem, use_fastF = args$use_fastF)
+
+        FLCore::harvest(stk0)[,ac(yrs_oem)] <- fltFage
         
         # Under perfect stock observations and zero management lag, the final
         # (current) year is also the advice year and no fishing has occurred yet. The

@@ -105,6 +105,7 @@ runMixME <- function(om,
   # 4. handle missing multiplier
   # 5. handle non-matrix effortType
   # 6. handle non-matrix exceptions
+  # 7. handle matrix exceptions with missing dimnames, incorrect dims
   
   ## handle missing arguments
   if (is.null(args$management_lag)) args$management_lag <- 1 # default management lag to 1
@@ -142,8 +143,16 @@ runMixME <- function(om,
     }
     ctrl_obj$fwd@args$exceptions <- tmp_exception
   }
+  
+  ## handle exceptions and multiplier dimension errors
+  if (any(dim(ctrl_obj$fwd@args$exceptions) != c(length(om$stks),length(om$flts)))) stop("'exceptions' dimensions must be [nstks, nflts]")
+  if (any(dim(ctrl_obj$fwd@args$multiplier) != c(length(om$stks),length(om$flts)))) stop("'multiplier' dimensions must be [nstks, nflts]")
+  
+  ## handle exceptions and multiplier dimension name errors
+  # if (any(dimnames(exceptions) != list(names(om$stks),names(om$flts)))) stop("'exceptions' dimnames must match stock names and fleet names")
+  # if (any(dimnames(multiplier) != list(names(om$stks),names(om$flts)))) stop("'multiplier' dimnames must match stock names and fleet names")
 
-  ## handle exceptions and multiplier errors
+  ## handle exceptions and multiplier content errors
   if(!all(c(ctrl_obj$fwd@args$exceptions) %in% c(0,1))) stop("'exceptions' must contain only 0 or 1 values") # make sure that 'exceptions' are 1 or 0
   if(any(c(ctrl_obj$fwd@args$multiplier) < 0)) stop("'multiplier' must contain positive values only")
   if(all(c(ctrl_obj$fwd@args$multiplier) == 0)) stop("'multiplier' cannot all be zero!")
@@ -156,12 +165,16 @@ runMixME <- function(om,
     if(all(is.na(unlist(ctrl_obj$phcr@args$hcrpars))))
       stop("'hcrpars' elements are all NA in 'ctrl_obj'")
   
-  if(any(is.na(sapply(om$flts, function(x) FLCore::effort(x), simplify = "array")[,as.character(args$iy:args$fy),,,,,])))
+  if(any(is.na(sapply(om$flts, function(x) FLCore::effort(x)[,as.character(args$iy:args$fy),,,,,], simplify = "array"))))
     stop("fleet effort slots cannot contain NA values in the projection period")
   
   ## Infer some simulation arguments if these are not provided
   if (is.null(args$verbose))
     args$verbose <- FALSE
+  if (is.null(args$use_fastF))
+    args$use_fastF <- TRUE
+  if (is.null(args$use_fastfwd))
+    args$use_fastfwd <- TRUE
   
   ## If banking and borrowing is used make sure forecast extends to TACyr+1 
   ## --- do I really want to hard code this procedure?? Maybe better to bundle
