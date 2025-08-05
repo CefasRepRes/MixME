@@ -343,6 +343,12 @@ List fast_fwd(List om,                    // [0] = FLBiols, [1] = FLFisheries
             // Calculate index to insert total fishing mortality, natural mortality, numbers
             int idx_insert = getIdx_flq(stk_n_Dims, a, yr+1, 0, 0, 0, it);
             
+            // quick check to catch cases of NA/NaN
+            if (NumericVector::is_na(stk_n[idx_get])) {
+              Rcout << " stock: " << st << " age: " << a << "\n";
+              stop("'NA' in stock numbers-at-age 'n'");
+            }
+            
             stk_n[idx_insert] = stk_n[idx_get] * exp(-(stk_m[idx_get] + stk_F[idx_get]));
             
             // Additional calculation of plus group survivors
