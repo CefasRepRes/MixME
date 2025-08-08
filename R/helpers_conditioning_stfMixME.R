@@ -225,7 +225,7 @@ stfMixME <- function(om,
         FLFishery::catch.sel(stkflt_ext)  [,year_proj] <- stfQuant(catch.sel(fishery[[y]])[,year_sel],   
                                                                    method  = method, 
                                                                    samples = sel_samples,
-                                                                   ni      = ni)
+                                                                   ni      = ni, ignoreAllZero = TRUE)
         
         ## calculate landings and discards fractions
         ## and populate landings.n and discards.n
@@ -389,7 +389,7 @@ stfMixME <- function(om,
     
     ## Insert names
     names(om$flts[[x]]) <- stknames
-    
+    om$flts[[x]]@name <- x
   }
   
   # ----------------------------------------------------------------------------
@@ -422,13 +422,30 @@ stfMixME <- function(om,
 #' Function to handle different methods of extending stock/fleet properties to future years
 #' ----------------------------------------------------------------------------------------
 
-stfQuant <- function(object, method, samples = NULL, ni = NULL, ignoreZero = FALSE) {
+stfQuant <- function(object, method, samples = NULL, ni = NULL, ignoreZero = FALSE, ignoreAllZero = FALSE) {
   
   if (method == "yearMeans") {
+    
+    # IgnoreZero handles cases where a zero denotes a missing observation for
+    # a given age. We would want to ignore this zero when calculating an annual average.
+    
     if (ignoreZero & !all(object==0,na.rm = TRUE)) {
       object[object==0] <- NA
     }
-    return(yearMeans(object))
+    
+    # IgnoreAllZero handles cases where an individual zero is possible (and we
+    # want to include this in our calculations), but we want to ignore cases where
+    # all ages contain a zero (because this represents missing data)
+    
+    if (ignoreAllZero) {
+      object <- apply(object,2:6,function(x) {
+        if(sum(x) ==0) x[] <- NA
+        return(x)
+      })
+    }
+    res <- yearMeans(object)
+    res[is.na(res)] <- 0
+    return(res)
   }
   if (method == "resample") {
     vec <- lapply(1:ni, function(x) {
