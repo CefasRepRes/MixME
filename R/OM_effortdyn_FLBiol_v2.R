@@ -416,7 +416,8 @@ catchBaranov <- function(par, dat, adviceType, islog = FALSE) {
 #' Calculation of fleet efforts given mixed fisheries technical interactions
 #'
 #' This function calculates the effort for each fleet required to catch their
-#' first quota.
+#' most-limiting or least-limiting quota, as specified using the \code{effortType}
+#' argument.
 #'
 #' Outputs are a list of the form:
 #'
@@ -456,6 +457,9 @@ catchBaranov <- function(par, dat, adviceType, islog = FALSE) {
 #' @param useEffortAsInit (Optional) Boolean. Should the fleet effort from the 
 #'                        previous year be used as initial values. Default is
 #'                        \code{FALSE}
+#' @param useGlobalAsInit (Optional) Boolean. Should the fleet effort estimated
+#'                        from initial Global Optimisation be used as initial
+#'                        values for subsequent Choke Optimisation.
 #' @param useTMB (Optional) Boolean. Should TMB be used to estimate fleet effort?
 #'               Default is \code{TRUE}. Highly recommended that the default is
 #'               used.
@@ -464,6 +468,8 @@ catchBaranov <- function(par, dat, adviceType, islog = FALSE) {
 #'                     over-quota catch following optimisation exceeds 0.001?
 #'                     Defaults to \code{FALSE}
 #' @param parallel (Optional) Boolean. Should function be run in parallel?
+#' @param verbose  (Optional) Boolean. Should messages be printed to console?
+#'                 Defaults to \code{FALSE}
 #'
 #' @return A list containing outputs for the final optimisation.
 #'
@@ -477,6 +483,7 @@ effortBaranov <- function(omList,
                           par = NULL,
                           maxRetry = 1,
                           useEffortAsInit = FALSE,
+                          useGlobalAsInit = FALSE,
                           useTMB          = TRUE,
                           correctResid    = FALSE,
                           parallel        = FALSE,
@@ -673,7 +680,11 @@ effortBaranov <- function(omList,
       # the inputted choke stocks with the emergent vector of highest stock quota
       # uptake
       
-      parm$logE <- par
+      ## use Global Optimisation effort output as initial values
+      if (useGlobalAsInit == TRUE) {
+        parm$logE <- par
+      }
+
       omList[[it]]$objType    <- "choke"
       
       Fobj <- TMB::MakeADFun(data = omList[[it]],
@@ -762,8 +773,10 @@ effortBaranov <- function(omList,
           if(effortType == "max") return(which.max(xx)-1)
         })
         
-        ## update starting parameters
-        parm$logE <- par
+        ## update starting parameters - use Global Optimisation effort output as initial values
+        if (useGlobalAsInit == TRUE) {
+          parm$logE <- par
+        }
         
         ## Make TMB function
         Fobj <- TMB::MakeADFun(data = omList[[it]],

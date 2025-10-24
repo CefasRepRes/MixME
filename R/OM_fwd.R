@@ -107,6 +107,14 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
     useEffortAsInit <- FALSE
   }
   
+  ## use effort from Global Optimisation as initial values for Local Optimisation
+  ## Default = FALSE
+  if (!is.null(args$useGlobalAsInit)) {
+    useGlobalAsInit <- args$useGlobalAsInit
+  } else {
+    useGlobalAsInit <- FALSE
+  }
+  
   ## use stock recruitment residuals
   if(!is.null(sr_residuals))
     if(is.list(sr_residuals))
@@ -205,6 +213,7 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
                                     multiplier   = multiplier,
                                     maxRetry     = maxRetry,
                                     useEffortAsInit = useEffortAsInit,
+                                    useGlobalAsInit = useGlobalAsInit,
                                     useTMB       = useTMB,
                                     correctResid = FALSE,
                                     verbose      = args$verbose)
