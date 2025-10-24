@@ -85,9 +85,18 @@ summary_effort_MixME <- function(object,
   # calculate summary quantity and correct dimensions
   # -------------------------------------------------
   
+  ## Extract effort
   res <- sapply(names(om$flts), function(x) {
     effort(om$flts[[x]])[,ac(minyr:maxyr), drop = FALSE]
   }, simplify = "array")
+  
+  ## aggregate over metiers
+  if(is.list(res)) {
+    res <- sapply(res, function(x) {
+      x <- areaSums(x)
+      return(x)
+    }, simplify = "array")
+  }
   
   ## define dimension names
   names(dimnames(res))[7] <- "flt"
@@ -140,43 +149,29 @@ summary_catch_MixME <- function(object,
   # calculate summary quantity and correct dimensions
   # -------------------------------------------------
   
-  bb <- function(...) {
-    arglist <- (...)
-    dimx      <- c(dim(arglist[[1]]), length(arglist))
-    dimnamesx <- c(dimnames(arglist[[1]]), list(names(arglist)))
-    return(array(unlist(arglist), dim = dimx, dimnames = dimnamesx))
+  ## leverage c++ summary functions
+  res <- lapply(names(om$stks), function(x) {
+    xx <- MixME:::getCW(om$flts, x, sl = "landings", summarise = !byfleet) +
+      MixME:::getCW(om$flts, x, sl = "discards", summarise = !byfleet)
+    xx <- as.data.frame.table(xx)
+    xx$stk = x
+    return(xx)
+  })
+  
+  res <- do.call(rbind, res)
+  
+  ## (Optional) handle aggregation by fleet
+  if (byfleet == TRUE) {
+    res <- res[,c("age","year","unit","season","iter","fleet","stk","Freq")]
+    names(res)[names(res) == "fleet"] <- "flt"
   }
   
-  ## Generate 8D array
-  res <- bb(lapply(names(om$stks), function(x){
-    catch_fleets <- bb(lapply(names(om$flts), function(y){
-      if(!is.null(om$flts[[y]][[x]])) {
-        catch(om$flts[[y]][[x]])[,ac(minyr:maxyr),drop = FALSE]
-      } else {
-        FLQuant(0, dimnames = list(year = ac(minyr:maxyr),
-                                   iter = dimnames(om$flts[[y]])$iter))
-      }
-    }))}))
-  
-  ## (Optional) aggregate over fleets
-  if(byfleet == TRUE) {
-    names(dimnames(res))[7] <- "flt"
-    dimnames(res)$flt       <- names(om$flts)
-
-    names(dimnames(res))[8] <- "stk"
-    dimnames(res)$stk       <- names(om$stks)
+  if (byfleet == FALSE) {
+    res <- res[,c("age","year","unit","season","iter","stk","Freq")]
   }
   
-  if(byfleet == FALSE) {
-    res <- apply(res, c(1:4,6,8), sum, na.rm = TRUE)
-    
-    names(dimnames(res))[6] <- "stk"
-    dimnames(res)$stk       <- names(om$stks)
-  }
-  
-  ## transform array to dataframe
-  res <- as.data.frame.table(res)
-  names(res)[names(res) == "Freq"] <- "catch"
+  ## rename variable
+  names(res)[names(res) == "Freq"]  <- "catch"
   
   ## (optional) filter for specific stocks
   if(!is.null(stknames)) {
@@ -269,7 +264,7 @@ summary_uptake_MixME <- function(object,
     summary_uptake$uptake_percentage <- ((summary_uptake$quota - summary_uptake$uptake)/summary_uptake$quota) * 100
     
     ## if quota = 0 and uptake = 0, % uptake = 100
-    res$uptake_percentage[res$quota == 0 & res$uptake == 0] <- 100
+    summary_uptake$uptake_percentage[summary_uptake$quota == 0 & summary_uptake$uptake == 0] <- 100
     
     return(summary_uptake[,c("stk","year","iter","uptake_percentage")])
   }
@@ -300,63 +295,34 @@ summary_fbar_MixME <- function(object,
   ## handle null cases
   if(is.null(minyr)) minyr <- max(unlist(lapply(om$stks, function(x) dims(x)$minyear)))
   if(is.null(maxyr)) maxyr <- min(unlist(lapply(om$stks, function(x) dims(x)$maxyear)))
-  
-  ## define function to calculate fishing mortality
-  getf <- function(op, fn = 1, cn = 1, bn = 1) {
-    # f = alpha * sel * effort
-    flf <- op[["flts"]][[fn]]
-    flc <- flf[[cn]]
-    b <- op[["stks"]][[bn]]
-    f <- ((flc@catch.q[1, ] * quantSums(b@n * b@wt)^(-1 * flc@catch.q[2,])) %*% flf@effort) %*% flc@catch.sel
-    dimnames(f)$year <- dimnames(flc)$year
-    return(f)
-  }
-  
+  if(is.null(stknames)) stknames <- unique(unlist(sapply(om$flts, names)))
+
   # -------------------------------------------------
   # calculate summary quantity and correct dimensions
   # -------------------------------------------------
   
-  ## get vector of stock names and fleets catching these
-  stklist <- sapply(om$flts, function(y) {
-    names(y)
-  },simplify = FALSE)
-  
-  fltlist <- sapply(names(om$flts), function(y) {
-    rep(y, length(om$flts[[y]]))
-  },simplify = FALSE)
-  
-  stkvector <- unlist(stklist, use.names = FALSE)
-  fltvector <- unlist(fltlist, use.names = FALSE)
-  
-  res <- sapply(unique(stkvector), function(y){
-    fage <- Reduce("+", Map(getf, 
-                            fn = fltvector[stkvector == y], 
-                            cn = stkvector[stkvector == y],
-                            bn = stkvector[stkvector == y],
-                            op = list(om)))
+  res <- lapply(stknames, function(x) {
     
-    age_range <- args$frange[[y]]["minfbar"]:args$frange[[y]]["maxfbar"]
-    fbar <- FLCore::quantMeans(fage[ac(age_range), ])
-    return(fbar[,ac(minyr:maxyr),,,,])
-  }, simplify = "array")
+    ## get Fbar range
+    frange <- object$args$frange[[x]]
+    
+    ## get fishing mortality at age
+    xx <- MixME:::getFage(object$om$stks, object$om$flts, x)
+    
+    ## get Fbar and coerce to dataframe
+    xx <- FLCore::quantMeans(xx[as.character(frange[1]:frange[2]),])
+    xx <- as.data.frame.table(xx)
+    xx$stk = x
+    return(xx)
+  })
   
-  ## define dimension names
-  names(dimnames(res))[7] <- "stk"
-  dimnames(res)$stk       <- unique(stkvector)
+  res <- do.call(rbind, res)[,c("age","year","unit","season","iter","stk","Freq")]
+  names(res)[names(res) == "Freq"] <- "fbar"
   
   # -------------------------------------------------
   # optional filter and return result
   # -------------------------------------------------
   
-  ## transform array to dataframe
-  res <- as.data.frame.table(res)
-  names(res)[names(res) == "Freq"] <- "fbar"
-  
-  ## (optional) filter for specific stocks
-  if(!is.null(stknames)) {
-    res <- res[res$stk %in% stknames,]
-  }
-
   ## coerce "year" and "iter" to numeric
   res$year <- as.numeric(as.character(res$year))
   res$iter <- as.numeric(as.character(res$iter))
@@ -396,61 +362,29 @@ summary_f_MixME <- function(object,
   ## handle null cases
   if(is.null(minyr)) minyr <- max(unlist(lapply(om$stks, function(x) dims(x)$minyear)))
   if(is.null(maxyr)) maxyr <- min(unlist(lapply(om$stks, function(x) dims(x)$maxyear)))
-  
-  ## define function to calculate fishing mortality
-  getf <- function(op, fn = 1, cn = 1, bn = 1) {
-    # f = alpha * sel * effort
-    flf <- op[["flts"]][[fn]]
-    flc <- flf[[cn]]
-    b <- op[["stks"]][[bn]]
-    f <- ((flc@catch.q[1, ] * quantSums(b@n * b@wt)^(-1 * flc@catch.q[2,])) %*% flf@effort) %*% flc@catch.sel
-    dimnames(f)$year <- dimnames(flc)$year
-    return(f)
-  }
+  if(is.null(stknames)) stknames <- unique(unlist(sapply(om$flts, names)))
   
   # -------------------------------------------------
   # calculate summary quantity and correct dimensions
   # -------------------------------------------------
   
-  ## get vector of stock names and fleets catching these
-  stklist <- sapply(om$flts, function(y) {
-    names(y)
-  },simplify = FALSE)
-  
-  fltlist <- sapply(names(om$flts), function(y) {
-    rep(y, length(om$flts[[y]]))
-  },simplify = FALSE)
-  
-  stkvector <- unlist(stklist, use.names = FALSE)
-  fltvector <- unlist(fltlist, use.names = FALSE)
-  
-  res <- lapply(unique(stkvector), function(y){
-    fage <- Reduce("+", Map(getf, 
-                            fn = fltvector[stkvector == y], 
-                            cn = stkvector[stkvector == y],
-                            bn = stkvector[stkvector == y],
-                            op = list(om)))
+  res <- lapply(stknames, function(x) {
     
-    ## transform array to dataframe
-    out <- as.data.frame.table(fage[,ac(minyr:maxyr)])
-    out$stk <- y
+    ## get fishing mortality at age
+    xx <- MixME:::getFage(object$om$stks, object$om$flts, x)
     
-    return(out)
+    ## coerce to dataframe
+    xx <- as.data.frame.table(xx)
+    xx$stk = x
+    return(xx)
   })
   
-  res <- do.call(rbind, res)
-  
-  # -------------------------------------------------
-  # optional filter and return result
-  # -------------------------------------------------
-  
-  ## rename result
+  res <- do.call(rbind, res)[,c("age","year","unit","season","iter","stk","Freq")]
   names(res)[names(res) == "Freq"] <- "f"
   
-  ## (optional) filter for specific stocks
-  if(!is.null(stknames)) {
-    res <- res[res$stk %in% stknames,]
-  }
+  # -------------------------------------------------
+  # return result
+  # -------------------------------------------------
   
   ## coerce "year" and "iter" to numeric
   res$year <- as.numeric(as.character(res$year))
