@@ -4,7 +4,15 @@
 \alias{projectFastfwd}
 \title{Project stock forward one year using a bespoke c++ function}
 \usage{
-projectFastfwd(om, tracking, pars, yr, sr_residuals = NULL, proc_res = NULL)
+projectFastfwd(
+  om,
+  tracking,
+  pars,
+  yr,
+  popType = NULL,
+  sr_residuals = NULL,
+  proc_res = NULL
+)
 }
 \arguments{
 \item{om}{Operating model}

@@ -773,10 +773,8 @@ effortBaranov <- function(omList,
           if(effortType == "max") return(which.max(xx)-1)
         })
         
-        ## update starting parameters - use Global Optimisation effort output as initial values
-        if (useGlobalAsInit == TRUE) {
-          parm$logE <- par
-        }
+        ## update starting parameters
+        parm$logE <- par
         
         ## Make TMB function
         Fobj <- TMB::MakeADFun(data = omList[[it]],

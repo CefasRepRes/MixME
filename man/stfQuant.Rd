@@ -5,7 +5,14 @@
 \title{\subsection{Function to handle different methods of extending stock/fleet properties to future years}{
 }}
 \usage{
-stfQuant(object, method, samples = NULL, ni = NULL)
+stfQuant(
+  object,
+  method,
+  samples = NULL,
+  ni = NULL,
+  ignoreZero = FALSE,
+  ignoreAllZero = FALSE
+)
 }
 \description{
 \subsection{Function to handle different methods of extending stock/fleet properties to future years}{

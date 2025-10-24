@@ -13,9 +13,11 @@ effortBaranov(
   par = NULL,
   maxRetry = 1,
   useEffortAsInit = FALSE,
+  useGlobalAsInit = FALSE,
   useTMB = TRUE,
   correctResid = FALSE,
-  parallel = FALSE
+  parallel = FALSE,
+  verbose = FALSE
 )
 }
 \arguments{
@@ -48,6 +50,10 @@ identification of choke-stocks is unsuccessful? Default is 1.}
 previous year be used as initial values. Default is
 \code{FALSE}}
 
+\item{useGlobalAsInit}{(Optional) Boolean. Should the fleet effort estimated
+from initial Global Optimisation be used as initial
+values for subsequent Choke Optimisation.}
+
 \item{useTMB}{(Optional) Boolean. Should TMB be used to estimate fleet effort?
 Default is \code{TRUE}. Highly recommended that the default is
 used.}
@@ -59,6 +65,9 @@ Defaults to \code{FALSE}}
 
 \item{parallel}{(Optional) Boolean. Should function be run in parallel?}
 
+\item{verbose}{(Optional) Boolean. Should messages be printed to console?
+Defaults to \code{FALSE}}
+
 \item{method}{(Optional) Character. Determines the optimisation algorithm that is used.
 Values may be 'nlminb' or 'Nelder-Mead'. Default is 'nlminb'.
 HIGHLY recommended that the default is used.}
@@ -68,7 +77,8 @@ A list containing outputs for the final optimisation.
 }
 \description{
 This function calculates the effort for each fleet required to catch their
-first quota.
+most-limiting or least-limiting quota, as specified using the \code{effortType}
+argument.
 }
 \details{
 Outputs are a list of the form:
