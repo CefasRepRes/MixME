@@ -42,8 +42,8 @@ summary_ssb_MixME <- function(object,
   dimnames(res)$stk       <- names(om$stks)
   
   ## transform array to dataframe
-  res <- as.data.frame.table(res)
-  names(res)[names(res) == "Freq"] <- "SSB"
+  res <- as.data.frame.table(res, responseName = "SSB")
+  # names(res)[names(res) == "Freq"] <- "SSB"
   
   ## (optional) filter for specific stocks
   if(!is.null(stknames)) {
@@ -87,24 +87,25 @@ summary_effort_MixME <- function(object,
   
   ## Extract effort
   res <- sapply(names(om$flts), function(x) {
-    effort(om$flts[[x]])[,ac(minyr:maxyr), drop = FALSE]
+    x <- areaSums(effort(om$flts[[x]])[,ac(minyr:maxyr), drop = FALSE])
+    return(x)
   }, simplify = "array")
   
   ## aggregate over metiers
-  if(is.list(res)) {
-    res <- sapply(res, function(x) {
-      x <- areaSums(x)
-      return(x)
-    }, simplify = "array")
-  }
+  # if(is.list(res)) {
+  #   res <- sapply(res, function(x) {
+  #     x <- areaSums(x)
+  #     return(x)
+  #   }, simplify = "array")
+  # }
   
   ## define dimension names
   names(dimnames(res))[7] <- "flt"
   dimnames(res)$flt      <- names(om$flts)
   
   ## transform array to dataframe
-  res <- as.data.frame.table(res)
-  names(res)[names(res) == "Freq"] <- "effort"
+  res <- as.data.frame.table(res, responseName = "effort")
+  # names(res)[names(res) == "Freq"] <- "effort"
   
   ## (optional) filter for specific stocks
   if(!is.null(fltnames)) {
@@ -153,7 +154,7 @@ summary_catch_MixME <- function(object,
   res <- lapply(names(om$stks), function(x) {
     xx <- MixME:::getCW(om$flts, x, sl = "landings", summarise = !byfleet) +
       MixME:::getCW(om$flts, x, sl = "discards", summarise = !byfleet)
-    xx <- as.data.frame.table(xx)
+    xx <- as.data.frame.table(xx, responseName = "catch")
     xx$stk = x
     return(xx)
   })
@@ -162,16 +163,13 @@ summary_catch_MixME <- function(object,
   
   ## (Optional) handle aggregation by fleet
   if (byfleet == TRUE) {
-    res <- res[,c("age","year","unit","season","iter","fleet","stk","Freq")]
+    res <- res[,c("age","year","unit","season","iter","fleet","stk","catch")]
     names(res)[names(res) == "fleet"] <- "flt"
   }
   
   if (byfleet == FALSE) {
-    res <- res[,c("age","year","unit","season","iter","stk","Freq")]
+    res <- res[,c("age","year","unit","season","iter","stk","catch")]
   }
-  
-  ## rename variable
-  names(res)[names(res) == "Freq"]  <- "catch"
   
   ## (optional) filter for specific stocks
   if(!is.null(stknames)) {
@@ -221,11 +219,8 @@ summary_uptake_MixME <- function(object,
   res2 <- tracking$quota
   
   ## transform array to dataframe
-  res <- as.data.frame.table(res)
-  names(res)[names(res) == "Freq"] <- "uptake"
-  
-  res2 <- as.data.frame.table(res2)
-  names(res2)[names(res2) == "Freq"] <- "quota"
+  res  <- as.data.frame.table(res, responseName = "uptake")
+  res2 <- as.data.frame.table(res2, responseName = "quota")
 
   res <- merge(res, res2, c("stk","flt","year","iter"))
   
@@ -311,13 +306,12 @@ summary_fbar_MixME <- function(object,
     
     ## get Fbar and coerce to dataframe
     xx <- FLCore::quantMeans(xx[as.character(frange[1]:frange[2]),])
-    xx <- as.data.frame.table(xx)
+    xx <- as.data.frame.table(xx, responseName = "fbar")
     xx$stk = x
     return(xx)
   })
   
-  res <- do.call(rbind, res)[,c("age","year","unit","season","iter","stk","Freq")]
-  names(res)[names(res) == "Freq"] <- "fbar"
+  res <- do.call(rbind, res)[,c("age","year","unit","season","iter","stk","fbar")]
   
   # -------------------------------------------------
   # optional filter and return result
@@ -374,13 +368,12 @@ summary_f_MixME <- function(object,
     xx <- MixME:::getFage(object$om$stks, object$om$flts, x)
     
     ## coerce to dataframe
-    xx <- as.data.frame.table(xx)
+    xx <- as.data.frame.table(xx, responseName = "f")
     xx$stk = x
     return(xx)
   })
   
-  res <- do.call(rbind, res)[,c("age","year","unit","season","iter","stk","Freq")]
-  names(res)[names(res) == "Freq"] <- "f"
+  res <- do.call(rbind, res)[,c("age","year","unit","season","iter","stk","f")]
   
   # -------------------------------------------------
   # return result
@@ -433,8 +426,7 @@ summary_risk_MixME <- function(object,
   dimnames(res)$stk       <- names(om$stks)
   
   ## transform array to dataframe
-  res <- as.data.frame.table(res)
-  names(res)[names(res) == "Freq"] <- "risk"
+  res <- as.data.frame.table(res, responseName = "risk")
   
   ## (optional) filter for specific stocks
   if(!is.null(stknames)) {
