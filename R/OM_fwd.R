@@ -176,7 +176,7 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
     
     if (!is.null(effsharemethod)) {
       if (is.function(effsharemethod)) {
-        om <- do.call(effsharemethod, c(list(om = om, yr = yr),effshareargs))
+        om <- do.call(effsharemethod, c(list(om = om, yr = yr, advice = advice),effshareargs))
       }
     }
 
