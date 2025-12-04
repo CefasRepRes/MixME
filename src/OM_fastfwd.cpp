@@ -274,7 +274,7 @@ List fast_fwd(List om,                    // [0] = FLBiols, [1] = FLFisheries
               int idx = getIdx_flq(stk_n_Dims, a, yr, 0, 0, 0, it);
               
               // Calculate index to extract total fishing mortality, natural mortality, numbers
-              int idx_catch = getIdx_flq(stk_n_Dims, a, yr, 0, 0, mt, it);
+              int idx_catch = getIdx_flq(cat_Dims, a, yr, 0, 0, mt, it);
               
               // Calculate catch using Baranov Equation
               double catches = (partF/(stk_F[idx] + stk_m[idx])) * (1 - exp(-(stk_F[idx] + stk_m[idx]))) * stk_n[idx];
