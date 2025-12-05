@@ -212,6 +212,12 @@ List flr_to_list(List om, List advice, int year, int nstock, int nfleet, int nit
             effshare_flMet[mt] = flt_effort[idx];
           }
           
+          // Throw error if metier effort-share sums to 0
+          if (sum(effshare_flMet) == 0) {
+            Rcout << "Fleet: " << fltsNames[fl] << "; Year: " << yr << "; Iter: " << it << "\n";
+            stop("In 'flr_to_list': when conditioning fleet model, projection year fleet effort must be > 0.");
+          }
+          
           // Calculate proportional effortshare
           effshare_flMet = effshare_flMet/sum(effshare_flMet);
           
