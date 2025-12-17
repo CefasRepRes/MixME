@@ -823,7 +823,7 @@ effortBaranov <- function(omList,
         ## incrementally decrease number of tries
         mR <- mR - 1
       } ## END while
-      if(mR < maxRetry) cat("\n")
+      if(mR < maxRetry & verbose == TRUE) cat("\n")
       
       # -------------------------------------------------------------#
       # (Optional) Rescale effort down if residual overshoot remains
