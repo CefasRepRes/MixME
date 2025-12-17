@@ -684,7 +684,7 @@ effortBaranov <- function(omList,
       if (useGlobalAsInit == TRUE) {
         parm$logE <- par
       }
-
+      
       omList[[it]]$objType    <- "choke"
       
       Fobj <- TMB::MakeADFun(data = omList[[it]],
@@ -749,14 +749,15 @@ effortBaranov <- function(omList,
       # (OPTIONAL) Re-run optimisation using updated choke stock vector
       # ----------------------------------------------------------------#
       
-      if(stkLimMismatch == TRUE)
+      if(stkLimMismatch == TRUE & verbose == TRUE)
         cat("\n",it,": Choke stock mis-match detected - rerunning optimisation \n")
       mR <- maxRetry
       
       ## If mismatch, re-run optimisation
       while(stkLimMismatch == TRUE & mR > 0) {
         
-        cat("\r", maxRetry - mR + 1)
+        if (verbose == TRUE)
+          cat("\r", maxRetry - mR + 1)
         
         ## use last year effort or global optimisation output as initial values
         if(useEffortAsInit == TRUE){
