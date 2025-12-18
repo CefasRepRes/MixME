@@ -183,7 +183,7 @@ stfMixME <- function(om,
   # Process FLFisheries
   # ----------------------------------------------------------------------------
   
-  for (x in names(om$flts)) {
+  fisheries <- lapply(names(om$flts), function(x) {
     
     ## print fleet name
     if (verbose) 
@@ -199,7 +199,7 @@ stfMixME <- function(om,
     fishery <- window(fishery, end = ydata+nyears)
     
     ## extend FLCatch - needs to be done simultaneously
-    om$flts[[x]] <- FLFishery::FLFishery(
+    fishery@.Data <- 
       # FLFishery::FLCatches(
       lapply(names(fishery), function(y){
         
@@ -329,7 +329,7 @@ stfMixME <- function(om,
         
         # Quota-share
         # ---------------#
-      
+        
         ## Handle future quotashare - extend FLQuant
         if(!is.null(attr(fishery[[y]],"quotashare"))) {
           
@@ -360,37 +360,46 @@ stfMixME <- function(om,
         
         return(stkflt_ext)
       }) # end lapply
-      #) # close FLCatches
-    ) # close FLFishery
+    #) # close FLCatches
     
     # -------------------------#
     # Insert fishery-level data
     # -------------------------#
     
     ## Insert capacity. If NA replace with 1
-    capacity(om$flts[[x]]) <- capacity(fishery)
-    capacity(om$flts[[x]])[,year_proj] <- stfQuant(capacity(fishery)[,year_sel], 
-                                                   method  = method, 
-                                                   samples = sel_samples,
-                                                   ni      = ni)
-    capacity(om$flts[[x]])[is.na(capacity(om$flts[[x]]))] <- 1
+    capacity(fishery)[,year_proj] <- stfQuant(capacity(fishery)[,year_sel], 
+                                              method  = method, 
+                                              samples = sel_samples,
+                                              ni      = ni)
+    capacity(fishery)[is.na(capacity(om$flts[[x]]))] <- 1
     
     ## Insert effort
-    effort(om$flts[[x]]) <- fishery@effort
-    effort(om$flts[[x]])[,year_proj] <- stfQuant(fishery@effort[,year_sel], 
-                                                 method  = method, 
-                                                 samples = sel_samples,
-                                                 ni      = ni)
+    effort(fishery)[,year_proj] <- stfQuant(fishery@effort[,year_sel], 
+                                            method  = method, 
+                                            samples = sel_samples,
+                                            ni      = ni)
+    
+    ## Insert hperiod
+    hperiod(fishery)[,year_proj] <- stfQuant(hperiod(fishery)[,year_sel], 
+                                             method  = method, 
+                                             samples = sel_samples,
+                                             ni      = ni)
+    
+    ## temporary check for comparison
+    # fishery@range[c(3,4)] <- 1
     
     # hperiod(stkfltAll$flts[[x]])  <- hperiod(fishery)
     # vcost(stkfltAll$flts[[x]])    <- vcost(fishery)
     # fcost(stkfltAll$flts[[x]])    <- fcost(fishery)
-    orevenue(om$flts[[x]]) <- orevenue(fishery)
     
     ## Insert names
-    names(om$flts[[x]]) <- stknames
-    om$flts[[x]]@name <- x
-  }
+    names(fishery) <- stknames
+    fishery@name <- x
+    
+    return(fishery)
+  })
+  names(fisheries) <- names(om$flts)
+  om$flts <- FLFisheries(fisheries)
   
   # ----------------------------------------------------------------------------
   # (OPTIONAL) Process FLIndices
