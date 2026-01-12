@@ -122,3 +122,51 @@ combineOM <- function(x, y) {
   }
   return(x)
 }
+
+# subset MixME object along iteration dimension
+# ==============================================#
+#
+# Function subsets a MixME operating model for a specified vector of iteration
+#
+#' @export
+
+iterMixME <- function(om, tracking = NULL, oem, ctrl_obj, args, it) {
+  
+  ## subset operating model
+  om0 <- iterOM(om, it)
+  
+  ## subset tracking object
+  if(!is.null(tracking)) {
+    tracking0 <- iterTracking(tracking, it)
+    tracking  <- tracking0
+  }
+  
+  ## subset observation error model
+  oem0 <- oem
+  if (!is.null(oem0@observations$stk))
+    oem0@observations$stk <- iter(oem0@observations$stk, it)
+  if (!is.null(oem0@observations$idx))
+    oem0@observations$idx <- lapply(oem0@observations$idx, function(x) iter(x, it))
+  if (!is.null(oem0@deviances$stk))
+    oem0@deviances$stk <- lapply(oem0@deviances$stk, function(x) x[,,,,,it,,drop = FALSE])
+  if (!is.null(oem0@deviances$idx))
+    oem0@deviances$idx <- lapply(oem0@deviances$idx, function(x) iter(x, it))
+  
+  ## subset parts of MP control and global arguments
+  ctrl_obj0 <- ctrl_obj
+  if (!is.null(ctrl_obj$fwd@args$sr_residuals)) {
+    ctrl_obj0$fwd@args$sr_residuals <- lapply(ctrl_obj$fwd@args$sr_residuals, function(x) iter(x, it))
+  }
+  if (!is.null(ctrl_obj$fwd@args$proc_res)) {
+    ctrl_obj0$fwd@args$proc_res <- lapply(ctrl_obj$fwd@args$proc_res, function(x) iter(x, it))
+  }
+  
+  args0 <- args
+  args0$adviceInit <- lapply(args$adviceInit, function(x) x[,it])
+  
+  return(list(om       = om0,
+              oem      = oem0,
+              tracking = tracking,
+              ctrl_obj = ctrl_obj0,
+              args     = args0))
+}
