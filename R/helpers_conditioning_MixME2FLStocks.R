@@ -22,7 +22,7 @@
 #' ## collapse Operating Model to FLStocks
 #' res <- MixME2FLStocks(mixedfishery_MixME_input$om)
 
-MixME2FLStocks <- function(om) {
+MixME2FLStocks <- function(om, units_harvest = "f") {
   
   ## process each stock separately
   FLStocks(lapply(om$stks, function(x) {
@@ -51,6 +51,13 @@ MixME2FLStocks <- function(om) {
     catch.n(xx)  <- xx@landings.n + xx@discards.n
     catch.wt(xx) <- (xx@landings.n/xx@catch.n) * xx@landings.wt + (xx@discards.n/xx@catch.n) * xx@discards.wt
     catch(xx)    <- computeCatch(xx)
+    
+    ## units
+    units(om_FLStock$`cod.27.7e-k`)$harvest <- units_harvest
+    
+    ## periods
+    harvest.spwn(xx) <- 0
+    m.spwn(xx)       <- x@spwn
     
     ## return result
     return(xx)
