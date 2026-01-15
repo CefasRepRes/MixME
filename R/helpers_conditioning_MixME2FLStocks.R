@@ -57,7 +57,7 @@ MixME2FLStocks <- function(om, units_harvest = "f") {
     
     ## periods
     harvest.spwn(xx) <- 0
-    m.spwn(xx)       <- x@spwn
+    m.spwn(xx)       <- 0
     
     ## return result
     return(xx)
