@@ -53,7 +53,7 @@ MixME2FLStocks <- function(om, units_harvest = "f") {
     catch(xx)    <- computeCatch(xx)
     
     ## units
-    units(om_FLStock$`cod.27.7e-k`)$harvest <- units_harvest
+    units(xx)$harvest <- units_harvest
     
     ## periods
     harvest.spwn(xx) <- 0
