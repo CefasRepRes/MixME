@@ -4,7 +4,7 @@
 \alias{MixME2FLStocks}
 \title{Convert \code{MixME} operating model into \code{FLFisheries} class object}
 \usage{
-MixME2FLStocks(om)
+MixME2FLStocks(om, units_harvest = "f")
 }
 \arguments{
 \item{om}{A MixME om comprising a named lists of \code{stks} and \code{flts} with the

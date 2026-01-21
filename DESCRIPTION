@@ -1,6 +1,6 @@
 Package: MixME
 Title: Mixed-fishery Multi-stock Evaluation
-Version: 0.3.1.9006
+Version: 0.3.1.9007
 Authors@R: 
     c(person(given = "Matthew C.",
              family = "Pace",
