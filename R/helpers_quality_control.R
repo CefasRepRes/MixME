@@ -35,7 +35,7 @@
 checkRun <- function(object, yr, effortType = "min", sig.fig = 3, verbose = TRUE) {
   
   ## Get catchability
-  q <- stockExceptionsMatrix(object$om,"", yr)
+  q <- stockExceptionsMatrix(object$om, yr, "")
   
   ## remove exceptions
   q = q * object$ctrl_obj$fwd@args$exceptions
