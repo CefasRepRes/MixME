@@ -79,11 +79,25 @@ hcrRun <- function(stk,
   if (any(sapply(hcrgroup, length) > 1)) {
     
     flatlist <- function(x, hcrgroup) {
+      
+      ## unpack grouped stocks into a single list of ctrl and tracking containing the stocks
+      tmp <- unlist(x[sapply(hcrgroup, length) > 1], recursive = FALSE)
+      
+      ## invert to get a list of stocks each containing ctrl and tracking 
+      tmp1 <- lapply(unlist(hcrgroup[which(sapply(hcrgroup, length) > 1)]), function(y){
+        lapply(tmp,"[[",y)
+      })
+      
+      ## combine ungroups and groups stocks
       tmp <- c(x[sapply(hcrgroup, length) == 1],
-               unlist(x[sapply(hcrgroup, length) > 1], recursive = FALSE))
-      names(tmp) <- c(hcrgroup[[which(sapply(hcrgroup, length) == 1)]],
-                      hcrgroup[[which(sapply(hcrgroup, length) > 1)]])
+               tmp1)
+      
+      ## assign names
+      names(tmp) <- c(unlist(hcrgroup[which(sapply(hcrgroup, length) == 1)]),
+                      unlist(hcrgroup[which(sapply(hcrgroup, length) > 1)]))
       tmp <- tmp[unlist(hcrgroup)]
+      
+      return(tmp)
     }
     
     ## partially flatten list
