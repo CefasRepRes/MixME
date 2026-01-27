@@ -14,12 +14,14 @@
 #' @param na_replace Value used to replace instances of \code{NA}. Defaults to
 #'                   0.
 #' @param verbose Should progress be printed to screen? Defaults to \code{TRUE}.
+#' @param verbose If the métier dimension should be kept and transfered to the area dimension (5th dim) in
+#' in the FLQuants.
 #'
 #' @return object of class \code{FLFisheries}
 #' 
 #' @export
 
-FLFleet2FLFishery <- function(fleets, na_replace = 0, verbose = TRUE) {
+FLFleet2FLFishery <- function(fleets, na_replace = 0, verbose = TRUE, keep_metier = FALSE) {
   
   # HOW TO HANDLE THIS WHEN FLFISHERY::FLCATCH CONTAINS ONLY NUMBERS AND WEIGHTS
   # INFORMATION?
@@ -84,7 +86,7 @@ FLFleet2FLFishery <- function(fleets, na_replace = 0, verbose = TRUE) {
     # suppress the following message:
     # Found more than one class "FLCatch" in cache; using the first, from namespace 'FLFleet'
     # Also defined by ‘FLFishery’
-    
+
     catches <- suppressMessages(FLFishery::FLCatches(lapply(unique(stk_vector), function(y){
       
       ## Extract dimensions of all catches for the y'th stock
@@ -146,7 +148,7 @@ FLFleet2FLFishery <- function(fleets, na_replace = 0, verbose = TRUE) {
         prxy[is.na(prxy)] <- na_replace
         
         if(any(Lnxy > 0 & prxy == 0))
-          stop(paste0("For metier ", name(x), ", and stock ", y,
+          warning(paste0("For metier ", name(x), ", and stock ", y,
                       ": 'price' is NA or 0 when 'landings.n' > 0"))
         
         return(prxy * Lnxy / Ln)
@@ -200,6 +202,7 @@ FLFleet2FLFishery <- function(fleets, na_replace = 0, verbose = TRUE) {
         return(cqxy * effx)
       }
       
+      if(!isTRUE(keep_metier)) {
       ## Sum catches, landings and discards numbers
       Ln <- Reduce("+", Map(sumland, 
                             fleet_x@metiers[mtr_vector[stk_vector == y]], 
@@ -218,7 +221,7 @@ FLFleet2FLFishery <- function(fleets, na_replace = 0, verbose = TRUE) {
       Price <- Reduce("+", Map(avgprice,
                                fleet_x@metiers[mtr_vector[stk_vector == y]],
                                stk_vector[stk_vector == y]))
-
+      
       ## weighted-average catch selection-at-age
       Cs <- Reduce("+", Map(avgsel,
                             fleet_x@metiers[mtr_vector[stk_vector == y]],
@@ -229,6 +232,93 @@ FLFleet2FLFishery <- function(fleets, na_replace = 0, verbose = TRUE) {
                             fleet_x@metiers[mtr_vector[stk_vector == y]],
                             stk_vector[stk_vector == y]))
       
+      }
+      
+      ## Here we want to convert the métier dimension into an area dimension
+      if(isTRUE(keep_metier)) {
+        
+        ## Extract the dimnames for the catch object, and add the area dimnames
+        new_dimnames     <- dimnames(fleet_x@metiers[mtr_vector[stk_vector == y]][[1]]@catches[[y]])
+        new_dimnames$area <- fleet_x@metiers@names
+        
+        ## Landings numbers
+        Ln <- FLQuant(NA, dimnames = new_dimnames)
+        Ln_met <- lapply(fleet_x@metiers[mtr_vector[stk_vector == y]], function(x) x@catches[[y]]@landings.n)
+        for(i in dimnames(Ln)$area) {
+          if(i %in% names(Ln_met)) {
+          Ln[,,,,i,] <- Ln_met[[i]]
+          }
+        }
+        units(Ln) <- units(Ln_met[[1]])
+      
+        ## Discards numbers
+        Dn <- FLQuant(NA, dimnames = new_dimnames)
+        Dn_met <- lapply(fleet_x@metiers[mtr_vector[stk_vector == y]], function(x) x@catches[[y]]@discards.n)
+        for(i in dimnames(Ln)$area) {
+          if(i %in% names(Dn_met)) {
+          Dn[,,,,i,] <- Dn_met[[i]]
+          }
+        }
+        units(Dn) <- units(Dn_met[[1]])
+        
+       ## Landings wts
+       Lw <- FLQuant(NA, dimnames = new_dimnames)
+       Lw_met <- lapply(fleet_x@metiers[mtr_vector[stk_vector == y]], function(x) x@catches[[y]]@landings.wt)
+       for(i in dimnames(Lw)$area) {
+         if(i %in% names(Lw_met)) {
+         Lw[,,,,i,] <- Lw_met[[i]]
+         }
+       }
+       units(Lw) <- units(Lw_met[[1]])
+        
+       ## Discards wts
+       Dw <- FLQuant(NA, dimnames = new_dimnames)
+       Dw_met <- lapply(fleet_x@metiers[mtr_vector[stk_vector == y]], function(x) x@catches[[y]]@discards.wt)
+       for(i in dimnames(Dw)$area) {
+         if(i %in% names(Dw_met)) {
+         Dw[,,,,i,] <- Dw_met[[i]]
+         }
+       }
+       units(Dw) <- units(Dw_met[[1]])
+       
+       ## Price
+       Price <- FLQuant(NA, dimnames = new_dimnames)
+       Price_met <- lapply(fleet_x@metiers[mtr_vector[stk_vector == y]], function(x) x@catches[[y]]@price)
+       for(i in dimnames(Price)$area) {
+         if(i %in% names(Price_met)) {
+         Price[,,,,i,] <- Price_met[[i]]
+         }
+         }
+       units(Price) <- units(Price_met[[1]])
+       
+       ## Selectivity
+       Cs <- FLQuant(NA, dimnames = new_dimnames)
+       Csel <- lapply(fleet_x@metiers[mtr_vector[stk_vector == y]], function(x) {
+         sweep(x@catches[[y]]@catch.q,c(2:6), apply(x@catches[[y]]@catch.q, c(2:6),sum),"/")}
+       )
+       for(i in dimnames(Cs)$area) {
+         if(i %in% names(Csel)) {
+         Cs[,,,,i,] <- Csel[[i]]
+         }
+       }
+       units(Cs) <- units(Csel[[1]])
+        
+       ## Catchability
+       Cqmt <- lapply(fleet_x@metiers[mtr_vector[stk_vector == y]], function(x) {
+        apply(x@catches[[y]]@catch.q, c(2:6),sum)})
+       newdimnames <- dimnames(Cqmt[[1]])
+       newdimnames$area <- fleet_x@metiers@names
+       Cq <- FLQuant(NA, dimnames = newdimnames)
+       
+       for(i in dimnames(Cq)$area) {
+         if(i %in% names(Cqmt)) {
+         Cq[,,,,i,] <- Cqmt[[i]]
+         }
+       }
+       units(Cq) <- units(Cqmt[[1]])
+        
+      }
+      
       
       # -------------------------------------------------------------------#
       # SECTION 2.2: Biomass-aggregated stocks
@@ -237,6 +327,7 @@ FLFleet2FLFishery <- function(fleets, na_replace = 0, verbose = TRUE) {
       #############################
       
       ## insert summaries into FLCatch object
+      
       catch_y <- FLFishery::FLCatch(name = y,
                                     landings.n = Ln,
                                     discards.n = Dn,
@@ -246,16 +337,19 @@ FLFleet2FLFishery <- function(fleets, na_replace = 0, verbose = TRUE) {
                                     catch.sel = Cs,
                                     catch.q = FLPar(0, 
                                                     dimnames=list(params=c('alpha','beta'), 
-                                                                  year = dimnames(Cq)$year, 
-                                                                  iter = dimnames(Cq)$iter),
+                                                                  year = dimnames(Ln)$year,
+                                                                  area = dimnames(Ln)$area,
+                                                                  iter = dimnames(Ln)$iter),
                                                     units='NA'))
       
       ## Insert full catchability time-series
       catch_y@catch.q["alpha",] <- Cq
-      
-      return(catch_y)
 
+        return(catch_y)
+      
     })))
+    
+
     
     names(catches) <- unique(stk_vector)
     
@@ -269,14 +363,64 @@ FLFleet2FLFishery <- function(fleets, na_replace = 0, verbose = TRUE) {
     ## NOTE I NEED TO UPDATE THE Stock NAMES IN FISHERY TOO!!!
     
     ## calculate weighted average for variable costs
+    if(!isTRUE(keep_metier)){
     fishery_vcost <- Reduce("+", Map(function(x) {x@effshare %*% x@vcost},
-                            fleet_x@metiers))
+                                     fleet_x@metiers))
     
     ## Fill FLFishery slots
     fishery@capacity  <- fleet_x@capacity
     fishery@effort    <- fleet_x@effort
     fishery@vcost[]   <- fishery_vcost
     fishery@fcost     <- fleet_x@fcost
+    }
+    
+  if(isTRUE(keep_metier)){
+    ## Fill FLFishery slots
+    
+    newdimnames <- list(year = dimnames(fishery)$year,
+                        area = dimnames(fishery)$area,
+                        iter = dimnames(fishery)$iter)
+      
+    ## Variable costs
+    Vc <- FLQuant(NA, dimnames = newdimnames)
+    for(i in 1:length(fleet_x@metiers)) {
+      Vc[,,,,i,] <- fleet_x@metiers[[i]]@vcost
+    }
+    units(Vc) <- units(fleet_x@metiers[[1]]@vcost)  
+    
+    # fixed costs
+    Fc <- FLQuant(NA, dimnames = newdimnames)
+    for(i in 1:length(fleet_x@metiers)) {
+      Fc[,,,,i,] <- fleet_x@fcost/length(newdimnames$area)
+    }
+    units(Fc) <- units(fleet_x@fcost)
+    
+    # capacity
+    Cap <- FLQuant(NA, dimnames = newdimnames)
+    for(i in 1:length(fleet_x@metiers)) {
+      Cap[,,,,i,] <- fleet_x@capacity/length(newdimnames$area)
+    }
+    units(Cap) <- units(fleet_x@capacity)
+  
+    ## Effort should be per area
+    Ef <- FLQuant(NA, dimnames = newdimnames)
+    
+    for(i in 1:length(fleet_x@metiers)) {
+      Ef[,,,,i,] <- fleet_x@effort * fleet_x@metiers[[i]]@effshare
+    }
+    units(Ef) <- units(fleet_x@effort)
+    
+    
+    
+    fishery@capacity  <- Cap
+    fishery@effort    <- Ef
+    fishery@vcost     <- Vc
+    fishery@fcost     <- Fc
+    
+    }
+    
+    
+    
     # fishery@crewshare <- fleet_x@crewshare
     
     ## Additional slots
