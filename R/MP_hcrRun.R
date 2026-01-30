@@ -109,13 +109,13 @@ hcrRun <- function(stk,
   
   ## A bit of a shoddy way of re-organising our returned list
   ctrl <- vector(mode = "list", length = length(stk))
-  for(x in 1:length(stk)) {
+  names(ctrl) <- names(stk)
+  for(x in stk@names) {
     
     ctrl[[x]]     <- ctrlList[[x]]$ctrl
     tracking[[x]] <- ctrlList[[x]]$tracking
     
   }
-  names(ctrl) <- names(stk)
   
   ## return control
   return(list(ctrl     = ctrl, 
