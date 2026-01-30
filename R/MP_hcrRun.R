@@ -81,12 +81,14 @@ hcrRun <- function(stk,
     flatlist <- function(x, hcrgroup) {
       
       ## unpack grouped stocks into a single list of ctrl and tracking containing the stocks
-      tmp <- unlist(x[sapply(hcrgroup, length) > 1], recursive = FALSE)
-      
-      ## invert to get a list of stocks each containing ctrl and tracking 
-      tmp1 <- lapply(unlist(hcrgroup[which(sapply(hcrgroup, length) > 1)]), function(y){
-        lapply(tmp,"[[",y)
-      })
+      ## invert to get a list of stocks each containing ctrl and tracking
+      tmp <- lapply(which(sapply(hcrgroup, length) > 1), function(y) {
+        yy <- lapply(unlist(hcrgroup[y]), function(z) {
+          lapply(x[[y]], "[[", z)
+        })
+        names(yy) <- unlist(hcrgroup[y])
+        return(yy)})
+      tmp1 <- unlist(tmp, recursive = FALSE)
       
       ## combine ungroups and groups stocks
       tmp <- c(x[sapply(hcrgroup, length) == 1],
