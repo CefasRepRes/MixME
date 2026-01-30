@@ -71,6 +71,7 @@ hcrRun <- function(stk,
                      ctrg      = ctrg,
                      ftrg      = ftrg,
                      tracking  = tracking)
+  names(ctrlList) <- names(hcrgroup)
   
   # If multi-stock HCR has been used, then these stocks will be nested
   # within the group of stocks. We want to flatten the list so that 'ctrlList'
