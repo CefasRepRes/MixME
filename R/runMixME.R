@@ -106,6 +106,7 @@ runMixME <- function(om,
   # 5. handle non-matrix effortType
   # 6. handle non-matrix exceptions
   # 7. handle matrix exceptions with missing dimnames, incorrect dims
+  # 8. handle non-matrix adviceInit
   
   ## handle missing arguments
   if (is.null(args$management_lag)) args$management_lag <- 1 # default management lag to 1
@@ -175,6 +176,9 @@ runMixME <- function(om,
     args$use_fastF <- TRUE
   if (is.null(args$use_fastfwd))
     args$use_fastfwd <- TRUE
+  
+  if (!all(sapply(args$adviceInit,is.matrix)))
+    args$adviceInit <- lapply(args$adviceInit, function(x) matrix(x, nrow = 1))
   
   ## If banking and borrowing is used make sure forecast extends to TACyr+1 
   ## --- do I really want to hard code this procedure?? Maybe better to bundle

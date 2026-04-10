@@ -157,10 +157,10 @@ hcrMixME <- function(x,
       ## Run Fixed Catch advice
     } else if (hcrmethod[[x]] == "hcrFixedC"){
       
-      out <- mse::fixedC.hcr(stk  = stk0,
-                             ctrg = ctrg[[x]],
-                             args = args,
-                             tracking = tracking[[x]])
+      out <- hcrFixedC(stk  = stk0,
+                       Ctrg = ctrg[[x]],
+                       args = args,
+                       tracking = tracking[[x]])
       
       # ctrl <- hcrFixedC(stk  = stk[[x]],
       #                   Ctrg = Ctrg[[x]],
@@ -280,19 +280,22 @@ hcrICES <- function(stk, args, hcrpars, tracking) {
 #'
 #' @export
 
-hcrFixedC <- function(stk, Ctrg, args) {
+hcrFixedC <- function(stk, Ctrg, args, tracking) {
   
   ay <- args$ay
+  mlag <- args$management_lag
   
-  ## Convert to FLQuant if needed
-  if(!is(Ctrg, "FLQuant"))
-    Ctrg <- FLQuant(Ctrg, dimnames = list(iter = dimnames(stk@catch)$iter))
+  ## Handle non-FLQuant inputs
+  if(!is(Ctrg, "FLQuant") && length(Ctrg) == 1L) {
+    it <- dim(stk@catch)[6]
+    Ctrg <- rep(Ctrg, it)
+  }
   
   ## Generate control object
-  ctrl <- mse::getCtrl(values   = c(Ctrg),
-                       quantity = "catch",
-                       years    = ay + args$management_lag,
-                       it       = dim(Ctrg)[6])
+  ctrl <- FLasher::fwdControl(value   = c(Ctrg),
+                              quant = "catch",
+                              year  = ay + mlag)
   
-  return(ctrl)
+  return(list(ctrl = ctrl,
+              tracking = tracking))
 }
