@@ -46,8 +46,8 @@ catch_residuals <- function(biols,
     
     ## Get baseline catches
     catches_pred <- sapply(names(biols), function(x) {
-      Lw <- MixME:::getCW(out_baseline$om$flts, x, "landings", FALSE)[,as.character(yr),,,,,,drop=F]
-      Dw <- MixME:::getCW(out_baseline$om$flts, x, "discards", FALSE)[,as.character(yr),,,,,,drop=F]
+      Lw <- MixME:::getCW(out_baseline$flts, x, "landings", FALSE)[,as.character(yr),,,,,,drop=F]
+      Dw <- MixME:::getCW(out_baseline$flts, x, "discards", FALSE)[,as.character(yr),,,,,,drop=F]
       return(apply(Lw+Dw, c("fleet","year","iter"), sum))
     })
     
@@ -62,7 +62,7 @@ catch_residuals <- function(biols,
     
     ## Get baseline catches
     catches_pred <- sapply(names(biols), function(x) {
-      Lw <- MixME:::getCW(out_baseline$om$flts, x, "landings", FALSE)[,as.character(yr),,,,,,drop=F]
+      Lw <- MixME:::getCW(out_baseline$flts, x, "landings", FALSE)[,as.character(yr),,,,,,drop=F]
       return(apply(Lw, c("fleet","year","iter"), sum))
     })
     
@@ -76,7 +76,7 @@ catch_residuals <- function(biols,
     
     ## Get baseline catches
     catches_pred <- sapply(names(biols), function(x) {
-      Dw <- MixME:::getCW(out_baseline$om$flts, x, "discards", FALSE)[,as.character(yr),,,,,,drop=F]
+      Dw <- MixME:::getCW(out_baseline$flts, x, "discards", FALSE)[,as.character(yr),,,,,,drop=F]
       return(apply(Dw, c("fleet","year","iter"), sum))
     })
     
@@ -92,8 +92,8 @@ catch_residuals <- function(biols,
     ## Get baseline catches
     catches_pred <- sapply(names(biols), function(x) {
       browser()
-      Ln <- MixME:::getC(out_baseline$om$flts, x, "landings.n", FALSE)[,as.character(yr),,,,,,drop=F]
-      Dn <- MixME:::getC(out_baseline$om$flts, x, "discards.n", FALSE)[,as.character(yr),,,,,,drop=F]
+      Ln <- MixME:::getC(out_baseline$flts, x, "landings.n", FALSE)[,as.character(yr),,,,,,drop=F]
+      Dn <- MixME:::getC(out_baseline$flts, x, "discards.n", FALSE)[,as.character(yr),,,,,,drop=F]
       return(apply(Ln+Dn, c("fleet","year","iter"), sum))
     })
     
@@ -108,7 +108,7 @@ catch_residuals <- function(biols,
     
     ## Get baseline catches
     catches_pred <- sapply(names(biols), function(x) {
-      Ln <- MixME:::getC(out_baseline$om$flts, x, "landings.n", FALSE)[,as.character(yr),,,,,,drop=F]
+      Ln <- MixME:::getC(out_baseline$flts, x, "landings.n", FALSE)[,as.character(yr),,,,,,drop=F]
       return(apply(Ln, c("fleet","year","iter"), sum))
     })
     
@@ -122,7 +122,7 @@ catch_residuals <- function(biols,
     
     ## Get baseline catches
     catches_pred <- sapply(names(biols), function(x) {
-      Dn <- MixME:::getC(out_baseline$om$flts, x, "discards.n", FALSE)[,as.character(yr),,,,,,drop=F]
+      Dn <- MixME:::getC(out_baseline$flts, x, "discards.n", FALSE)[,as.character(yr),,,,,,drop=F]
       return(apply(Dn, c("fleet","year","iter"), sum))
     })
     
