@@ -93,7 +93,7 @@ summary_effort_MixME <- function(object,
   
   ## Extract effort
   res <- sapply(names(om$flts), function(x) {
-    x <- areaSums(effort(om$flts[[x]])
+    x <- areaSums(effort(om$flts[[x]]))
     return(x)
   }, simplify = "array")
   
