@@ -132,7 +132,8 @@ summary_catch_MixME <- function(object,
                                 maxyr = NULL,
                                 fltnames = NULL,
                                 stknames = NULL,
-                                byfleet = FALSE) {
+                                byfleet = FALSE,
+                                quantity = c("catch","landings","discards")) {
   
   # ----------------
   # extract elements
@@ -146,15 +147,23 @@ summary_catch_MixME <- function(object,
   if(is.null(minyr)) minyr <- max(unlist(lapply(om$stks, function(x) dims(x)$minyear)))
   if(is.null(maxyr)) maxyr <- min(unlist(lapply(om$stks, function(x) dims(x)$maxyear)))
   
+  ## get quantity
+  quantity <- match.arg(quantity)
+  
   # -------------------------------------------------
   # calculate summary quantity and correct dimensions
   # -------------------------------------------------
   
   ## leverage c++ summary functions
   res <- lapply(names(om$stks), function(x) {
-    xx <- MixME:::getCW(om$flts, x, sl = "landings", summarise = !byfleet) +
-      MixME:::getCW(om$flts, x, sl = "discards", summarise = !byfleet)
-    xx <- as.data.frame.table(xx, responseName = "catch")
+    
+    xx <- switch(quantity,
+                 catch = MixME:::getCW(om$flts, x, sl = "landings", summarise = !byfleet) +
+                         MixME:::getCW(om$flts, x, sl = "discards", summarise = !byfleet),
+                 landings = MixME:::getCW(om$flts, x, sl = "landings", summarise = !byfleet),
+                 discards = MixME:::getCW(om$flts, x, sl = "discards", summarise = !byfleet))
+    
+    xx <- as.data.frame.table(xx, responseName = quantity)
     xx$stk = x
     return(xx)
   })
@@ -163,12 +172,10 @@ summary_catch_MixME <- function(object,
   
   ## (Optional) handle aggregation by fleet
   if (byfleet == TRUE) {
-    res <- res[,c("age","year","unit","season","iter","fleet","stk","catch")]
+    res <- res[,c("age","year","unit","season","iter","fleet","stk",quantity)]
     names(res)[names(res) == "fleet"] <- "flt"
-  }
-  
-  if (byfleet == FALSE) {
-    res <- res[,c("age","year","unit","season","iter","stk","catch")]
+  } else {
+    res <- res[,c("age","year","unit","season","iter","stk",quantity)]
   }
   
   ## (optional) filter for specific stocks
@@ -184,6 +191,11 @@ summary_catch_MixME <- function(object,
   ## coerce "year" and "iter" to numeric
   res$year <- as.numeric(as.character(res$year))
   res$iter <- as.numeric(as.character(res$iter))
+  
+  res <- res[
+    res$year >= minyr &
+      res$year <= maxyr,
+  ]
   
   return(res)
   
