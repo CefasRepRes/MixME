@@ -34,7 +34,7 @@ summary_ssb_MixME <- function(object,
   
   ## Calculate summary array
   res <- sapply(1:length(om$stks), function(x){
-    ssb(om$stks[[x]])[,ac(minyr:maxyr), drop = FALSE]
+    ssb(om$stks[[x]])
   }, simplify = "array")
   
   ## define dimension names
@@ -53,6 +53,12 @@ summary_ssb_MixME <- function(object,
   ## coerce "year" and "iter" to numeric
   res$year <- as.numeric(as.character(res$year))
   res$iter <- as.numeric(as.character(res$iter))
+  
+  ## (optional) filter for year
+  res <- res[
+    res$year >= minyr &
+      res$year <= maxyr,
+  ]
   
   return(res)
 }
@@ -87,7 +93,7 @@ summary_effort_MixME <- function(object,
   
   ## Extract effort
   res <- sapply(names(om$flts), function(x) {
-    x <- areaSums(effort(om$flts[[x]])[,ac(minyr:maxyr), drop = FALSE])
+    x <- areaSums(effort(om$flts[[x]])
     return(x)
   }, simplify = "array")
   
@@ -115,6 +121,12 @@ summary_effort_MixME <- function(object,
   ## coerce "year" and "iter" to numeric
   res$year <- as.numeric(as.character(res$year))
   res$iter <- as.numeric(as.character(res$iter))
+  
+  ## (optional) filter for year
+  res <- res[
+    res$year >= minyr &
+      res$year <= maxyr,
+  ]
   
   return(res)
   
