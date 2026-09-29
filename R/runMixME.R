@@ -121,9 +121,9 @@ runMixME <- function(om,
   ## handle non-matrix effortType
   if (!is.matrix(ctrl_obj$fwd@args$effortType)) {
     tmp_effortType <- matrix(0, 
-           nrow = length(om$flts), 
-           ncol = length(args$iy:args$fy),
-           dimnames = list(names(om$flts), args$iy:args$fy))
+                             nrow = length(om$flts), 
+                             ncol = length(args$iy:args$fy),
+                             dimnames = list(names(om$flts), args$iy:args$fy))
     tmp_effortType[] <- ctrl_obj$fwd@args$effortType
     ctrl_obj$fwd@args$effortType <- tmp_effortType
   }
@@ -152,7 +152,7 @@ runMixME <- function(om,
   ## handle exceptions and multiplier dimension name errors
   # if (any(dimnames(exceptions) != list(names(om$stks),names(om$flts)))) stop("'exceptions' dimnames must match stock names and fleet names")
   # if (any(dimnames(multiplier) != list(names(om$stks),names(om$flts)))) stop("'multiplier' dimnames must match stock names and fleet names")
-
+  
   ## handle exceptions and multiplier content errors
   if(!all(c(ctrl_obj$fwd@args$exceptions) %in% c(0,1))) stop("'exceptions' must contain only 0 or 1 values") # make sure that 'exceptions' are 1 or 0
   if(any(c(ctrl_obj$fwd@args$multiplier) < 0)) stop("'multiplier' must contain positive values only")
@@ -179,6 +179,42 @@ runMixME <- function(om,
   
   if (!all(sapply(args$adviceInit,is.matrix)))
     args$adviceInit <- lapply(args$adviceInit, function(x) matrix(x, nrow = 1))
+  
+  # This third chunk handles settings for the optimisation routine. I want to
+  # handle missing arguments and expand the vector to cover each projection year
+  
+  ## use last year effort as initial parameters? 
+  ## Default = FALSE
+  if(is.null(args$useEffortAsInit)) {
+    args$useEffortAsInit <- FALSE
+  }
+  
+  ## use effort from Global Optimisation as initial values for Local Optimisation
+  ## Default = FALSE
+  if (is.null(args$useGlobalAsInit)) {
+    args$useGlobalAsInit <- FALSE
+  }
+  
+  if (is.null(args$parInit)) {
+    args$parInit <- rep(log(0.5), length(om$flts))
+  }
+  
+  ## Expand useGlobalAsInit and useEffortAsInit into vectors
+  if (length(args$useGlobalAsInit) == 1) {
+    args$useGlobalAsInit <- rep(args$useGlobalAsInit, length(args$iy:args$fy))
+    names(args$useGlobalAsInit) <- args$iy:args$fy
+  }
+  if (length(args$useEffortAsInit) == 1) {
+    args$useEffortAsInit <- rep(args$useEffortAsInit, length(args$iy:args$fy))
+    names(args$useEffortAsInit) <- args$iy:args$fy
+  }
+  
+  ## If vector length do not match number of projection years, then error!
+  if (length(args$useGlobalAsInit) != length(args$iy:args$fy)) 
+    stop("length of 'args$useGlobalAsInit' must be 1 or length projection years")
+  
+  if (length(args$useEffortAsInit) != length(args$iy:args$fy)) 
+    stop("length of 'args$useEffortAsInit' must be 1 or length projection years")
   
   ## If banking and borrowing is used make sure forecast extends to TACyr+1 
   ## --- do I really want to hard code this procedure?? Maybe better to bundle
@@ -269,43 +305,43 @@ runMixME <- function(om,
                        .export = c("iterOM","iterTracking","simMixME"),
                        .errorhandling = "remove",
                        .inorder = TRUE) %dorng% {
-      
-      ## subset operating model
-      om0 <- iterOM(om, it)
-      
-      ## subset tracking object
-      tracking0 <- iterTracking(tracking, it)
-      
-      ## subset observation error model
-      oem0 <- oem
-      if (!is.null(oem0@observations$stk))
-        oem0@observations$stk <- iter(oem0@observations$stk, it)
-      if (!is.null(oem0@observations$idx))
-        oem0@observations$idx <- lapply(oem0@observations$idx, function(x) iter(x, it))
-      if (!is.null(oem0@deviances$stk))
-        oem0@deviances$stk <- lapply(oem0@deviances$stk, function(x) x[,,,,,it,,drop = FALSE])
-      if (!is.null(oem0@deviances$idx))
-        oem0@deviances$idx <- lapply(oem0@deviances$idx, function(x) iter(x, it))
-
-      ## subset parts of MP control and global arguments
-      ctrl_obj0 <- ctrl_obj
-      if (!is.null(ctrl_obj$fwd@args$sr_residuals)) {
-        ctrl_obj0$fwd@args$sr_residuals <- lapply(ctrl_obj$fwd@args$sr_residuals, function(x) iter(x, it))
-      }
-      if (!is.null(ctrl_obj$fwd@args$proc_res)) {
-        ctrl_obj0$fwd@args$proc_res <- lapply(ctrl_obj$fwd@args$proc_res, function(x) iter(x, it))
-      }
-      
-      args0 <- args
-      args0$adviceInit <- lapply(args$adviceInit, function(x) x[,it])
-      
-      ## run simulation
-      return(simMixME(om0,
-               oem0,
-               tracking0,
-               ctrl_obj0,
-               args0))
-    }
+                         
+                         ## subset operating model
+                         om0 <- iterOM(om, it)
+                         
+                         ## subset tracking object
+                         tracking0 <- iterTracking(tracking, it)
+                         
+                         ## subset observation error model
+                         oem0 <- oem
+                         if (!is.null(oem0@observations$stk))
+                           oem0@observations$stk <- iter(oem0@observations$stk, it)
+                         if (!is.null(oem0@observations$idx))
+                           oem0@observations$idx <- lapply(oem0@observations$idx, function(x) iter(x, it))
+                         if (!is.null(oem0@deviances$stk))
+                           oem0@deviances$stk <- lapply(oem0@deviances$stk, function(x) x[,,,,,it,,drop = FALSE])
+                         if (!is.null(oem0@deviances$idx))
+                           oem0@deviances$idx <- lapply(oem0@deviances$idx, function(x) iter(x, it))
+                         
+                         ## subset parts of MP control and global arguments
+                         ctrl_obj0 <- ctrl_obj
+                         if (!is.null(ctrl_obj$fwd@args$sr_residuals)) {
+                           ctrl_obj0$fwd@args$sr_residuals <- lapply(ctrl_obj$fwd@args$sr_residuals, function(x) iter(x, it))
+                         }
+                         if (!is.null(ctrl_obj$fwd@args$proc_res)) {
+                           ctrl_obj0$fwd@args$proc_res <- lapply(ctrl_obj$fwd@args$proc_res, function(x) iter(x, it))
+                         }
+                         
+                         args0 <- args
+                         args0$adviceInit <- lapply(args$adviceInit, function(x) x[,it])
+                         
+                         ## run simulation
+                         return(simMixME(om0,
+                                         oem0,
+                                         tracking0,
+                                         ctrl_obj0,
+                                         args0))
+                       }
     
     ## combine outputs
     om       <- Reduce("combineOM", lapply(simList, "[[","om"))
@@ -328,7 +364,7 @@ runMixME <- function(om,
   # ===========================================================================#
   # Output results
   # ===========================================================================#
-
+  
   return(list(om       = om,
               tracking = tracking,
               ctrl_obj = ctrl_obj,

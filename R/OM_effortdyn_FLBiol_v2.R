@@ -534,11 +534,11 @@ effortBaranov <- function(omList,
       tmp_multiplier <- multiplier
       
       ## define default initial log-effort values if not defined
-      if(is.null(par) & useEffortAsInit == FALSE){
+      if(is.null(par)){
         par <- rep(log(0.5), nflt)
       }
       
-      if(is.null(par) & useEffortAsInit == TRUE){
+      if(useEffortAsInit == TRUE){
         par <- log(omList[[it]]$effort)
       }
       

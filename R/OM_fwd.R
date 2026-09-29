@@ -57,22 +57,22 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
                      effsharemethod = NULL,
                      effshareargs   = NULL,
                      ...) {
-
+  
   # CURRENTLY ASSUMES THAT PROJECTION IS A SINGLE YEAR... PROBABLY UNAVOIDABLE
   # BECAUSE WE NEED TO RECALCULATE EFFORT FOR EACH TIMESTEP (EVEN IF ADVICE
   # DOES NOT CHANGE...)
   # NEED TO THINK ABOUT HOW TO HANDLE MULTI-ANNUAL ADVICE...
-
+  
   # FLasher DOES NOT ALLOW EFFORT TO BE ZERO. I WILL NEED TO EITHER REPLACE
   # FLasher OR BUILD A ROUTINE TO PROJECT ZERO EFFORT CASES.
-
+  
   # AT THE MOMENT, ADVICETYPE CAN ONLY TAKE A SINGLE VALUE - I WILL NEED TO ADAPT
   # THIS SO THAT DIFFERENT STOCKS CAN HAVE LANDINGS, CATCH OR F-BASED ADVICE.
-
+  
   # ===========================================================================#
   # Extract Arguments
   # ===========================================================================#
-
+  
   ni   <- dims(om$stks[[1]])$iter
   yr   <- args$ay
   iy   <- args$iy
@@ -100,20 +100,9 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
     useTMB <- TRUE
   }
   
-  ## use last year effort as initial parameters? Default = FALSE
-  if(!is.null(args$useEffortAsInit)) {
-    useEffortAsInit <- args$useEffortAsInit
-  } else {
-    useEffortAsInit <- FALSE
-  }
-  
-  ## use effort from Global Optimisation as initial values for Local Optimisation
-  ## Default = FALSE
-  if (!is.null(args$useGlobalAsInit)) {
-    useGlobalAsInit <- args$useGlobalAsInit
-  } else {
-    useGlobalAsInit <- FALSE
-  }
+  ## Extract optimisation arguments
+  useEffortAsInit <- args$useEffortAsInit
+  useGlobalAsInit <- args$useGlobalAsInit
   
   ## use stock recruitment residuals
   if(!is.null(sr_residuals))
@@ -166,7 +155,7 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
   # ===========================================================================#
   # Advice implementation given mixed fisheries technical interactions
   # ===========================================================================#
-
+  
   ## Advice is a TAC per stock
   if(adviceType %in% c("catch","landings")) {
     
@@ -179,11 +168,11 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
         om <- do.call(effsharemethod, c(list(om = om, yr = yr, advice = advice),effshareargs))
       }
     }
-
+    
     # -------------------------------------------------------------------------#
     # Reorganise data for optimisation
     # -------------------------------------------------------------------------#
-
+    
     ## generate simplified list to pass to optimiser
     omList <- FLBiols2List(om = om,
                            year = yr,
@@ -191,7 +180,7 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
                            useCpp = TRUE,
                            avgE_nyear = ifelse(yr > iy, 1, nyear),
                            process_residuals = proc_res)
-
+    
     # -------------------------------------------------------------------------#
     # Optimise fleet activity
     # -------------------------------------------------------------------------#
@@ -211,9 +200,10 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
                                     effortType   = effortType,
                                     exceptions   = exceptions,
                                     multiplier   = multiplier,
-                                    maxRetry     = maxRetry,
-                                    useEffortAsInit = useEffortAsInit,
-                                    useGlobalAsInit = useGlobalAsInit,
+                                    maxRetry     = maxRetry, 
+                                    par             = args$parInit,
+                                    useEffortAsInit = useEffortAsInit[as.character(yr)],
+                                    useGlobalAsInit = useGlobalAsInit[as.character(yr)],
                                     useTMB       = useTMB,
                                     correctResid = FALSE,
                                     verbose      = args$verbose)
@@ -231,11 +221,11 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
       pars <- sapply(1:ni, function(x) { log(omList[[x]]$effort)})
       
     } # END if any fleets dynamic effort
-
+    
     # -------------------------------------------------------------------------#
     # TRACKING
     # -------------------------------------------------------------------------#
-
+    
     ## save quota stock-fleet
     tracking$quota[,,ac(yr),] <- sapply(1:ni, function(y) {
       omList[[y]]$quota
@@ -266,7 +256,7 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
       
       ## save quota uptake to tracker
       tracking$uptake[,,ac(yr),] <- sapply(1:ni, function(x){
-          tracking$quota[,,ac(yr),x] - effOptimised[[x]]$Cfleet
+        tracking$quota[,,ac(yr),x] - effOptimised[[x]]$Cfleet
       }, simplify = "array")
       
     } else {
@@ -301,9 +291,9 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
     #               tracking = tracking))
     #   
     # }
-
+    
   } else if(adviceType == "f") {
-
+    
     # Technically, f-based advice is really effort restriction. The challenge is
     # work out how effort translates to F for each stock --- and what the least
     # allowable effort will be.
@@ -313,7 +303,7 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
     #
     # Would we expect the proportional activity across fleets to remain
     # constant? --- if so, we simply scale all efforts to meet the limiting F.
-
+    
     stop("f-based advice not currently implemented")
   } else {
     stop("Advice format (adviceType) must be 'f', 'catch' or 'landings'")
@@ -352,15 +342,15 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
     om       <- out$om
     tracking <- out$tracking
   }
-
+  
   # (Optional) Add process error noise if available
   #
   # This is uncertainty around the survival process (natural mortality)
   # Only affects stock numbers
-
+  
   if(!is.null(proc_res)){
   }
-
+  
   # ===========================================================================#
   # Update tracking object
   # ===========================================================================#
@@ -370,11 +360,11 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
   # ===========================================================================#
   # Return outputs
   # ===========================================================================#
-
+  
   ## return projected stock
   return(list(om       = om,
               tracking = tracking))
-
+  
 }
 
 
@@ -386,26 +376,26 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
 #' @export
 
 makeFCB <- function(biols, flts){
-
+  
   ## number of biols and fleets
   nbiols <- length(biols)
   nflts  <- length(flts)
-
+  
   ## biols names
   biolnames <- names(biols)
-
+  
   # Calculate the positions of: Fishery in Fisheries object
   #                             Catches in Fishery object
   #                             Biols caught by Catches object
-
+  
   nums <- lapply(1:nflts, function(x){
-
+    
     ## extract catch names from fleet object
     catchnames <- names(flts[[x]])
-
+    
     ## position of catch name in fleet
     catchpos <- 1:length(catchnames)
-
+    
     ## position of biol name that matches catch name
     biolspos <- sapply(1:length(catchnames), function(y){
       which(catchnames[y] == biolnames)
@@ -424,12 +414,12 @@ makeFCB <- function(biols, flts){
       }
       biolspos <- unlist(biolspos)
     }
-
+    
     ## A hacky solution to get the numbers in the right order...
     matrix(c(rep(x, length(catchnames)),
-               catchpos,
-               biolspos),
-             ncol = 3, byrow = FALSE)
+             catchpos,
+             biolspos),
+           ncol = 3, byrow = FALSE)
   })
   
   ## combine into single matrix
@@ -440,7 +430,7 @@ makeFCB <- function(biols, flts){
   
   ## Define row and column names
   dimnames(fcb) <- list(1:nrow(fcb), c("F", "C", "B"))
-
+  
   return(fcb)
 }
 
