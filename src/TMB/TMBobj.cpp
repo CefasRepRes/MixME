@@ -89,7 +89,7 @@ Type objective_function<Type>::operator()(){
   DATA_STRUCT(catchsel, listMatrix);   // list: nstocks (matrix: rows = nages, cols = nfleets)
   DATA_STRUCT(m, listVector);         // list: nstocks (vector: nages)
   DATA_STRUCT(n, listVector);         // list: nstocks (vector: nages)
-  DATA_STRING(adviceType); // "catch" or "landings"
+  DATA_IVECTOR(adviceType); // vector: nstocks ("catch" = 0, "landings" = 1)
   DATA_STRING(objType);    // "globalMin", "globalMax" or "choke"
   DATA_ARRAY(exceptions);  // matrix: rows nstocks, cols nfleets
   DATA_ARRAY(multiplier);  // matrix: rows nstocks, cols nfleets
@@ -198,12 +198,12 @@ Type objective_function<Type>::operator()(){
       } // END loop over ages
       
       // if advice type = catch
-      if(adviceType == "catch") {
+      if(adviceType(s) == int(0)) {
         Cfleet(s,f) = sum(partLWage) + sum(partDWage);
       }
 
       // if advice type = landings
-      if(adviceType == "landings") {
+      if(adviceType(s) == int(1)) {
         Cfleet(s,f) = sum(partLWage);
       }
       

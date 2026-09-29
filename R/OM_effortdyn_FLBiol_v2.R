@@ -315,7 +315,7 @@ FLBiols2List <- function(om,
 #'            for each stock, and landed and discarded mean weights-at-age,
 #'            fraction-landed-at-age, catch-selection-at-age, catchability-at-age
 #'            and quota-share for each combination of stock and fleet.
-#' @param adviceType Character. Values may be 'catch' or 'landings'. Determines
+#' @param adviceType Character vector. Values may be 'catch' or 'landings'. Determines
 #'                   whether values returned by the function are based on catch
 #'                   or landings.
 #' @param islog (Optional) Boolean. Is supplied effort (\code{par}) on a log-scale?
@@ -383,7 +383,7 @@ catchBaranov <- function(par, dat, adviceType, islog = FALSE) {
                      
                      ## If advice is landings-based, account for
                      ## size-selective discarding
-                     if(adviceType == "landings"){
+                     if(adviceType[x] == "landings"){
                        
                        ## Calculate landings in weight at age per fleet
                        partLWage <- partCage * dat$landfrac[[x]] * dat$landwt[[x]]
@@ -393,7 +393,7 @@ catchBaranov <- function(par, dat, adviceType, islog = FALSE) {
                        
                        return(colSums(partLWage))
                        
-                     } else if(adviceType == "catch"){
+                     } else if(adviceType[x] == "catch"){
                        
                        ## Calculate landings and discards in weight at age per fleet
                        partLWage <- partCage * dat$landfrac[[x]] * dat$landwt[[x]]
@@ -438,8 +438,8 @@ catchBaranov <- function(par, dat, adviceType, islog = FALSE) {
 #'               for each stock, and landed and discarded mean weights-at-age,
 #'               fraction-landed-at-age, catch-selection-at-age, catchability-at-age
 #'               and quota-share for each combination of stock and fleet.
-#' @param adviceType Character. Values may be 'catch' or 'landings'. Determines
-#'                   whether inputted advice values correspond to catch or
+#' @param adviceType Character vector. Values may be 'catch' or 'landings'. Determines
+#'                   whether inputted advice values (per stock) correspond to catch or
 #'                   landings. Defaults to 'catch'.
 #' @param effortType Character. Values may be 'min' or 'max'. Determines whether
 #'                   effort optimisation should find the most-limiting (min) or the
@@ -510,6 +510,16 @@ effortBaranov <- function(omList,
   if (effortType == "max") {
     objType <- "globalMax"
   }
+  
+  ## handle universal adviceType
+  if (length(adviceType) == 1) {
+    adviceType <- rep(adviceType, nstk)
+  }
+  if (length(adviceType) != nstk)
+    stop("length(adviceType) must be 1 or n. stocks")
+  
+  ## Generate integer version of adviceType (catch = 0, landings = 1)
+  adviceTypeI <- c("catch"=0,"landings"=1)[adviceType]
   
   # ======================================================#
   # Define objective function
@@ -621,7 +631,7 @@ effortBaranov <- function(omList,
       parm$logE <- par
       
       ## add advice type to data
-      omList[[it]]$adviceType <- adviceType
+      omList[[it]]$adviceType <- adviceTypeI
       omList[[it]]$objType    <- objType
       omList[[it]]$exceptions <- tmp_exceptions
       omList[[it]]$multiplier <- tmp_multiplier

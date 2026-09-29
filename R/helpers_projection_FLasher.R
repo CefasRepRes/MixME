@@ -123,7 +123,7 @@ projectFLasher <- function(om,
                      ", discards.n > 0 but 'discards.wt' is 0"))
         
         ## If advice is landings based
-        if(adviceType == "landings") {
+        if(adviceType[s] == "landings") {
           
           overquota_ind <-
             which(landings(om_fwd$fisheries[[f]][[s]])[,ac(yr)] > tracking$quota[s,f,ac(yr),])
@@ -186,7 +186,7 @@ projectFLasher <- function(om,
         }
         
         ## If advice is catch-based
-        if(adviceType == "catch"){
+        if(adviceType[s] == "catch"){
           
           overquota_ind <- which(catch(om_fwd$fisheries[[f]][[s]])[,ac(yr)] >
                                    tracking$quota[s,f,ac(yr),])

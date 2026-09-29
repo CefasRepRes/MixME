@@ -20,7 +20,7 @@
 #' @param proc_res (Optional) Character. Where is process error noise stored?
 #'                 If \code{NULL}, no process error is applied to stock numbers.
 #'                 Defaults to \code{NULL}.
-#' @param adviceType Character. The basis of management advice. 
+#' @param adviceType Character vector. The basis of management advice. 
 #'                   Can be 'catch' or 'landings'.'f' is not yet possible.
 #' @param effortType Character. The basis of effort constraint. Can be 'max', 'min'
 #'                   or 'sqE'.
@@ -62,12 +62,6 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
   # BECAUSE WE NEED TO RECALCULATE EFFORT FOR EACH TIMESTEP (EVEN IF ADVICE
   # DOES NOT CHANGE...)
   # NEED TO THINK ABOUT HOW TO HANDLE MULTI-ANNUAL ADVICE...
-  
-  # FLasher DOES NOT ALLOW EFFORT TO BE ZERO. I WILL NEED TO EITHER REPLACE
-  # FLasher OR BUILD A ROUTINE TO PROJECT ZERO EFFORT CASES.
-  
-  # AT THE MOMENT, ADVICETYPE CAN ONLY TAKE A SINGLE VALUE - I WILL NEED TO ADAPT
-  # THIS SO THAT DIFFERENT STOCKS CAN HAVE LANDINGS, CATCH OR F-BASED ADVICE.
   
   # ===========================================================================#
   # Extract Arguments
@@ -112,6 +106,12 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
   ## handle missing reference years for status quo effort
   if (is.null(nyear)) nyear <- 1
   
+  ## expand single adviceType to nstocks
+  if (length(adviceType) == 1) {
+    adviceType <- rep(adviceType, length(om$stks))
+    names(adviceType) <- om$stks@names
+  }
+  
   # ===========================================================================#
   # Process Advice
   # ===========================================================================#
@@ -136,9 +136,9 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
     
     ## impute previous year's true realised target
     for(x in om$stks@names) {
-      if(adviceType == "catch")    adv_metric <- "C.om"
-      if(adviceType == "landings") adv_metric <- "L.om"
-      if(adviceType == "f")        adv_metric <- "F.om"
+      if(adviceType[x] == "catch")    adv_metric <- "C.om"
+      if(adviceType[x] == "landings") adv_metric <- "L.om"
+      if(adviceType[x] == "f")        adv_metric <- "F.om"
       advice[[x]][adv_missing] <- c(tracking[[x]]$stk[adv_metric, ac(yr-1), 1, 1, 1, adv_missing])
     }
     
@@ -157,7 +157,7 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
   # ===========================================================================#
   
   ## Advice is a TAC per stock
-  if(adviceType %in% c("catch","landings")) {
+  if(all(adviceType %in% c("catch","landings"))) {
     
     # -------------------------------------------------------------------------#
     # (Optional) Effort-share re-weighting
@@ -292,7 +292,7 @@ fwdMixME <- function(om,                  # FLBiols/FLFisheries
     #   
     # }
     
-  } else if(adviceType == "f") {
+  } else if(any(adviceType == "f")) {
     
     # Technically, f-based advice is really effort restriction. The challenge is
     # work out how effort translates to F for each stock --- and what the least
